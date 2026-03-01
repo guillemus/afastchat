@@ -1,0 +1,12 @@
+tmp/
+node_modules/
+data/
+
+.env
+.air/
+.DS_Store
+
+bin/
+coverage.out
+*.test
+*.out
