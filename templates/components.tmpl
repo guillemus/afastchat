@@ -1,0 +1,68 @@
+{{ block appShellOpen(threadId string) }}
+    <div
+        class="app"
+        data-signals:message="''"
+        data-signals:threadId="'{{ threadId }}'"
+        data-signals:loading="false"
+    >
+{{ end }}
+
+{{ block sidebar(threads, activeThreadId string) }}
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="logo">datastar<span class="logo-accent">.chat</span></span>
+            </div>
+
+            <a href="/" class="new-chat-btn">
+                {{ yield iconPlus() }}
+                New Chat
+            </a>
+
+            <div class="search-box">
+                {{ yield iconSearch() }}
+                <input type="text" placeholder="Search threads…" />
+            </div>
+
+            <div class="thread-list">
+                {{ if threads }}
+                    <div class="thread-section-label">Recent</div>
+                {{ end }}
+                {{ range _, t := threads }}
+                    <a
+                        href="/threads/{{ t.ID }}"
+                        class="thread-item {{ if t.ID == activeThreadId }}active{{ end }}"
+                    >
+                        <span class="thread-item-text">{{ t.Title }}</span>
+                    </a>
+                {{ end }}
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="avatar">G</div>
+                <span class="sidebar-footer-name">Guillem</span>
+            </div>
+        </aside>
+{{ end }}
+
+{{ block chatInput() }}
+            <div class="chat-input-area">
+                <div class="chat-input-box">
+                    <textarea
+                        rows="1"
+                        autofocus
+                        placeholder="Type your message here..."
+                        data-bind:message
+                        data-attr:disabled="$loading"
+                        data-on:keydown="
+                            if (event.key !== 'Enter') return;
+                            if (event.shiftKey) return;
+                            if ($loading) return;
+                            event.preventDefault();
+                            @post('/chat/send');
+                            $message = '';
+                        "
+                    ></textarea>
+                </div>
+            </div>
+{{ end }}

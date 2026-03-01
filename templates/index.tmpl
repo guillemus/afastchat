@@ -1,108 +1,19 @@
 {{ extends "layouts/main.tmpl" }}
+{{ import "icons.tmpl" }}
+{{ import "components.tmpl" }}
 
 {{ block body() }}
-    <div
-        class="app"
-        data-signals:message="''"
-        data-signals:threadId="''"
-        data-signals:loading="false"
-    >
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <span class="logo">datastar<span class="logo-accent">.chat</span></span>
-                <button class="sidebar-toggle" title="Toggle sidebar">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                    >
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <line x1="3" y1="12" x2="21" y2="12" />
-                        <line x1="3" y1="18" x2="21" y2="18" />
-                    </svg>
-                </button>
-            </div>
+    {{ yield appShellOpen("") }}
 
-            <a href="/" class="new-chat-btn">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    stroke-linecap="round"
-                >
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                New Chat
-            </a>
-
-            <div class="search-box">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input type="text" placeholder="Search threads…" />
-            </div>
-
-            <div class="thread-list">
-                {{ if .Threads }}
-                    <div class="thread-section-label">Recent</div>
-                {{ end }}
-                {{ range _, t := .Threads }}
-                    <a href="/threads/{{ t.ID }}" class="thread-item">
-                        <span class="thread-item-text">{{ t.Title }}</span>
-                    </a>
-                {{ end }}
-            </div>
-
-            <div class="sidebar-footer">
-                <div class="avatar">G</div>
-                <span class="sidebar-footer-name">Guillem</span>
-            </div>
-        </aside>
+        {{ yield sidebar(.Threads, "") }}
 
         <!-- Main -->
         <main class="main">
-            <div class="main-header">
-                <button>&#128339;</button>
-                <button>&#9881;</button>
-            </div>
-
             <div id="messages" class="main-body">
                 <div id="scroll-anchor" class="scroll-anchor"></div>
             </div>
 
-            <div class="chat-input-area">
-                <div class="chat-input-box">
-                    <textarea
-                        rows="1"
-                        autofocus
-                        placeholder="Type your message here..."
-                        data-bind:message
-                        data-attr:disabled="$loading"
-                        data-on:keydown="
-                            if (event.key !== 'Enter') return;
-                            if (event.shiftKey) return;
-                            if ($loading) return;
-                            event.preventDefault();
-                            @post('/chat/send');
-                            $message = '';
-                        "
-                    ></textarea>
-                </div>
-            </div>
+            {{ yield chatInput() }}
         </main>
     </div>
     <script>
