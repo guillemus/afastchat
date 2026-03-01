@@ -17,12 +17,72 @@ import (
 
 func (s *Server) appRoutes() {
 	s.mux.HandleFunc("GET /", s.handleIndex)
+	s.mux.HandleFunc("GET /threads/{id}", s.handleThread)
 	s.mux.HandleFunc("POST /chat/send", s.handleSendMessage)
 }
 
+type indexData struct {
+	Threads []db.Thread
+}
+
+type threadData struct {
+	Threads  []db.Thread
+	Thread   db.Thread
+	Messages []db.Message
+}
+
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if err := s.renderer.Render(w, "index", nil); err != nil {
+	threads, err := s.db.ListThreads(r.Context())
+	if err != nil {
+		slog.Error("list threads", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := s.renderer.Render(w, "index", indexData{Threads: threads}); err != nil {
 		slog.Error("render index", "err", err)
+		http.Error(w, "template error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleThread(w http.ResponseWriter, r *http.Request) {
+	threadID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid thread id", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	thread, err := s.db.GetThread(ctx, threadID)
+	if err != nil {
+		slog.Error("get thread", "err", err)
+		http.Error(w, "thread not found", http.StatusNotFound)
+		return
+	}
+
+	messages, err := s.db.GetMessagesByThread(ctx, threadID)
+	if err != nil {
+		slog.Error("get messages", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	threads, err := s.db.ListThreads(ctx)
+	if err != nil {
+		slog.Error("list threads", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	data := threadData{
+		Threads:  threads,
+		Thread:   thread,
+		Messages: messages,
+	}
+
+	if err := s.renderer.Render(w, "thread", data); err != nil {
+		slog.Error("render thread", "err", err)
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
 }

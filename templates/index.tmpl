@@ -10,13 +10,37 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-header-left">
-                    <button class="sidebar-toggle">&#9776;</button>
-                    <span class="logo">T3.chat</span>
-                </div>
+                <span class="logo">datastar<span class="logo-accent">.chat</span></span>
+                <button class="sidebar-toggle" title="Toggle sidebar">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                    >
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
             </div>
 
-            <button class="new-chat-btn">New Chat</button>
+            <a href="/" class="new-chat-btn">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New Chat
+            </a>
 
             <div class="search-box">
                 <svg
@@ -29,34 +53,23 @@
                     <circle cx="11" cy="11" r="8" />
                     <path d="m21 21-4.3-4.3" />
                 </svg>
-                <input type="text" placeholder="Search your threads..." />
+                <input type="text" placeholder="Search threads…" />
             </div>
 
             <div class="thread-list">
-                <div class="thread-item">EU Achievements Link Request</div>
-                <div class="thread-item">Postgres as a Key-Value Store...</div>
-                <div class="thread-item">School Shootings US Nov 2024</div>
-                <div class="thread-item">User feedback is compiler err...</div>
-                <div class="thread-item">Jeffrey Epstein Summary</div>
-                <div class="thread-item">Body Rows for Back Workout</div>
-                <div class="thread-item">Weed THC Levels Then and N...</div>
-                <div class="thread-item">Data Intensive Apps - Old Fas...</div>
-                <div class="thread-item">OCaml Unit Type Usage</div>
-                <div class="thread-item">Man posing at night with mate...</div>
-                <div class="thread-item">Improvised Hotel Workplace ...</div>
-                <div class="thread-item">VSCode Snippets Auto-trigger</div>
-                <div class="thread-item">VSCode LSP Definition Popup...</div>
-                <div class="thread-item">Testing Effect retry schedule ...</div>
-                <div class="thread-item">API Client Cookie Storage in ...</div>
-                <div class="thread-item">JavaScript code with ongoing ...</div>
-                <div class="thread-item">YouTube Effects Talk Recomm...</div>
-                <div class="thread-item">No Equipment Whole Body Ex...</div>
-                <div class="thread-item">Ghostty Docs Search</div>
-                <div class="thread-item">John Blow's on Linkin...</div>
+                {{ if .Threads }}
+                    <div class="thread-section-label">Recent</div>
+                {{ end }}
+                {{ range _, t := .Threads }}
+                    <a href="/threads/{{ t.ID }}" class="thread-item">
+                        <span class="thread-item-text">{{ t.Title }}</span>
+                    </a>
+                {{ end }}
             </div>
 
             <div class="sidebar-footer">
                 <div class="avatar">G</div>
+                <span class="sidebar-footer-name">Guillem</span>
             </div>
         </aside>
 
