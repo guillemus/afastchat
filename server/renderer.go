@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/url"
@@ -40,4 +41,13 @@ func (r *TemplateRenderer) Render(w io.Writer, name string, data any) error {
 	}
 
 	return nil
+}
+
+func (r *TemplateRenderer) RenderToString(name string, data any) (string, error) {
+	var b bytes.Buffer
+	if err := r.Render(&b, name, data); err != nil {
+		return "", err
+	}
+
+	return b.String(), nil
 }

@@ -11,6 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const archiveThread = `-- name: ArchiveThread :exec
+UPDATE threads
+SET archived_at = now(), updated_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) ArchiveThread(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, archiveThread, id)
+	return err
+}
+
 const createMessage = `-- name: CreateMessage :one
 INSERT INTO messages (thread_id, role, content)
 VALUES ($1, $2, $3)
@@ -39,7 +50,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 const createThread = `-- name: CreateThread :one
 INSERT INTO threads (title)
 VALUES ($1)
-RETURNING id, title, created_at, updated_at
+RETURNING id, title, archived_at, created_at, updated_at
 `
 
 func (q *Queries) CreateThread(ctx context.Context, title string) (Thread, error) {
@@ -48,6 +59,7 @@ func (q *Queries) CreateThread(ctx context.Context, title string) (Thread, error
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
+		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -110,7 +122,7 @@ func (q *Queries) GetMessagesByThread(ctx context.Context, threadID uuid.UUID) (
 }
 
 const getThread = `-- name: GetThread :one
-SELECT id, title, created_at, updated_at FROM threads
+SELECT id, title, archived_at, created_at, updated_at FROM threads
 WHERE id = $1
 `
 
@@ -120,6 +132,7 @@ func (q *Queries) GetThread(ctx context.Context, id uuid.UUID) (Thread, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
+		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -127,8 +140,9 @@ func (q *Queries) GetThread(ctx context.Context, id uuid.UUID) (Thread, error) {
 }
 
 const listThreads = `-- name: ListThreads :many
-SELECT id, title, created_at, updated_at FROM threads
-ORDER BY updated_at DESC
+SELECT id, title, archived_at, created_at, updated_at FROM threads
+WHERE archived_at IS NULL
+ORDER BY created_at DESC
 `
 
 func (q *Queries) ListThreads(ctx context.Context) ([]Thread, error) {
@@ -143,6 +157,7 @@ func (q *Queries) ListThreads(ctx context.Context) ([]Thread, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
+			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

@@ -9,11 +9,17 @@ WHERE id = $1;
 
 -- name: ListThreads :many
 SELECT * FROM threads
-ORDER BY updated_at DESC;
+WHERE archived_at IS NULL
+ORDER BY created_at DESC;
 
 -- name: UpdateThreadTitle :exec
 UPDATE threads
 SET title = $2, updated_at = now()
+WHERE id = $1;
+
+-- name: ArchiveThread :exec
+UPDATE threads
+SET archived_at = now(), updated_at = now()
 WHERE id = $1;
 
 -- name: DeleteThread :exec

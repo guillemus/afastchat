@@ -5,6 +5,7 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,8 +20,9 @@ type Message struct {
 }
 
 type Thread struct {
-	ID        uuid.UUID
-	Title     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         uuid.UUID
+	Title      string
+	ArchivedAt sql.NullTime
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }

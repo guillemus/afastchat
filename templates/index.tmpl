@@ -3,9 +3,15 @@
 {{ import "components.tmpl" }}
 
 {{ block body() }}
-    {{ yield appShellOpen("") }}
+    <div
+        class="app"
+        data-signals:message="''"
+        data-signals:threadId="''"
+        data-signals:threadSearch="''"
+        data-signals:loading="false"
+    >
+        {{ yield sidebar(threads=.Threads, activeThreadId="") }}
 
-        {{ yield sidebar(.Threads, "") }}
 
         <!-- Main -->
         <main class="main">

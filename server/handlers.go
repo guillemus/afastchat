@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"log/slog"
@@ -11,14 +12,16 @@ import (
 	openaiPkg "datastar-chat/openai"
 
 	"github.com/google/uuid"
-	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/v3"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
 func (s *Server) appRoutes() {
 	s.mux.HandleFunc("GET /", s.handleIndex)
 	s.mux.HandleFunc("GET /threads/{id}", s.handleThread)
+	s.mux.HandleFunc("GET /threads/search", s.handleSearchThreads)
 	s.mux.HandleFunc("POST /chat/send", s.handleSendMessage)
+	s.mux.HandleFunc("POST /threads/{id}/archive", s.handleArchiveThread)
 }
 
 type indexData struct {
@@ -29,6 +32,23 @@ type threadData struct {
 	Threads  []db.Thread
 	Thread   db.Thread
 	Messages []db.Message
+}
+
+type threadItemData struct {
+	Thread         db.Thread
+	ActiveThreadID any
+}
+
+func (s *Server) renderThreadItem(thread db.Thread, activeThreadID any) (string, error) {
+	threadItemHTML, err := s.renderer.RenderToString("partials/thread_item", threadItemData{
+		Thread:         thread,
+		ActiveThreadID: activeThreadID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("render thread item: %w", err)
+	}
+
+	return threadItemHTML, nil
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +107,85 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
+	threadID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid thread id", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.db.ArchiveThread(r.Context(), threadID); err != nil {
+		slog.Error("archive thread", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+
+	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
+	sse.ExecuteScript(fmt.Sprintf(
+		`if (window.location.pathname === '/threads/%s') { window.location.replace('/') }`,
+		threadID,
+	))
+}
+
+type searchThreadsSignals struct {
+	ThreadSearch string `json:"threadSearch"`
+	ThreadID     string `json:"threadId"`
+}
+
+func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
+	var sig searchThreadsSignals
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Warn("readSignals failed, using query fallback", "err", err)
+		sig.ThreadSearch = r.URL.Query().Get("threadSearch")
+		sig.ThreadID = r.URL.Query().Get("threadId")
+	}
+
+	threads, err := s.db.ListThreads(r.Context())
+	if err != nil {
+		slog.Error("list threads", "err", err)
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	query := strings.ToLower(strings.TrimSpace(sig.ThreadSearch))
+	filtered := make([]db.Thread, 0, len(threads))
+	for _, t := range threads {
+		if query == "" || strings.Contains(strings.ToLower(t.Title), query) {
+			filtered = append(filtered, t)
+		}
+	}
+
+	var activeThreadID any = ""
+	if sig.ThreadID != "" {
+		parsed, err := uuid.Parse(sig.ThreadID)
+		if err != nil {
+			slog.Warn("invalid threadId signal", "threadId", sig.ThreadID, "err", err)
+		} else {
+			activeThreadID = parsed
+		}
+	}
+
+	var threadItemsHTML strings.Builder
+	for _, t := range filtered {
+		threadItemHTML, err := s.renderThreadItem(t, activeThreadID)
+		if err != nil {
+			slog.Error("render thread item", "threadId", t.ID, "err", err)
+			http.Error(w, "template error", http.StatusInternalServerError)
+			return
+		}
+		threadItemsHTML.WriteString(threadItemHTML)
+	}
+
+	sse := datastar.NewSSE(w, r)
+	sse.PatchElements(
+		threadItemsHTML.String(),
+		datastar.WithSelectorID("thread-items"),
+		datastar.WithModeInner(),
+	)
+}
+
 type sendSignals struct {
 	Message  string `json:"message"`
 	ThreadID string `json:"threadId"`
@@ -112,8 +211,9 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Resolve or create thread
+	isNewThread := sig.ThreadID == ""
 	var threadID uuid.UUID
-	if sig.ThreadID != "" {
+	if !isNewThread {
 		parsed, err := uuid.Parse(sig.ThreadID)
 		if err != nil {
 			slog.Warn("invalid thread id", "threadId", sig.ThreadID, "err", err)
@@ -168,6 +268,20 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		"loading":  true,
 	})
 
+	// If new thread, prepend to sidebar
+	if isNewThread {
+		threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: "New Chat"}, "")
+		if err != nil {
+			slog.Error("render thread item", "threadId", threadID, "err", err)
+		} else {
+			sse.PatchElements(
+				threadItemHTML,
+				datastar.WithSelectorID("thread-items"),
+				datastar.WithModePrepend(),
+			)
+		}
+	}
+
 	userDivID := fmt.Sprintf("msg-%s", userMsg.ID)
 	assistantDivID := fmt.Sprintf("msg-%s", assistantMsg.ID)
 	// see public/main.js initMarkdown for the streaming markdown contract
@@ -176,8 +290,8 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	// Append user + assistant message bubbles + hidden buffer before scroll anchor
 	sse.PatchElements(
 		fmt.Sprintf(
-			`<div id="%s" class="message user-message">%s</div>
-			 <div id="%s" class="message assistant-message"></div>
+			`<div id="%s" class="message user-message is-new">%s</div>
+			 <div id="%s" class="message assistant-message is-new"></div>
 			 <div id="%s" hidden></div>`,
 			userDivID, html.EscapeString(msg), assistantDivID, bufferDivID,
 		),
@@ -209,9 +323,9 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stream from OpenAI
-	slog.Info("starting openai stream", "threadId", threadID, "model", "gpt-5.2", "oaiMsgCount", len(oaiMessages))
+	slog.Info("starting openai stream", "threadId", threadID, "model", openai.ChatModelGPT5_2, "oaiMsgCount", len(oaiMessages))
 	oaiStream := openaiPkg.Client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
-		Model:    "gpt-5.2",
+		Model:    openai.ChatModelGPT5_2,
 		Messages: oaiMessages,
 	})
 
@@ -249,8 +363,52 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		slog.Error("update assistant message", "err", err)
 	}
 
+	// Auto-generate title for new threads
+	if isNewThread {
+		title := s.generateThreadTitle(ctx, msg)
+		if err := s.db.UpdateThreadTitle(ctx, db.UpdateThreadTitleParams{
+			ID:    threadID,
+			Title: title,
+		}); err != nil {
+			slog.Error("update thread title", "err", err)
+		} else {
+			threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: title}, "")
+			if err != nil {
+				slog.Error("render thread item", "threadId", threadID, "err", err)
+			} else {
+				sse.PatchElements(
+					threadItemHTML,
+					datastar.WithSelectorID(fmt.Sprintf("thread-%s", threadID)),
+					datastar.WithModeOuter(),
+				)
+			}
+		}
+	}
+
 	// Signal loading done
 	sse.MarshalAndPatchSignals(map[string]any{
 		"loading": false,
 	})
+}
+
+func (s *Server) generateThreadTitle(ctx context.Context, userMessage string) string {
+	resp, err := openaiPkg.Client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Model: openai.ChatModelGPT5Nano,
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("Generate a concise title (max 6 words) for a chat thread based on the user's first message. Return only the title, no quotes or punctuation."),
+			openai.UserMessage(userMessage),
+		},
+	})
+	if err != nil {
+		slog.Error("generate title", "err", err)
+		return "New Chat"
+	}
+	if len(resp.Choices) == 0 {
+		return "New Chat"
+	}
+	title := strings.TrimSpace(resp.Choices[0].Message.Content)
+	if title == "" {
+		return "New Chat"
+	}
+	return title
 }
