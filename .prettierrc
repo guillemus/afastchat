@@ -1,8 +1,8 @@
 {
-  "plugins": ["prettier-plugin-go-template"],
-  "tabWidth": 4,
-  "semi": false,
-  "singleQuote": true,
-  "proseWrap": "always",
-  "printWidth": 100
+    "plugins": ["prettier-plugin-go-template"],
+    "tabWidth": 4,
+    "semi": false,
+    "singleQuote": true,
+    "proseWrap": "always",
+    "printWidth": 100
 }

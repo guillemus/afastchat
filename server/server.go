@@ -1,21 +1,30 @@
 package server
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+
+	"datastar-chat/db"
 )
 
 type Server struct {
 	mux      *http.ServeMux
 	renderer *TemplateRenderer
+	db       *db.Queries
 }
 
 func New(assetVersion string, dev bool) *Server {
+	queries, err := db.Connect(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("db: %v", err)
+	}
+
 	s := &Server{
 		mux:      http.NewServeMux(),
 		renderer: newRenderer(assetVersion, dev),
+		db:       queries,
 	}
 
 	s.mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
@@ -31,7 +40,7 @@ func (s *Server) Start() {
 	}
 
 	addr := ":" + port
-	fmt.Printf("listening on %s\n", addr)
+	slog.Info("server starting", "addr", addr)
 	if err := http.ListenAndServe(addr, s.mux); err != nil {
 		log.Fatal(err)
 	}

@@ -30,6 +30,11 @@ SELECT * FROM messages
 WHERE thread_id = $1
 ORDER BY created_at ASC;
 
+-- name: UpdateMessageContent :exec
+UPDATE messages
+SET content = $2
+WHERE id = $1;
+
 -- name: DeleteMessage :exec
 DELETE FROM messages
 WHERE id = $1;

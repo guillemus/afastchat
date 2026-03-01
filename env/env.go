@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"t3chat-datastar/validate"
+	"datastar-chat/validate"
 )
 
 type Config struct {

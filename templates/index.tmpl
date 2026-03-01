@@ -1,7 +1,12 @@
 {{ extends "layouts/main.tmpl" }}
 
 {{ block body() }}
-    <div class="app">
+    <div
+        class="app"
+        data-signals:message="''"
+        data-signals:threadId="''"
+        data-signals:loading="false"
+    >
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -62,37 +67,20 @@
                 <button>&#9881;</button>
             </div>
 
-            <div class="main-body">
-                <h1 class="greeting">How can I help you, Guillem?</h1>
-
-                <div class="categories">
-                    <button class="category-pill">&#9881; Create</button>
-                    <button class="category-pill">&#127760; Explore</button>
-                    <button class="category-pill">&lt;/&gt; Code</button>
-                    <button class="category-pill">&#127891; Learn</button>
-                </div>
-
-                <div class="suggestions">
-                    <div class="suggestion">How does AI work?</div>
-                    <div class="suggestion">Are black holes real?</div>
-                    <div class="suggestion">How many Rs are in the word "strawberry"?</div>
-                    <div class="suggestion">What is the meaning of life?</div>
-                </div>
+            <div id="messages" class="main-body">
+                <div id="scroll-anchor" class="scroll-anchor"></div>
             </div>
 
             <div class="chat-input-area">
                 <div class="chat-input-box">
-                    <textarea rows="1" placeholder="Type your message here..."></textarea>
-                    <div class="chat-input-toolbar">
-                        <div class="toolbar-left">
-                            <span class="model-selector"
-                                >Kimi K2.5 <span class="price">$$$</span> &#9662;</span
-                            >
-                            <button class="toolbar-btn">&#128269; Search</button>
-                            <button class="toolbar-btn">&#128206; Attach</button>
-                        </div>
-                        <button class="send-btn">&#8593;</button>
-                    </div>
+                    <textarea
+                        rows="1"
+                        autofocus
+                        placeholder="Type your message here..."
+                        data-bind:message
+                        data-attr:disabled="$loading"
+                        data-on:keydown="if(event.key === 'Enter' && !event.shiftKey && !$loading) { event.preventDefault(); @post('/chat/send') }"
+                    ></textarea>
                 </div>
             </div>
         </main>

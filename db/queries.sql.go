@@ -159,6 +159,22 @@ func (q *Queries) ListThreads(ctx context.Context) ([]Thread, error) {
 	return items, nil
 }
 
+const updateMessageContent = `-- name: UpdateMessageContent :exec
+UPDATE messages
+SET content = $2
+WHERE id = $1
+`
+
+type UpdateMessageContentParams struct {
+	ID      uuid.UUID
+	Content string
+}
+
+func (q *Queries) UpdateMessageContent(ctx context.Context, arg UpdateMessageContentParams) error {
+	_, err := q.db.ExecContext(ctx, updateMessageContent, arg.ID, arg.Content)
+	return err
+}
+
 const updateThreadTitle = `-- name: UpdateThreadTitle :exec
 UPDATE threads
 SET title = $2, updated_at = now()

@@ -1,7 +1,7 @@
 package openai
 
 import (
-	"t3chat-datastar/env"
+	"datastar-chat/env"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
