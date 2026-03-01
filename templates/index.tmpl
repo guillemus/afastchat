@@ -79,10 +79,20 @@
                         placeholder="Type your message here..."
                         data-bind:message
                         data-attr:disabled="$loading"
-                        data-on:keydown="if(event.key === 'Enter' && !event.shiftKey && !$loading) { event.preventDefault(); @post('/chat/send') }"
+                        data-on:keydown="
+                            if (event.key !== 'Enter') return;
+                            if (event.shiftKey) return;
+                            if ($loading) return;
+                            event.preventDefault();
+                            @post('/chat/send');
+                            $message = '';
+                        "
                     ></textarea>
                 </div>
             </div>
         </main>
     </div>
+    <script>
+        datastarChat.initMarkdown('#messages', '.assistant-message', '-raw')
+    </script>
 {{ end }}

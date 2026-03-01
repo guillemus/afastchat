@@ -110,13 +110,16 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	userDivID := fmt.Sprintf("msg-%s", userMsg.ID)
 	assistantDivID := fmt.Sprintf("msg-%s", assistantMsg.ID)
+	// see public/main.js initMarkdown for the streaming markdown contract
+	bufferDivID := fmt.Sprintf("msg-%s-raw", assistantMsg.ID)
 
-	// Append user + assistant message bubbles before scroll anchor
+	// Append user + assistant message bubbles + hidden buffer before scroll anchor
 	sse.PatchElements(
 		fmt.Sprintf(
 			`<div id="%s" class="message user-message">%s</div>
-			 <div id="%s" class="message assistant-message"></div>`,
-			userDivID, html.EscapeString(msg), assistantDivID,
+			 <div id="%s" class="message assistant-message"></div>
+			 <div id="%s" hidden></div>`,
+			userDivID, html.EscapeString(msg), assistantDivID, bufferDivID,
 		),
 		datastar.WithSelectorID("scroll-anchor"),
 		datastar.WithModeBefore(),
@@ -166,7 +169,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 		sse.PatchElements(
 			html.EscapeString(token),
-			datastar.WithSelectorID(assistantDivID),
+			datastar.WithSelectorID(bufferDivID),
 			datastar.WithModeAppend(),
 		)
 	}
