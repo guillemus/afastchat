@@ -36,10 +36,10 @@ type threadData struct {
 
 type threadItemData struct {
 	Thread         db.Thread
-	ActiveThreadID any
+	ActiveThreadID uuid.UUID
 }
 
-func (s *Server) renderThreadItem(thread db.Thread, activeThreadID any) (string, error) {
+func (s *Server) renderThreadItem(thread db.Thread, activeThreadID uuid.UUID) (string, error) {
 	threadItemHTML, err := s.renderer.RenderToString("partials/thread_item", threadItemData{
 		Thread:         thread,
 		ActiveThreadID: activeThreadID,
@@ -157,7 +157,7 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var activeThreadID any = ""
+	var activeThreadID uuid.UUID
 	if sig.ThreadID != "" {
 		parsed, err := uuid.Parse(sig.ThreadID)
 		if err != nil {
@@ -270,7 +270,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// If new thread, prepend to sidebar
 	if isNewThread {
-		threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: "New Chat"}, "")
+		threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: "New Chat"}, threadID)
 		if err != nil {
 			slog.Error("render thread item", "threadId", threadID, "err", err)
 		} else {
@@ -372,7 +372,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			slog.Error("update thread title", "err", err)
 		} else {
-			threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: title}, "")
+			threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: title}, threadID)
 			if err != nil {
 				slog.Error("render thread item", "threadId", threadID, "err", err)
 			} else {
