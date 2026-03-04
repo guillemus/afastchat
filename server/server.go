@@ -13,6 +13,7 @@ type Server struct {
 	mux      *http.ServeMux
 	renderer *TemplateRenderer
 	db       *db.Queries
+	streams  *StreamRegistry
 }
 
 func New(assetVersion string, dev bool) *Server {
@@ -25,6 +26,7 @@ func New(assetVersion string, dev bool) *Server {
 		mux:      http.NewServeMux(),
 		renderer: newRenderer(assetVersion, dev),
 		db:       queries,
+		streams:  newStreamRegistry(),
 	}
 
 	s.mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))

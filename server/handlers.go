@@ -1,12 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"html"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"datastar-chat/db"
 	openaiPkg "datastar-chat/openai"
@@ -14,11 +16,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/openai/openai-go/v3"
 	"github.com/starfederation/datastar-go/datastar"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
+
+var md = goldmark.New(goldmark.WithExtensions(extension.GFM))
+
+func renderMarkdown(src string) string {
+	var buf bytes.Buffer
+	if err := md.Convert([]byte(src), &buf); err != nil {
+		return html.EscapeString(src)
+	}
+	return buf.String()
+}
 
 func (s *Server) appRoutes() {
 	s.mux.HandleFunc("GET /", s.handleIndex)
 	s.mux.HandleFunc("GET /threads/{id}", s.handleThread)
+	s.mux.HandleFunc("GET /threads/{id}/stream", s.handleResumeStream)
 	s.mux.HandleFunc("GET /threads/search", s.handleSearchThreads)
 	s.mux.HandleFunc("POST /chat/send", s.handleSendMessage)
 	s.mux.HandleFunc("POST /threads/{id}/archive", s.handleArchiveThread)
@@ -29,9 +44,11 @@ type indexData struct {
 }
 
 type threadData struct {
-	Threads  []db.Thread
-	Thread   db.Thread
-	Messages []db.Message
+	Threads            []db.Thread
+	Thread             db.Thread
+	Messages           []db.Message
+	Streaming          bool
+	StreamingMessageID uuid.UUID
 }
 
 type threadItemData struct {
@@ -88,6 +105,12 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i := range messages {
+		if messages[i].Role == "assistant" {
+			messages[i].Content = renderMarkdown(messages[i].Content)
+		}
+	}
+
 	threads, err := s.db.ListThreads(ctx)
 	if err != nil {
 		slog.Error("list threads", "err", err)
@@ -95,10 +118,17 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	stream, streaming := s.streams.Get(threadID)
+	slog.Info("handleThread", "threadId", threadID, "streaming", streaming)
+
 	data := threadData{
-		Threads:  threads,
-		Thread:   thread,
-		Messages: messages,
+		Threads:   threads,
+		Thread:    thread,
+		Messages:  messages,
+		Streaming: streaming,
+	}
+	if streaming {
+		data.StreamingMessageID = stream.messageID
 	}
 
 	if err := s.renderer.Render(w, "thread", data); err != nil {
@@ -279,21 +309,23 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 				datastar.WithSelectorID("thread-items"),
 				datastar.WithModePrepend(),
 			)
+
+			sse.ExecuteScript(fmt.Sprintf(
+				`history.pushState({}, '', '/threads/%s')`,
+				threadID,
+			))
 		}
 	}
 
 	userDivID := fmt.Sprintf("msg-%s", userMsg.ID)
 	assistantDivID := fmt.Sprintf("msg-%s", assistantMsg.ID)
-	// see public/main.js initMarkdown for the streaming markdown contract
-	bufferDivID := fmt.Sprintf("msg-%s-raw", assistantMsg.ID)
 
-	// Append user + assistant message bubbles + hidden buffer before scroll anchor
+	// Append user + assistant message bubbles before scroll anchor
 	sse.PatchElements(
 		fmt.Sprintf(
 			`<div id="%s" class="message user-message is-new">%s</div>
-			 <div id="%s" class="message assistant-message is-new"></div>
-			 <div id="%s" hidden></div>`,
-			userDivID, html.EscapeString(msg), assistantDivID, bufferDivID,
+			 <div id="%s" class="message assistant-message is-new"></div>`,
+			userDivID, html.EscapeString(msg), assistantDivID,
 		),
 		datastar.WithSelectorID("scroll-anchor"),
 		datastar.WithModeBefore(),
@@ -322,14 +354,43 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Stream from OpenAI
+	// Create active stream and launch background goroutine
+	stream := newActiveStream(threadID, assistantMsg.ID)
+	s.streams.Set(threadID, stream)
+
+	go s.runOpenAIStream(threadID, assistantMsg.ID, oaiMessages, isNewThread, msg)
+
+	// Relay stream to this SSE connection
+	s.relayStream(r.Context(), sse, stream, assistantDivID)
+
+	// Signal loading done
+	sse.MarshalAndPatchSignals(map[string]any{
+		"loading": false,
+	})
+}
+
+func (s *Server) runOpenAIStream(
+	threadID uuid.UUID, assistantMsgID uuid.UUID,
+	oaiMessages []openai.ChatCompletionMessageParamUnion,
+	isNewThread bool, userMessage string,
+) {
+	stream, ok := s.streams.Get(threadID)
+	if !ok {
+		return
+	}
+
+	ctx := context.Background()
+
 	slog.Info("starting openai stream", "threadId", threadID, "model", openai.ChatModelGPT5_2, "oaiMsgCount", len(oaiMessages))
 	oaiStream := openaiPkg.Client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 		Model:    openai.ChatModelGPT5_2,
 		Messages: oaiMessages,
 	})
 
-	var accumulated strings.Builder
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	lastSaved := ""
+
 	for oaiStream.Next() {
 		chunk := oaiStream.Current()
 		if len(chunk.Choices) == 0 {
@@ -339,13 +400,23 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		if token == "" {
 			continue
 		}
-		accumulated.WriteString(token)
+		stream.Append(token)
 
-		sse.PatchElements(
-			html.EscapeString(token),
-			datastar.WithSelectorID(bufferDivID),
-			datastar.WithModeAppend(),
-		)
+		// Throttled DB save
+		select {
+		case <-ticker.C:
+			content, _ := stream.Snapshot()
+			if content != lastSaved {
+				if err := s.db.UpdateMessageContent(ctx, db.UpdateMessageContentParams{
+					ID:      assistantMsgID,
+					Content: content,
+				}); err != nil {
+					slog.Error("throttled save", "err", err)
+				}
+				lastSaved = content
+			}
+		default:
+		}
 	}
 
 	if err := oaiStream.Err(); err != nil {
@@ -353,39 +424,97 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	oaiStream.Close()
 
-	// Save final content
-	finalContent := accumulated.String()
+	// Final DB save
+	finalContent, _ := stream.Snapshot()
 	slog.Info("stream complete", "threadId", threadID, "contentLen", len(finalContent))
 	if err := s.db.UpdateMessageContent(ctx, db.UpdateMessageContentParams{
-		ID:      assistantMsg.ID,
+		ID:      assistantMsgID,
 		Content: finalContent,
 	}); err != nil {
 		slog.Error("update assistant message", "err", err)
 	}
 
+	stream.Finish()
+
+	// Keep stream in registry briefly so page refresh can resume.
+	// Clean up after 30s if no one picks it up.
+	go func() {
+		time.Sleep(30 * time.Second)
+		s.streams.Delete(threadID)
+	}()
+
 	// Auto-generate title for new threads
 	if isNewThread {
-		title := s.generateThreadTitle(ctx, msg)
+		title := s.generateThreadTitle(ctx, userMessage)
 		if err := s.db.UpdateThreadTitle(ctx, db.UpdateThreadTitleParams{
 			ID:    threadID,
 			Title: title,
 		}); err != nil {
 			slog.Error("update thread title", "err", err)
-		} else {
-			threadItemHTML, err := s.renderThreadItem(db.Thread{ID: threadID, Title: title}, threadID)
-			if err != nil {
-				slog.Error("render thread item", "threadId", threadID, "err", err)
-			} else {
-				sse.PatchElements(
-					threadItemHTML,
-					datastar.WithSelectorID(fmt.Sprintf("thread-%s", threadID)),
-					datastar.WithModeOuter(),
-				)
-			}
 		}
 	}
+}
 
-	// Signal loading done
+func (s *Server) relayStream(ctx context.Context, sse *datastar.ServerSentEventGenerator, stream *ActiveStream, assistantDivID string) {
+	ch, content, done := stream.Subscribe()
+	defer stream.Unsubscribe(ch)
+
+	if content != "" {
+		sse.PatchElements(
+			fmt.Sprintf(`<div id="%s" class="message assistant-message">%s</div>`,
+				assistantDivID, renderMarkdown(content)),
+			datastar.WithSelectorID(assistantDivID),
+			datastar.WithModeOuter(),
+		)
+	}
+	if done {
+		return
+	}
+
+	for {
+		select {
+		case <-ch:
+			content, done = stream.Snapshot()
+			sse.PatchElements(
+				fmt.Sprintf(`<div id="%s" class="message assistant-message">%s</div>`,
+					assistantDivID, renderMarkdown(content)),
+				datastar.WithSelectorID(assistantDivID),
+				datastar.WithModeOuter(),
+			)
+			if done {
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Server) handleResumeStream(w http.ResponseWriter, r *http.Request) {
+	threadID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid thread id", http.StatusBadRequest)
+		return
+	}
+
+	stream, ok := s.streams.Get(threadID)
+	if !ok {
+		slog.Info("resume: no active stream", "threadId", threadID)
+		sse := datastar.NewSSE(w, r)
+		sse.MarshalAndPatchSignals(map[string]any{
+			"loading": false,
+		})
+		return
+	}
+
+	slog.Info("resume: relaying active stream", "threadId", threadID, "messageId", stream.messageID)
+
+	sse := datastar.NewSSE(w, r)
+	assistantDivID := fmt.Sprintf("msg-%s", stream.messageID)
+
+	s.relayStream(r.Context(), sse, stream, assistantDivID)
+
+	slog.Info("resume: relay done", "threadId", threadID)
 	sse.MarshalAndPatchSignals(map[string]any{
 		"loading": false,
 	})

@@ -8,7 +8,10 @@
         data-signals:message="''"
         data-signals:threadId="'{{ .Thread.ID }}'"
         data-signals:threadSearch="''"
-        data-signals:loading="false"
+        data-signals:loading="{{ .Streaming }}"
+        {{ if .Streaming }}
+            data-on:load="@get('/threads/{{ .Thread.ID }}/stream')"
+        {{ end }}
     >
         {{ yield sidebar(threads=.Threads, activeThreadId=.Thread.ID) }}
 
@@ -23,9 +26,12 @@
                                 {{ m.Content }}
                             </div>
                         {{ else if m.Role == "assistant" }}
-                            <div id="msg-{{ m.ID }}" class="message assistant-message"></div>
-                            <div id="msg-{{ m.ID }}-raw" hidden>{{ m.Content }}</div>
+                            <div id="msg-{{ m.ID }}" class="message assistant-message">
+                                {{ m.Content | raw }}
+                            </div>
                         {{ end }}
+                    {{ else if .Streaming && m.ID == .StreamingMessageID }}
+                        <div id="msg-{{ m.ID }}" class="message assistant-message"></div>
                     {{ end }}
                 {{ end }}
                 <div id="scroll-anchor" class="scroll-anchor"></div>
@@ -34,7 +40,4 @@
             {{ yield chatInput() }}
         </main>
     </div>
-    <script>
-        datastarChat.initMarkdown('#messages', '.assistant-message', '-raw')
-    </script>
 {{ end }}
