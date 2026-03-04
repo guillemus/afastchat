@@ -9,9 +9,7 @@
         data-signals:threadId="'{{ .Thread.ID }}'"
         data-signals:threadSearch="''"
         data-signals:loading="{{ .Streaming }}"
-        {{ if .Streaming }}
-            data-on:load="@get('/threads/{{ .Thread.ID }}/stream')"
-        {{ end }}
+        data-init__delay.25ms="@get('/threads/{{ .Thread.ID }}/stream')"
     >
         {{ yield sidebar(threads=.Threads, activeThreadId=.Thread.ID) }}
 
@@ -20,18 +18,16 @@
         <main class="main">
             <div id="messages" class="main-body">
                 {{ range _, m := .Messages }}
-                    {{ if m.Content }}
-                        {{ if m.Role == "user" }}
+                    {{ if m.Role == "user" }}
+                        {{ if m.Content }}
                             <div id="msg-{{ m.ID }}" class="message user-message">
                                 {{ m.Content }}
                             </div>
-                        {{ else if m.Role == "assistant" }}
-                            <div id="msg-{{ m.ID }}" class="message assistant-message">
-                                {{ m.Content | raw }}
-                            </div>
                         {{ end }}
-                    {{ else if .Streaming && m.ID == .StreamingMessageID }}
-                        <div id="msg-{{ m.ID }}" class="message assistant-message"></div>
+                    {{ else if m.Role == "assistant" }}
+                        <div id="msg-{{ m.ID }}" class="message assistant-message">
+                            {{ if m.Content }}{{ m.Content | raw }}{{ end }}
+                        </div>
                     {{ end }}
                 {{ end }}
                 <div id="scroll-anchor" class="scroll-anchor"></div>

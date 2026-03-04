@@ -288,6 +288,10 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("db messages saved", "userMsgId", userMsg.ID, "assistantMsgId", assistantMsg.ID)
 
+	// Register stream immediately so refresh can resume even if user reloads right away.
+	stream := newActiveStream(threadID, assistantMsg.ID)
+	s.streams.Set(threadID, stream)
+
 	// Open SSE connection (MUST be after ReadSignals)
 	sse := datastar.NewSSE(w, r, datastar.WithCompression())
 
@@ -335,6 +339,11 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	dbMessages, err := s.db.GetMessagesByThread(ctx, threadID)
 	if err != nil {
 		slog.Error("get messages", "threadId", threadID, "err", err)
+		stream.Finish()
+		s.streams.DeleteIfSame(threadID, stream)
+		sse.MarshalAndPatchSignals(map[string]any{
+			"loading": false,
+		})
 		return
 	}
 	slog.Info("loaded history", "threadId", threadID, "msgCount", len(dbMessages))
@@ -353,10 +362,6 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 			oaiMessages = append(oaiMessages, openai.SystemMessage(m.Content))
 		}
 	}
-
-	// Create active stream and launch background goroutine
-	stream := newActiveStream(threadID, assistantMsg.ID)
-	s.streams.Set(threadID, stream)
 
 	go s.runOpenAIStream(threadID, assistantMsg.ID, oaiMessages, isNewThread, msg)
 
@@ -381,9 +386,9 @@ func (s *Server) runOpenAIStream(
 
 	ctx := context.Background()
 
-	slog.Info("starting openai stream", "threadId", threadID, "model", openai.ChatModelGPT5_2, "oaiMsgCount", len(oaiMessages))
+	slog.Info("starting openai stream", "threadId", threadID, "model", openai.ChatModelGPT5Mini, "oaiMsgCount", len(oaiMessages))
 	oaiStream := openaiPkg.Client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
-		Model:    openai.ChatModelGPT5_2,
+		Model:    openai.ChatModelGPT5Mini,
 		Messages: oaiMessages,
 	})
 
@@ -440,7 +445,7 @@ func (s *Server) runOpenAIStream(
 	// Clean up after 30s if no one picks it up.
 	go func() {
 		time.Sleep(30 * time.Second)
-		s.streams.Delete(threadID)
+		s.streams.DeleteIfSame(threadID, stream)
 	}()
 
 	// Auto-generate title for new threads
@@ -498,6 +503,11 @@ func (s *Server) handleResumeStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stream, ok := s.streams.Get(threadID)
+	if !ok {
+		// Handle short race where refresh arrives slightly before stream registration.
+		time.Sleep(150 * time.Millisecond)
+		stream, ok = s.streams.Get(threadID)
+	}
 	if !ok {
 		slog.Info("resume: no active stream", "threadId", threadID)
 		sse := datastar.NewSSE(w, r)

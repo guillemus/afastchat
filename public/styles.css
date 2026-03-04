@@ -51,14 +51,15 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        align-items: flex-start;
         padding: var(--size-4) var(--size-6);
         gap: var(--size-3);
         overflow-y: auto;
         overflow-anchor: auto;
         overscroll-behavior: contain;
-        max-width: 700px;
+        max-width: none;
         width: 100%;
-        margin: 0 auto;
+        margin: 0;
         scroll-behavior: smooth;
         scrollbar-width: thin;
         scrollbar-color: var(--gray-9) transparent;
@@ -274,12 +275,15 @@
     }
 
     /* Messages */
-    .message {
+    #messages > .message {
+        display: table;
         font-size: var(--font-size-1);
         line-height: var(--font-lineheight-4);
         padding: var(--size-3) var(--size-4);
         border-radius: var(--radius-3);
         word-break: break-word;
+        width: auto;
+        max-width: min(100%, 72ch);
     }
 
     .message.is-new {
@@ -297,20 +301,20 @@
         }
     }
 
-    .user-message {
-        align-self: flex-end;
-        max-width: 75%;
+    #messages > .user-message {
         background: color-mix(in oklch, var(--bg-button) 18%, transparent);
         border: 1px solid color-mix(in oklch, var(--bg-button) 30%, transparent);
         color: var(--text-primary);
         white-space: normal;
-        width: fit-content;
+        margin-left: auto;
+        margin-right: 0;
     }
 
-    .assistant-message {
-        align-self: flex-start;
+    #messages > .assistant-message {
         color: var(--gray-3);
         white-space: normal;
+        margin-left: 0;
+        margin-right: auto;
 
         & pre {
             background: var(--gray-11);
@@ -476,9 +480,9 @@
     /* Chat input */
     .chat-input-area {
         padding: var(--size-3) var(--size-6) var(--size-4);
-        max-width: 700px;
+        max-width: none;
         width: 100%;
-        margin: 0 auto;
+        margin: 0;
     }
 
     .chat-input-box {

@@ -37,6 +37,19 @@ func (r *StreamRegistry) Delete(threadID uuid.UUID) {
 	r.mu.Unlock()
 }
 
+func (r *StreamRegistry) DeleteIfSame(threadID uuid.UUID, expected *ActiveStream) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	current, ok := r.streams[threadID]
+	if !ok || current != expected {
+		return false
+	}
+
+	delete(r.streams, threadID)
+	return true
+}
+
 type ActiveStream struct {
 	mu        sync.RWMutex
 	threadID  uuid.UUID

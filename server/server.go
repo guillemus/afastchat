@@ -4,7 +4,6 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"datastar-chat/db"
 )
@@ -14,10 +13,11 @@ type Server struct {
 	renderer *TemplateRenderer
 	db       *db.Queries
 	streams  *StreamRegistry
+	port     string
 }
 
-func New(assetVersion string, dev bool) *Server {
-	queries, err := db.Connect(os.Getenv("DATABASE_URL"))
+func New(databaseURL, port, assetVersion string, dev bool) *Server {
+	queries, err := db.Connect(databaseURL)
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
@@ -27,6 +27,7 @@ func New(assetVersion string, dev bool) *Server {
 		renderer: newRenderer(assetVersion, dev),
 		db:       queries,
 		streams:  newStreamRegistry(),
+		port:     port,
 	}
 
 	s.mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
@@ -36,12 +37,7 @@ func New(assetVersion string, dev bool) *Server {
 }
 
 func (s *Server) Start() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
-
-	addr := ":" + port
+	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)
 	if err := http.ListenAndServe(addr, s.mux); err != nil {
 		log.Fatal(err)
