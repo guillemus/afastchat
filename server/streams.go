@@ -7,6 +7,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type ActiveStream struct {
+	mu        sync.RWMutex
+	threadID  uuid.UUID
+	messageID uuid.UUID
+	content   strings.Builder
+	done      bool
+	listeners map[chan struct{}]struct{}
+}
+
 type StreamRegistry struct {
 	mu      sync.RWMutex
 	streams map[uuid.UUID]*ActiveStream
@@ -15,6 +24,7 @@ type StreamRegistry struct {
 func newStreamRegistry() *StreamRegistry {
 	return &StreamRegistry{
 		streams: make(map[uuid.UUID]*ActiveStream),
+		mu:      sync.RWMutex{},
 	}
 }
 
@@ -48,15 +58,6 @@ func (r *StreamRegistry) DeleteIfSame(threadID uuid.UUID, expected *ActiveStream
 
 	delete(r.streams, threadID)
 	return true
-}
-
-type ActiveStream struct {
-	mu        sync.RWMutex
-	threadID  uuid.UUID
-	messageID uuid.UUID
-	content   strings.Builder
-	done      bool
-	listeners map[chan struct{}]struct{}
 }
 
 func newActiveStream(threadID, messageID uuid.UUID) *ActiveStream {
@@ -101,14 +102,15 @@ func (s *ActiveStream) Finish() {
 	}
 }
 
-func (s *ActiveStream) Subscribe() (ch chan struct{}, content string, done bool) {
-	ch = make(chan struct{}, 1)
+func (s *ActiveStream) Subscribe() (chan struct{}, string, bool) {
+	ch := make(chan struct{}, 1)
 	s.mu.Lock()
 	s.listeners[ch] = struct{}{}
-	content = s.content.String()
-	done = s.done
+	content := s.content.String()
+	done := s.done
 	s.mu.Unlock()
-	return
+
+	return ch, content, done
 }
 
 func (s *ActiveStream) Unsubscribe(ch chan struct{}) {
@@ -117,10 +119,11 @@ func (s *ActiveStream) Unsubscribe(ch chan struct{}) {
 	s.mu.Unlock()
 }
 
-func (s *ActiveStream) Snapshot() (content string, done bool) {
+func (s *ActiveStream) Snapshot() (string, bool) {
 	s.mu.RLock()
-	content = s.content.String()
-	done = s.done
+	content := s.content.String()
+	done := s.done
 	s.mu.RUnlock()
-	return
+
+	return content, done
 }

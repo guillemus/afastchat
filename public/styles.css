@@ -57,9 +57,9 @@
         overflow-y: auto;
         overflow-anchor: auto;
         overscroll-behavior: contain;
-        max-width: none;
         width: 100%;
-        margin: 0;
+        max-width: 820px;
+        margin: 0 auto;
         scroll-behavior: smooth;
         scrollbar-width: thin;
         scrollbar-color: var(--gray-9) transparent;
@@ -480,9 +480,9 @@
     /* Chat input */
     .chat-input-area {
         padding: var(--size-3) var(--size-6) var(--size-4);
-        max-width: none;
         width: 100%;
-        margin: 0;
+        max-width: 820px;
+        margin: 0 auto;
     }
 
     .chat-input-box {
