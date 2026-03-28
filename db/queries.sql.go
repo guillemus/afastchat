@@ -23,19 +23,25 @@ func (q *Queries) ArchiveThread(ctx context.Context, id uuid.UUID) error {
 }
 
 const createMessage = `-- name: CreateMessage :one
-INSERT INTO messages (thread_id, role, content)
-VALUES ($1, $2, $3)
+INSERT INTO messages (id, thread_id, role, content)
+VALUES ($1, $2, $3, $4)
 RETURNING id, thread_id, role, content, created_at
 `
 
 type CreateMessageParams struct {
+	ID       uuid.UUID
 	ThreadID uuid.UUID
 	Role     string
 	Content  string
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
-	row := q.db.QueryRowContext(ctx, createMessage, arg.ThreadID, arg.Role, arg.Content)
+	row := q.db.QueryRowContext(ctx, createMessage,
+		arg.ID,
+		arg.ThreadID,
+		arg.Role,
+		arg.Content,
+	)
 	var i Message
 	err := row.Scan(
 		&i.ID,
@@ -48,13 +54,18 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 }
 
 const createThread = `-- name: CreateThread :one
-INSERT INTO threads (title)
-VALUES ($1)
+INSERT INTO threads (id, title)
+VALUES ($1, $2)
 RETURNING id, title, archived_at, created_at, updated_at
 `
 
-func (q *Queries) CreateThread(ctx context.Context, title string) (Thread, error) {
-	row := q.db.QueryRowContext(ctx, createThread, title)
+type CreateThreadParams struct {
+	ID    uuid.UUID
+	Title string
+}
+
+func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error) {
+	row := q.db.QueryRowContext(ctx, createThread, arg.ID, arg.Title)
 	var i Thread
 	err := row.Scan(
 		&i.ID,

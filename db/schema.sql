@@ -1,7 +1,5 @@
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 CREATE TABLE threads (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     title TEXT NOT NULL DEFAULT '',
     archived_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -9,7 +7,7 @@ CREATE TABLE threads (
 );
 
 CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     thread_id UUID NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,

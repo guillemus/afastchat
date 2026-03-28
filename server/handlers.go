@@ -61,14 +61,12 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID u
 	_, streaming := s.streams.Get(threadID)
 	slog.Info("handleThread", "threadId", threadID, "streaming", streaming)
 
-	data := views.ThreadData{
+	s.renderer.RenderThread(w, views.ThreadData{
 		Threads:   threads,
 		Thread:    thread,
 		Messages:  messages,
 		Streaming: streaming,
-	}
-
-	s.renderer.RenderThread(w, data)
+	})
 }
 
 func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {

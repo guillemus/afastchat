@@ -17,7 +17,7 @@ type Server struct {
 	port     string
 }
 
-func New(databaseURL, port, assetVersion string, _ bool) *Server {
+func StartServer(databaseURL, port, assetVersion string, _ bool) {
 	queries, err := db.Connect(databaseURL)
 	if err != nil {
 		log.Fatalf("db: %v", err)
@@ -40,10 +40,6 @@ func New(databaseURL, port, assetVersion string, _ bool) *Server {
 	s.mux.HandleFunc("POST /chat/send", handleSignals(s.handleSendMessage))
 	s.mux.HandleFunc("POST /threads/{id}/archive", handleUUIDPathVal(s.handleArchiveThread, "id"))
 
-	return s
-}
-
-func (s *Server) Start() {
 	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)
 	if err := http.ListenAndServe(addr, s.mux); err != nil {

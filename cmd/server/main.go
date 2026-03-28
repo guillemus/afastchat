@@ -8,6 +8,5 @@ import (
 
 func main() {
 	logger.Setup()
-	srv := server.New(env.Env.DatabaseURL, env.Env.Port, env.Env.AssetVersion, env.Env.Dev)
-	srv.Start()
+	server.StartServer(env.Env.DatabaseURL, env.Env.Port, env.Env.AssetVersion, env.Env.Dev)
 }

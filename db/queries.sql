@@ -1,6 +1,6 @@
 -- name: CreateThread :one
-INSERT INTO threads (title)
-VALUES ($1)
+INSERT INTO threads (id, title)
+VALUES ($1, $2)
 RETURNING *;
 
 -- name: GetThread :one
@@ -27,8 +27,8 @@ DELETE FROM threads
 WHERE id = $1;
 
 -- name: CreateMessage :one
-INSERT INTO messages (thread_id, role, content)
-VALUES ($1, $2, $3)
+INSERT INTO messages (id, thread_id, role, content)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetMessagesByThread :many
