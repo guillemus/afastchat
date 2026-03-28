@@ -142,19 +142,11 @@ type SendMessageSignals struct {
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig SendMessageSignals) {
 	ctx := r.Context()
 
-	slog.Info("message received", "threadId", sig.ThreadID)
+	var threadID uuid.UUID
 
 	// Resolve or create thread
 	isNewThread := sig.ThreadID == ""
-	var threadID uuid.UUID
-	if !isNewThread {
-		parsed, err := uuid.Parse(sig.ThreadID)
-		if err != nil {
-			handleBadReq(w, "invalid thread id", err)
-			return
-		}
-		threadID = parsed
-	} else {
+	if isNewThread {
 		thread, err := s.db.CreateThread(ctx, db.CreateThreadParams{
 			ID:    uuid.New(),
 			Title: "New Chat",
@@ -165,37 +157,32 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 		}
 		threadID = thread.ID
 		slog.Info("created thread", "threadId", threadID)
+	} else {
+		parsed, err := uuid.Parse(sig.ThreadID)
+		if err != nil {
+			handleBadReq(w, "invalid thread id", err)
+			return
+		}
+		threadID = parsed
 	}
 
-	// Save user message
-	userMsg, err := s.db.CreateMessage(ctx, db.CreateMessageParams{
-		ID:       uuid.New(),
-		ThreadID: threadID,
-		Role:     "user",
-		Content:  sig.Message,
-	})
+	userMsgID, err := s.db.CreateUserMessage(ctx, threadID, sig.Message)
 	if err != nil {
-		slog.Error("create user message", "err", err)
-		http.Error(w, "db error", http.StatusInternalServerError)
+		handleBadReq(w, "create user message", err)
 		return
 	}
 
 	// Create placeholder assistant message
-	assistantMsg, err := s.db.CreateMessage(ctx, db.CreateMessageParams{
-		ID:       uuid.New(),
-		ThreadID: threadID,
-		Role:     "assistant",
-		Content:  "",
-	})
+	assistantMsgID, err := s.db.CreateAssistantMessage(ctx, threadID, "")
 	if err != nil {
 		handleBadReq(w, "create assistant message", err)
 		return
 	}
 
-	slog.Info("db messages saved", "userMsgId", userMsg.ID, "assistantMsgId", assistantMsg.ID)
+	slog.Info("db messages saved", "userMsgId", userMsgID, "assistantMsgId", assistantMsgID)
 
 	// Register stream immediately so refresh can resume even if user reloads right away.
-	stream := newActiveStream(threadID, assistantMsg.ID)
+	stream := newActiveStream(threadID, assistantMsgID)
 	s.streams.Set(threadID, stream)
 
 	// Open SSE connection (MUST be after ReadSignals)
