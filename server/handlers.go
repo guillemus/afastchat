@@ -31,13 +31,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderer.RenderIndex(w, views.IndexData{Threads: threads})
 }
 
-func (s *Server) handleThread(w http.ResponseWriter, r *http.Request) {
-	threadID, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		handleBadReq(w, "invalid thread id", err)
-		return
-	}
-
+func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
 	ctx := r.Context()
 
 	thread, err := s.db.GetThread(ctx, threadID)
@@ -77,13 +71,7 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request) {
 	s.renderer.RenderThread(w, data)
 }
 
-func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
-	threadID, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		handleBadReq(w, "invalid thread id", err)
-		return
-	}
-
+func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
 	if err := s.db.ArchiveThread(r.Context(), threadID); err != nil {
 		handleBadReq(w, "archive thread", err)
 		return
@@ -98,23 +86,15 @@ func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
-func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
-	var sig struct {
-		ThreadSearch string `json:"threadSearch"`
-		ThreadID     string `json:"threadId"`
-	}
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		handleBadReq(w, "readSignals failed", err)
-		return
-	}
+type SearchThreadsSig struct {
+	ThreadSearch string `json:"threadSearch"`
+	ThreadID     string `json:"threadId"`
+}
 
+func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig SearchThreadsSig) {
 	threads, err := s.db.ListThreads(r.Context())
 	if err != nil {
 		handleBadReq(w, "list threads", err)
-		return
-	}
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		handleBadReq(w, "readSignals failed", err)
 		return
 	}
 
@@ -156,19 +136,13 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-type sendSignals struct {
+type SendMessageSignals struct {
 	Message  string `json:"message"`
 	ThreadID string `json:"threadId"`
 }
 
-func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig SendMessageSignals) {
 	ctx := r.Context()
-
-	var sig sendSignals
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		handleBadReq(w, "readSignals failed", err)
-		return
-	}
 
 	slog.Info("message received", "threadId", sig.ThreadID)
 
@@ -183,7 +157,10 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		}
 		threadID = parsed
 	} else {
-		thread, err := s.db.CreateThread(ctx, "New Chat")
+		thread, err := s.db.CreateThread(ctx, db.CreateThreadParams{
+			ID:    uuid.New(),
+			Title: "New Chat",
+		})
 		if err != nil {
 			handleBadReq(w, "create thread", err)
 			return
@@ -194,6 +171,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Save user message
 	userMsg, err := s.db.CreateMessage(ctx, db.CreateMessageParams{
+		ID:       uuid.New(),
 		ThreadID: threadID,
 		Role:     "user",
 		Content:  sig.Message,
@@ -206,6 +184,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Create placeholder assistant message
 	assistantMsg, err := s.db.CreateMessage(ctx, db.CreateMessageParams{
+		ID:       uuid.New(),
 		ThreadID: threadID,
 		Role:     "assistant",
 		Content:  "",
@@ -417,13 +396,7 @@ func (s *Server) relayStream(ctx context.Context, sse *datastar.ServerSentEventG
 	}
 }
 
-func (s *Server) handleResumeStream(w http.ResponseWriter, r *http.Request) {
-	threadID, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		http.Error(w, "invalid thread id", http.StatusBadRequest)
-		return
-	}
-
+func (s *Server) handleResumeStream(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
 	stream, ok := s.streams.Get(threadID)
 	if !ok {
 		// Handle short race where refresh arrives slightly before stream registration.

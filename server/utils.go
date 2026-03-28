@@ -1,6 +1,12 @@
 package server
 
-import "log/slog"
+import (
+	"log/slog"
+	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/starfederation/datastar-go/datastar"
+)
 
 func GoWithHandlePanic(fn func()) {
 	go func() {
@@ -11,4 +17,35 @@ func GoWithHandlePanic(fn func()) {
 		}()
 		fn()
 	}()
+}
+
+func handleBadReq(w http.ResponseWriter, msg string, err error) {
+	slog.Error(msg, "err", err)
+	http.Error(w, "bad request", http.StatusBadRequest)
+}
+
+func handleSignals[T any](fn func(w http.ResponseWriter, r *http.Request, v T)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var t T
+		if err := datastar.ReadSignals(r, &t); err != nil {
+			handleBadReq(w, "read signals failed", err)
+		}
+
+		fn(w, r, t)
+	}
+}
+
+func handleUUIDPathVal(
+	fn func(w http.ResponseWriter, r *http.Request, val uuid.UUID),
+	pathValName string,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		val, err := uuid.Parse(r.PathValue(pathValName))
+		if err != nil {
+			handleBadReq(w, "invalid uuid", err)
+			return
+		}
+
+		fn(w, r, val)
+	}
 }

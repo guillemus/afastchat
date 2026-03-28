@@ -34,11 +34,11 @@ func New(databaseURL, port, assetVersion string, _ bool) *Server {
 	s.mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
 
 	s.mux.HandleFunc("GET /", s.handleIndex)
-	s.mux.HandleFunc("GET /threads/{id}", s.handleThread)
-	s.mux.HandleFunc("GET /threads/{id}/stream", s.handleResumeStream)
-	s.mux.HandleFunc("GET /threads/search", s.handleSearchThreads)
-	s.mux.HandleFunc("POST /chat/send", s.handleSendMessage)
-	s.mux.HandleFunc("POST /threads/{id}/archive", s.handleArchiveThread)
+	s.mux.HandleFunc("GET /threads/{id}", handleUUIDPathVal(s.handleThread, "id"))
+	s.mux.HandleFunc("GET /threads/{id}/stream", handleUUIDPathVal(s.handleResumeStream, "id"))
+	s.mux.HandleFunc("GET /threads/search", handleSignals(s.handleSearchThreads))
+	s.mux.HandleFunc("POST /chat/send", handleSignals(s.handleSendMessage))
+	s.mux.HandleFunc("POST /threads/{id}/archive", handleUUIDPathVal(s.handleArchiveThread, "id"))
 
 	return s
 }
