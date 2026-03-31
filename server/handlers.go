@@ -2,18 +2,19 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"datastar-chat/agent"
+	"datastar-chat/agents"
 	"datastar-chat/db"
 	"datastar-chat/views"
 
 	"github.com/google/uuid"
-	"github.com/openai/openai-go/v3"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -58,14 +59,11 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID u
 		return
 	}
 
-	_, streaming := s.streams.Get(threadID)
-	slog.Info("handleThread", "threadId", threadID, "streaming", streaming)
-
 	s.renderer.RenderThread(w, views.ThreadData{
 		Threads:   threads,
 		Thread:    thread,
 		Messages:  messages,
-		Streaming: streaming,
+		Streaming: thread.IsStreaming,
 	})
 }
 
@@ -142,270 +140,94 @@ type SendMessageSignals struct {
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig SendMessageSignals) {
 	ctx := r.Context()
 
-	var threadID uuid.UUID
+	userMessage := sig.Message
 
-	// Resolve or create thread
+	var threadID uuid.UUID
 	isNewThread := sig.ThreadID == ""
 	if isNewThread {
-		thread, err := s.db.CreateThread(ctx, db.CreateThreadParams{
-			ID:    uuid.New(),
-			Title: "New Chat",
-		})
+		id, err := s.db.CreateThread(ctx, "New Chat", "", userMessage)
 		if err != nil {
 			handleBadReq(w, "create thread", err)
 			return
 		}
-		threadID = thread.ID
 		slog.Info("created thread", "threadId", threadID)
+		threadID = *id
 	} else {
 		parsed, err := uuid.Parse(sig.ThreadID)
 		if err != nil {
 			handleBadReq(w, "invalid thread id", err)
 			return
 		}
+
+		_, err = s.db.GetThread(ctx, threadID)
+		if errors.Is(err, sql.ErrNoRows) {
+			handleBadReq(w, "thread not found", err)
+			return
+		} else if err != nil {
+			handleBadReq(w, "get thread", err)
+			return
+		}
+
 		threadID = parsed
 	}
 
-	userMsgID, err := s.db.CreateUserMessage(ctx, threadID, sig.Message)
-	if err != nil {
-		handleBadReq(w, "create user message", err)
-		return
-	}
-
-	// Create placeholder assistant message
-	assistantMsgID, err := s.db.CreateAssistantMessage(ctx, threadID, "")
-	if err != nil {
-		handleBadReq(w, "create assistant message", err)
-		return
-	}
-
-	slog.Info("db messages saved", "userMsgId", userMsgID, "assistantMsgId", assistantMsgID)
-
-	// Register stream immediately so refresh can resume even if user reloads right away.
-	stream := newActiveStream(threadID, assistantMsgID)
-	s.streams.Set(threadID, stream)
-
-	// Open SSE connection (MUST be after ReadSignals)
-	sse := datastar.NewSSE(w, r, datastar.WithCompression())
-
-	// Patch signals: set threadId, clear message, set loading
-	sse.MarshalAndPatchSignals(map[string]any{
-		"threadId": threadID.String(),
-		"message":  "",
-		"loading":  true,
-	})
-
-	// If new thread, prepend to sidebar
 	if isNewThread {
-		thread := db.Thread{ID: threadID, Title: "New Chat"}
+		go func() {
+			defer recoverAndLog()
+			s.updateThreadTitle(ctx, threadID, userMessage)
+		}()
 
-		threadItemHTML := s.renderThreadItem(thread, threadID)
-		sse.PatchElements(
-			threadItemHTML,
-			datastar.WithSelectorID("thread-items"),
-			datastar.WithModePrepend(),
-		)
-
-		sse.ExecuteScript(fmt.Sprintf(
-			`history.pushState({}, '', '/threads/%s')`,
-			threadID,
-		))
+		sse := datastar.NewSSE(w, r)
+		sse.Redirectf("/threads/%s", threadID)
 	}
 
-	assistantDivID := fmt.Sprintf("msg-%s", assistantMsg.ID)
-
-	// Append user + assistant message bubbles before scroll anchor
-	userMessageHTML := views.RenderUserMessage(userMsg.ID, sig.Message, true)
-	assistantMessageHTML := views.RenderAssistantMessage(assistantMsg.ID, "", true)
-
-	sse.PatchElements(
-		userMessageHTML+assistantMessageHTML,
-		datastar.WithSelectorID("scroll-anchor"),
-		datastar.WithModeBefore(),
-	)
-
-	// Build messages for OpenAI from DB history
-	dbMessages, err := s.db.GetMessagesByThread(ctx, threadID)
-	if err != nil {
-		slog.Error("get messages", "threadId", threadID, "err", err)
-		stream.Finish()
-		s.streams.DeleteIfSame(threadID, stream)
-		sse.MarshalAndPatchSignals(map[string]any{
-			"loading": false,
-		})
-		return
-	}
-	slog.Info("loaded history", "threadId", threadID, "msgCount", len(dbMessages))
-
-	oaiMessages := make([]openai.ChatCompletionMessageParamUnion, 0, len(dbMessages))
-	for _, m := range dbMessages {
-		if m.Content == "" {
-			continue
-		}
-		switch m.Role {
-		case "user":
-			oaiMessages = append(oaiMessages, openai.UserMessage(m.Content))
-		case "assistant":
-			oaiMessages = append(oaiMessages, openai.AssistantMessage(m.Content))
-		case "system":
-			oaiMessages = append(oaiMessages, openai.SystemMessage(m.Content))
-		}
-	}
-
-	GoWithHandlePanic(func() {
-		s.runOpenAIStream(
-			threadID, assistantMsg.ID, oaiMessages, isNewThread, sig.Message)
-	})
-
-	// Relay stream to this SSE connection
-	s.relayStream(ctx, sse, stream, assistantDivID)
-
-	// Signal loading done
-	sse.MarshalAndPatchSignals(map[string]any{
-		"loading": false,
-	})
+	go func() {
+		defer recoverAndLog()
+		s.writeAgentStreamToThread(threadID, userMessage)
+	}()
 }
 
-func (s *Server) runOpenAIStream(
-	threadID uuid.UUID, assistantMsgID uuid.UUID,
-	oaiMessages []openai.ChatCompletionMessageParamUnion,
-	isNewThread bool, userMessage string,
-) {
-	activeStream, ok := s.streams.Get(threadID)
-	if !ok {
-		return
-	}
-
+func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID)
 
-	logger.Info("starting openai stream")
-	agent := agent.NewAgent(logger)
+	messages, err := s.db.GetMessagesByThread(ctx, threadID)
+	if err != nil {
+		// fixme: log err
+		return
+	}
 
-	ticker := time.NewTicker(500 * time.Millisecond)
+	logger.Info("starting agent stream")
+	agent := agents.NewAgent()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	lastSaved := ""
 
-	for token, err := range agent.Stream(ctx, oaiMessages) {
+	for token, err := range agent.Stream(ctx, messages) {
+		_ = token // we will fix this alter
 		if err != nil {
 			logger.Error("stream error", "err", err)
 			break
 		}
-		activeStream.Append(token)
 
 		// Throttled DB save
 		select {
 		case <-ticker.C:
-			content, _ := activeStream.Snapshot()
-			if content != lastSaved {
-				if err := s.db.UpdateMessageContent(ctx, db.UpdateMessageContentParams{
-					ID:      assistantMsgID,
-					Content: content,
-				}); err != nil {
-					logger.Error("throttled save", "err", err)
-				}
-				lastSaved = content
-			}
+
 		default:
 		}
 	}
 
-	// Final DB save
-	finalContent, _ := activeStream.Snapshot()
-	logger.Info("stream complete", "threadId", threadID, "contentLen", len(finalContent))
-	if err := s.db.UpdateMessageContent(ctx, db.UpdateMessageContentParams{
-		ID:      assistantMsgID,
-		Content: finalContent,
-	}); err != nil {
-		logger.Error("update assistant message", "err", err)
-	}
-
-	activeStream.Finish()
-
-	// Keep stream in registry briefly so page refresh can resume.
-	// Clean up after 30s if no one picks it up.
-	go func() {
-		time.Sleep(30 * time.Second)
-		s.streams.DeleteIfSame(threadID, activeStream)
-	}()
-
-	// Auto-generate title for new threads
-	if isNewThread {
-		title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
-
-		err := s.db.UpdateThreadTitle(ctx, db.UpdateThreadTitleParams{
-			ID:    threadID,
-			Title: title,
-		})
-		if err != nil {
-			logger.Error("update thread title", "err", err)
-		}
-	}
+	// fixme: final db save
 }
 
-func (s *Server) relayStream(ctx context.Context, sse *datastar.ServerSentEventGenerator, stream *ActiveStream, assistantDivID string) {
-	ch, content, done := stream.Subscribe()
-	defer stream.Unsubscribe(ch)
+func (s *Server) updateThreadTitle(ctx context.Context, threadID uuid.UUID, userMessage string) {
+	agent := agents.NewAgent()
+	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
 
-	if content != "" {
-		assistantHTML := views.RenderAssistantMessage(stream.messageID, renderMarkdown(content), false)
-
-		sse.PatchElements(
-			assistantHTML,
-			datastar.WithSelectorID(assistantDivID),
-			datastar.WithModeOuter(),
-		)
+	err := s.db.UpdateThreadTitle(ctx, threadID, title)
+	if err != nil {
+		slog.Error("update thread title", "err", err)
 	}
-	if done {
-		return
-	}
-
-	for {
-		select {
-		case <-ch:
-			content, done = stream.Snapshot()
-			assistantHTML := views.RenderAssistantMessage(stream.messageID, renderMarkdown(content), false)
-
-			sse.PatchElements(
-				assistantHTML,
-				datastar.WithSelectorID(assistantDivID),
-				datastar.WithModeOuter(),
-			)
-			if done {
-				return
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (s *Server) handleResumeStream(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
-	stream, ok := s.streams.Get(threadID)
-	if !ok {
-		// Handle short race where refresh arrives slightly before stream registration.
-		time.Sleep(150 * time.Millisecond)
-		stream, ok = s.streams.Get(threadID)
-	}
-	if !ok {
-		slog.Info("resume: no active stream", "threadId", threadID)
-		sse := datastar.NewSSE(w, r)
-		sse.MarshalAndPatchSignals(map[string]any{
-			"loading": false,
-		})
-		return
-	}
-
-	slog.Info("resume: relaying active stream", "threadId", threadID, "messageId", stream.messageID)
-
-	sse := datastar.NewSSE(w, r)
-	assistantDivID := fmt.Sprintf("msg-%s", stream.messageID)
-
-	s.relayStream(r.Context(), sse, stream, assistantDivID)
-
-	slog.Info("resume: relay done", "threadId", threadID)
-	sse.MarshalAndPatchSignals(map[string]any{
-		"loading": false,
-	})
 }

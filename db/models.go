@@ -20,9 +20,10 @@ type Message struct {
 }
 
 type Thread struct {
-	ID         uuid.UUID
-	Title      string
-	ArchivedAt sql.NullTime
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID          uuid.UUID
+	Title       string
+	ArchivedAt  sql.NullTime
+	IsStreaming bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

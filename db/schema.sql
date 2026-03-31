@@ -2,6 +2,7 @@ CREATE TABLE threads (
     id UUID PRIMARY KEY,
     title TEXT NOT NULL DEFAULT '',
     archived_at TIMESTAMPTZ,
+    is_streaming BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

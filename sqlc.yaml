@@ -7,3 +7,4 @@ sql:
       go:
         package: "db"
         out: "db"
+        query_parameter_limit: 3

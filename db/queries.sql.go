@@ -56,21 +56,17 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 const createThread = `-- name: CreateThread :one
 INSERT INTO threads (id, title)
 VALUES ($1, $2)
-RETURNING id, title, archived_at, created_at, updated_at
+RETURNING id, title, archived_at, is_streaming, created_at, updated_at
 `
 
-type CreateThreadParams struct {
-	ID    uuid.UUID
-	Title string
-}
-
-func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error) {
-	row := q.db.QueryRowContext(ctx, createThread, arg.ID, arg.Title)
+func (q *Queries) CreateThread(ctx context.Context, iD uuid.UUID, title string) (Thread, error) {
+	row := q.db.QueryRowContext(ctx, createThread, iD, title)
 	var i Thread
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.ArchivedAt,
+		&i.IsStreaming,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -133,7 +129,7 @@ func (q *Queries) GetMessagesByThread(ctx context.Context, threadID uuid.UUID) (
 }
 
 const getThread = `-- name: GetThread :one
-SELECT id, title, archived_at, created_at, updated_at FROM threads
+SELECT id, title, archived_at, is_streaming, created_at, updated_at FROM threads
 WHERE id = $1
 `
 
@@ -144,6 +140,7 @@ func (q *Queries) GetThread(ctx context.Context, id uuid.UUID) (Thread, error) {
 		&i.ID,
 		&i.Title,
 		&i.ArchivedAt,
+		&i.IsStreaming,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -151,7 +148,7 @@ func (q *Queries) GetThread(ctx context.Context, id uuid.UUID) (Thread, error) {
 }
 
 const listThreads = `-- name: ListThreads :many
-SELECT id, title, archived_at, created_at, updated_at FROM threads
+SELECT id, title, archived_at, is_streaming, created_at, updated_at FROM threads
 WHERE archived_at IS NULL
 ORDER BY created_at DESC
 `
@@ -169,6 +166,7 @@ func (q *Queries) ListThreads(ctx context.Context) ([]Thread, error) {
 			&i.ID,
 			&i.Title,
 			&i.ArchivedAt,
+			&i.IsStreaming,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -191,13 +189,8 @@ SET content = $2
 WHERE id = $1
 `
 
-type UpdateMessageContentParams struct {
-	ID      uuid.UUID
-	Content string
-}
-
-func (q *Queries) UpdateMessageContent(ctx context.Context, arg UpdateMessageContentParams) error {
-	_, err := q.db.ExecContext(ctx, updateMessageContent, arg.ID, arg.Content)
+func (q *Queries) UpdateMessageContent(ctx context.Context, iD uuid.UUID, content string) error {
+	_, err := q.db.ExecContext(ctx, updateMessageContent, iD, content)
 	return err
 }
 
@@ -207,12 +200,7 @@ SET title = $2, updated_at = now()
 WHERE id = $1
 `
 
-type UpdateThreadTitleParams struct {
-	ID    uuid.UUID
-	Title string
-}
-
-func (q *Queries) UpdateThreadTitle(ctx context.Context, arg UpdateThreadTitleParams) error {
-	_, err := q.db.ExecContext(ctx, updateThreadTitle, arg.ID, arg.Title)
+func (q *Queries) UpdateThreadTitle(ctx context.Context, iD uuid.UUID, title string) error {
+	_, err := q.db.ExecContext(ctx, updateThreadTitle, iD, title)
 	return err
 }

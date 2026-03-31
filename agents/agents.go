@@ -1,4 +1,4 @@
-package agent
+package agents
 
 import (
 	"context"
@@ -14,15 +14,13 @@ import (
 
 type Agent struct {
 	model  openai.ChatModel
-	logger *slog.Logger
 	client openai.Client
 }
 
-func NewAgent(logger *slog.Logger) *Agent {
+func NewAgent() *Agent {
 	return &Agent{
 		client: openai.NewClient(option.WithAPIKey(env.Env.OpenAIAPIKey)),
 		model:  openai.ChatModelGPT5_4Mini,
-		logger: logger,
 	}
 }
 
@@ -45,18 +43,17 @@ func MapToOpenaiMessages(dbMessages []db.Message) []openai.ChatCompletionMessage
 	return oaiMessages
 }
 
-func (a *Agent) Stream(
-	ctx context.Context,
-	messages []openai.ChatCompletionMessageParamUnion,
-) iter.Seq2[string, error] {
+func (a *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[string, error] {
 	return func(yield func(string, error) bool) {
+		openaiMsgs := MapToOpenaiMessages(messages)
+
 		stream := a.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 			Model:    a.model,
-			Messages: messages,
+			Messages: openaiMsgs,
 		})
 		defer func() {
 			if err := stream.Close(); err != nil {
-				a.logger.Error("failed to close stream", "error", err)
+				slog.Error("failed to close stream", "error", err)
 			}
 		}()
 
