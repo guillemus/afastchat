@@ -183,6 +183,17 @@ func (q *Queries) ListThreads(ctx context.Context) ([]Thread, error) {
 	return items, nil
 }
 
+const setThreadStreaming = `-- name: SetThreadStreaming :exec
+UPDATE threads
+SET is_streaming = $2, updated_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) SetThreadStreaming(ctx context.Context, iD uuid.UUID, isStreaming bool) error {
+	_, err := q.db.ExecContext(ctx, setThreadStreaming, iD, isStreaming)
+	return err
+}
+
 const updateMessageContent = `-- name: UpdateMessageContent :exec
 UPDATE messages
 SET content = $2

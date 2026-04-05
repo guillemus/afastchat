@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/starfederation/datastar-go/datastar"
 )
@@ -35,7 +36,7 @@ func handleUUIDPathVal(
 	pathValName string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		val, err := uuid.Parse(r.PathValue(pathValName))
+		val, err := uuid.Parse(chi.URLParam(r, pathValName))
 		if err != nil {
 			handleBadReq(w, "invalid uuid", err)
 			return

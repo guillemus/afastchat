@@ -52,7 +52,7 @@ func (c *Conn) CreateSystemMessage(
 }
 
 // StartThread creates a thread with messages prefilled
-func (c *Conn) CreateThread(ctx context.Context, title, sysMsg, userMsg string) (*uuid.UUID, error) {
+func (c *Conn) CreateThreadWithMessages(ctx context.Context, title, sysMsg, userMsg string) (*uuid.UUID, error) {
 	thread, err := c.Queries.CreateThread(ctx, uuid.New(), title)
 	if err != nil {
 		return nil, fmt.Errorf("create thread: %w", err)

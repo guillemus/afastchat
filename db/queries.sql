@@ -44,3 +44,8 @@ WHERE id = $1;
 -- name: DeleteMessage :exec
 DELETE FROM messages
 WHERE id = $1;
+
+-- name: SetThreadStreaming :exec
+UPDATE threads
+SET is_streaming = $2, updated_at = now()
+WHERE id = $1;

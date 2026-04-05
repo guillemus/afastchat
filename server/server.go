@@ -8,10 +8,14 @@ import (
 	"datastar-chat/db"
 	"datastar-chat/env"
 	"datastar-chat/views"
+
+	"github.com/asaskevich/EventBus"
+	"github.com/go-chi/chi/v5"
 )
 
 type Server struct {
-	mux      *http.ServeMux
+	bus      EventBus.Bus
+	router   chi.Router
 	renderer *views.Renderer
 	db       *db.Conn
 	port     string
@@ -24,23 +28,25 @@ func StartServer() {
 	}
 
 	s := &Server{
-		mux:      http.NewServeMux(),
+		bus:      EventBus.New(),
+		router:   chi.NewRouter(),
 		renderer: views.NewRenderer(env.Env.AssetVersion),
 		db:       conn,
 		port:     env.Env.Port,
 	}
 
-	s.mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
+	s.router.Get("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))).ServeHTTP)
 
-	s.mux.HandleFunc("GET /", s.handleIndex)
-	s.mux.HandleFunc("GET /threads/{id}", handleUUIDPathVal(s.handleThread, "id"))
-	s.mux.HandleFunc("GET /threads/search", handleSignals(s.handleSearchThreads))
-	s.mux.HandleFunc("POST /chat/send", handleSignals(s.handleSendMessage))
-	s.mux.HandleFunc("POST /threads/{id}/archive", handleUUIDPathVal(s.handleArchiveThread, "id"))
+	s.router.Get("/", s.handleIndex)
+	s.router.Get("/threads/{id}", handleUUIDPathVal(s.handleThread, "id"))
+	s.router.Get("/threads/{id}/events", handleUUIDPathVal(s.handleThreadEvents, "id"))
+	s.router.Post("/threads/{id}/archive", handleUUIDPathVal(s.handleArchiveThread, "id"))
+	s.router.Get("/threads/search", handleSignals(s.handleSearchThreads))
+	s.router.Post("/chat/send", handleSignals(s.handleSendMessage))
 
 	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)
-	if err := http.ListenAndServe(addr, s.mux); err != nil {
+	if err := http.ListenAndServe(addr, s.router); err != nil {
 		log.Fatal(err)
 	}
 }

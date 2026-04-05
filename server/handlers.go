@@ -18,10 +18,6 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func (s *Server) renderThreadItem(thread db.Thread, activeThreadID uuid.UUID) string {
-	return s.renderer.RenderThreadItem(thread, activeThreadID)
-}
-
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	threads, err := s.db.ListThreads(r.Context())
 	if err != nil {
@@ -77,7 +73,7 @@ func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, thr
 
 	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
 	sse.ExecuteScript(fmt.Sprintf(
-		`if (window.location.pathname === '/threads/%s') { window.location.replace('/') }`,
+		`if (window.location.pathname === '/threads/%s') window.location.replace('/')`,
 		threadID,
 	))
 }
@@ -118,23 +114,20 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 		}
 	}
 
-	var threadItemsHTML strings.Builder
-	for _, t := range filtered {
-		threadItemHTML := s.renderThreadItem(t, activeThreadID)
-		threadItemsHTML.WriteString(threadItemHTML)
-	}
+	var threadsSb strings.Builder
+	views.RenderThreads(&threadsSb, filtered, activeThreadID)
 
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElements(
-		threadItemsHTML.String(),
+		threadsSb.String(),
 		datastar.WithSelectorID("thread-items"),
 		datastar.WithModeInner(),
 	)
 }
 
 type SendMessageSignals struct {
-	Message  string `json:"message"`
-	ThreadID string `json:"threadId"`
+	Message  string     `json:"message"`
+	ThreadID *uuid.UUID `json:"threadId"`
 }
 
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig SendMessageSignals) {
@@ -143,9 +136,10 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	userMessage := sig.Message
 
 	var threadID uuid.UUID
-	isNewThread := sig.ThreadID == ""
+	isNewThread := sig.ThreadID == nil
 	if isNewThread {
-		id, err := s.db.CreateThread(ctx, "New Chat", "", userMessage)
+		id, err := s.db.CreateThreadWithMessages(ctx,
+			"New Chat", "You are a helpful assistant", userMessage)
 		if err != nil {
 			handleBadReq(w, "create thread", err)
 			return
@@ -153,13 +147,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 		slog.Info("created thread", "threadId", threadID)
 		threadID = *id
 	} else {
-		parsed, err := uuid.Parse(sig.ThreadID)
-		if err != nil {
-			handleBadReq(w, "invalid thread id", err)
-			return
-		}
-
-		_, err = s.db.GetThread(ctx, threadID)
+		_, err := s.db.GetThread(ctx, *sig.ThreadID)
 		if errors.Is(err, sql.ErrNoRows) {
 			handleBadReq(w, "thread not found", err)
 			return
@@ -168,7 +156,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 			return
 		}
 
-		threadID = parsed
+		threadID = *sig.ThreadID
 	}
 
 	if isNewThread {
@@ -192,34 +180,70 @@ func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string
 
 	logger := slog.With("threadId", threadID)
 
-	messages, err := s.db.GetMessagesByThread(ctx, threadID)
-	if err != nil {
-		// fixme: log err
+	// Set streaming state
+	if err := s.db.SetThreadStreaming(ctx, threadID, true); err != nil {
+		logger.Error("set streaming state", "err", err)
 		return
 	}
+	defer func() {
+		if err := s.db.SetThreadStreaming(ctx, threadID, false); err != nil {
+			logger.Error("unset streaming state", "err", err)
+		}
+	}()
+
+	messages, err := s.db.GetMessagesByThread(ctx, threadID)
+	if err != nil {
+		logger.Error("get messages", "err", err)
+		return
+	}
+
+	messages = append(messages, db.Message{
+		ThreadID:  threadID,
+		Role:      "user",
+		Content:   userMessage,
+		CreatedAt: time.Now(),
+	})
 
 	logger.Info("starting agent stream")
 	agent := agents.NewAgent()
 
+	// create empty assistant message so that we have an id to go and update.
+	assistantMsgID, err := s.db.CreateAssistantMessage(ctx, threadID, "")
+	if err != nil {
+		logger.Error("create assistant message", "err", err)
+		return
+	}
+
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
+	var assistantMsg strings.Builder
+
 	for token, err := range agent.Stream(ctx, messages) {
-		_ = token // we will fix this alter
 		if err != nil {
 			logger.Error("stream error", "err", err)
 			break
 		}
 
-		// Throttled DB save
+		assistantMsg.WriteString(token)
+
+		publishThreadMessage(s.bus, threadID, assistantMsg.String())
+
 		select {
 		case <-ticker.C:
-
+			err := s.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
+			if err != nil {
+				logger.Error("update assistant message", "err", err)
+			}
 		default:
 		}
 	}
 
-	// fixme: final db save
+	// Final update with complete message
+	err = s.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
+	if err != nil {
+		logger.Error("final update assistant message", "err", err)
+	}
 }
 
 func (s *Server) updateThreadTitle(ctx context.Context, threadID uuid.UUID, userMessage string) {
@@ -229,5 +253,30 @@ func (s *Server) updateThreadTitle(ctx context.Context, threadID uuid.UUID, user
 	err := s.db.UpdateThreadTitle(ctx, threadID, title)
 	if err != nil {
 		slog.Error("update thread title", "err", err)
+	}
+}
+
+func (s *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
+	ctx := r.Context()
+
+	messagesC := make(chan string)
+	handler := func(message string) {
+		messagesC <- message
+	}
+
+	unsub := subscribeToThread(s.bus, threadID, handler)
+	defer unsub()
+
+	// create datastar sse with brotli compression
+
+msgloop:
+	for {
+		select {
+		case msg := <-messagesC:
+			_ = msg
+			// convert this to markdown, stream back to user
+		case <-ctx.Done():
+			break msgloop
+		}
 	}
 }

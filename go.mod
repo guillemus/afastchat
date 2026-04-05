@@ -3,6 +3,8 @@ module datastar-chat
 go 1.25.0
 
 require (
+	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
