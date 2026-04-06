@@ -160,12 +160,16 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	}
 
 	if isNewThread {
+		slog.Info("creating new thread")
+
 		go func() {
 			defer recoverAndLog()
-			s.updateThreadTitle(ctx, threadID, userMessage)
+			s.updateThreadTitle(context.Background(), threadID, userMessage)
 		}()
 
 		sse := datastar.NewSSE(w, r)
+
+		slog.Info("redirecting")
 		sse.Redirectf("/threads/%s", threadID)
 	}
 
@@ -268,13 +272,17 @@ func (s *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 	defer unsub()
 
 	// create datastar sse with brotli compression
+	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli()))
 
 msgloop:
 	for {
 		select {
 		case msg := <-messagesC:
-			_ = msg
-			// convert this to markdown, stream back to user
+			html := renderMarkdown(msg)
+			var sb strings.Builder
+			views.RenderAssistantMessage(&sb, threadID, html)
+
+			sse.PatchElements(sb.String())
 		case <-ctx.Done():
 			break msgloop
 		}

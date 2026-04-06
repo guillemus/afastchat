@@ -78,7 +78,7 @@ func (r *Renderer) indexPage(data IndexData) g.Node {
 					Class("scroll-anchor"),
 				),
 			),
-			chatInput(),
+			newThreadChatInput(),
 		),
 	)
 }
@@ -97,7 +97,7 @@ func (r *Renderer) threadPage(data ThreadData) g.Node {
 					Class("scroll-anchor"),
 				),
 			),
-			chatInput(),
+			existingThreadChatInput(data.Thread.ID),
 		),
 	)
 }
@@ -191,9 +191,17 @@ func threadItem(thread db.Thread, isActive bool) g.Node {
 	)
 }
 
-func chatInput() g.Node {
+type chatInputProps struct {
+	threadID *uuid.UUID
+}
+
+func chatInput(props chatInputProps) g.Node {
 	return Div(
 		Class("chat-input-area"),
+		g.If(props.threadID != nil,
+			g.Attr("data-signals:threadId", fmt.Sprintf("'%s'", props.threadID.String())),
+		),
+
 		Div(
 			Class("chat-input-box"),
 			Textarea(
@@ -217,6 +225,16 @@ func chatInput() g.Node {
 	)
 }
 
+func existingThreadChatInput(threadID uuid.UUID) g.Node {
+	return chatInput(chatInputProps{
+		threadID: &threadID,
+	})
+}
+
+func newThreadChatInput() g.Node {
+	return chatInput(chatInputProps{})
+}
+
 func messageList(messages []db.Message) g.Node {
 	return g.Map(messages, func(message db.Message) g.Node {
 		switch message.Role {
@@ -224,37 +242,31 @@ func messageList(messages []db.Message) g.Node {
 			if message.Content == "" {
 				return nil
 			}
-			return userMessage(message.ID, message.Content, false)
+			return userMessage(message.ID, message.Content)
 		case "assistant":
-			return assistantMessage(message.ID, message.Content, false)
+			return assistantMessage(message.ID, message.Content)
 		default:
 			return nil
 		}
 	})
 }
 
-func userMessage(messageID uuid.UUID, content string, isNew bool) g.Node {
-	className := "message user-message"
-	if isNew {
-		className += " is-new"
-	}
-
+func userMessage(messageID uuid.UUID, content string) g.Node {
 	return Div(
 		ID("msg-"+messageID.String()),
-		Class(className),
+		Class("message user-message"),
 		g.Text(content),
 	)
 }
 
-func assistantMessage(messageID uuid.UUID, contentHTML string, isNew bool) g.Node {
-	className := "message assistant-message"
-	if isNew {
-		className += " is-new"
-	}
+func RenderAssistantMessage(w io.Writer, messageID uuid.UUID, contentHTML string) {
+	renderNode(w, assistantMessage(messageID, contentHTML))
+}
 
+func assistantMessage(messageID uuid.UUID, contentHTML string) g.Node {
 	return Div(
 		ID("msg-"+messageID.String()),
-		Class(className),
+		Class("message assistant-message"),
 		g.Raw(contentHTML),
 	)
 }

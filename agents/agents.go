@@ -88,7 +88,6 @@ func (a *Agent) GenerateTitleFromUserMessage(ctx context.Context, userMessage st
 	})
 	if err != nil {
 		slog.Error("error generating title", "err", err)
-
 		return "New Chat"
 	}
 	if len(resp.Choices) == 0 {

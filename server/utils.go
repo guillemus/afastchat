@@ -25,7 +25,10 @@ func handleSignals[T any](fn func(w http.ResponseWriter, r *http.Request, v T)) 
 		var t T
 		if err := datastar.ReadSignals(r, &t); err != nil {
 			handleBadReq(w, "read signals failed", err)
+			return
 		}
+
+		slog.Debug("read signals", "signals", t)
 
 		fn(w, r, t)
 	}
