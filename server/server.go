@@ -11,6 +11,7 @@ import (
 
 	"github.com/asaskevich/EventBus"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
@@ -35,7 +36,14 @@ func StartServer() {
 		port:     env.Env.Port,
 	}
 
-	s.router.Get("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("public"))).ServeHTTP)
+	s.router.
+		With(middleware.Maybe(
+			middleware.NoCache,
+			func(*http.Request) bool { return env.Env.Dev },
+		)).
+		Get("/public/*",
+			http.StripPrefix("/public/", http.FileServer(http.Dir("public"))).ServeHTTP,
+		)
 
 	s.router.Get("/", s.handleIndex)
 	s.router.Get("/threads/{id}", handleUUIDPathVal(s.handleThread, "id"))

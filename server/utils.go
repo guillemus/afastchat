@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -47,4 +48,13 @@ func handleUUIDPathVal(
 
 		fn(w, r, val)
 	}
+}
+
+func patchSignals(sse *datastar.ServerSentEventGenerator, v any) {
+	bs, err := json.Marshal(v)
+	if err != nil {
+		slog.Error("failed to marshal", "value", v)
+	}
+
+	sse.PatchSignals(bs)
 }

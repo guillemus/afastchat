@@ -28,19 +28,15 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderer.RenderIndex(w, views.IndexData{Threads: threads})
 }
 
-func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
-	ctx := r.Context()
-
+func (s *Server) getThreadPage(ctx context.Context, threadID uuid.UUID) (*views.ThreadData, error) {
 	thread, err := s.db.GetThread(ctx, threadID)
 	if err != nil {
-		handleBadReq(w, "get thread", err)
-		return
+		return nil, err
 	}
 
 	messages, err := s.db.GetMessagesByThread(ctx, threadID)
 	if err != nil {
-		handleBadReq(w, "get messages", err)
-		return
+		return nil, fmt.Errorf("get messages: %w", err)
 	}
 
 	for i := range messages {
@@ -51,16 +47,27 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID u
 
 	threads, err := s.db.ListThreads(ctx)
 	if err != nil {
-		handleBadReq(w, "list threads", err)
-		return
+		return nil, fmt.Errorf("list threads: %w", err)
 	}
 
-	s.renderer.RenderThread(w, views.ThreadData{
+	return &views.ThreadData{
 		Threads:   threads,
 		Thread:    thread,
 		Messages:  messages,
 		Streaming: thread.IsStreaming,
-	})
+	}, nil
+}
+
+func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
+	ctx := r.Context()
+
+	threadPage, err := s.getThreadPage(ctx, threadID)
+	if err != nil {
+		handleBadReq(w, "get thread", err)
+		return
+	}
+
+	s.renderer.RenderThread(w, *threadPage)
 }
 
 func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
@@ -99,7 +106,7 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 	query := sig.ThreadSearch
 	filtered := make([]db.Thread, 0, len(threads))
 	for _, t := range threads {
-		if query == "" || strings.Contains(strings.ToLower(t.Title), query) {
+		if strings.Contains(strings.ToLower(t.Title), query) {
 			filtered = append(filtered, t)
 		}
 	}
@@ -121,7 +128,6 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 	sse.PatchElements(
 		threadsSb.String(),
 		datastar.WithSelectorID("thread-items"),
-		datastar.WithModeInner(),
 	)
 }
 
@@ -138,14 +144,25 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	var threadID uuid.UUID
 	isNewThread := sig.ThreadID == nil
 	if isNewThread {
-		id, err := s.db.CreateThreadWithMessages(ctx,
-			"New Chat", "You are a helpful assistant", userMessage)
+		id, err := s.db.InitThread(ctx, "New Chat", "You are a helpful assistant", userMessage)
 		if err != nil {
 			handleBadReq(w, "create thread", err)
 			return
 		}
-		slog.Info("created thread", "threadId", threadID)
+
 		threadID = *id
+
+		slog.Info("created thread", "threadId", threadID)
+
+		go func() {
+			defer recoverAndLog()
+			s.updateThreadTitle(context.Background(), threadID, userMessage)
+		}()
+
+		sse := datastar.NewSSE(w, r)
+
+		slog.Info("redirecting")
+		sse.Redirectf("/threads/%s", threadID)
 	} else {
 		_, err := s.db.GetThread(ctx, *sig.ThreadID)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -157,29 +174,27 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 		}
 
 		threadID = *sig.ThreadID
+
+		dbUserMessage, err := s.db.CreateUserMessage(ctx, threadID, userMessage)
+		if err != nil {
+			handleBadReq(w, "create user message", err)
+			return
+		}
+
+		publishThreadMessage(s.bus, threadID, threadEvent{
+			isFromUser: true,
+			messageID:  dbUserMessage.ID,
+			message:    dbUserMessage.Content,
+		})
 	}
 
-	if isNewThread {
-		slog.Info("creating new thread")
+	sse := datastar.NewSSE(w, r)
+	patchSignals(sse, map[string]any{"message": ""})
 
-		go func() {
-			defer recoverAndLog()
-			s.updateThreadTitle(context.Background(), threadID, userMessage)
-		}()
-
-		sse := datastar.NewSSE(w, r)
-
-		slog.Info("redirecting")
-		sse.Redirectf("/threads/%s", threadID)
-	}
-
-	go func() {
-		defer recoverAndLog()
-		s.writeAgentStreamToThread(threadID, userMessage)
-	}()
+	s.writeAgentStreamToThread(threadID)
 }
 
-func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string) {
+func (s *Server) writeAgentStreamToThread(threadID uuid.UUID) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID)
@@ -201,13 +216,6 @@ func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string
 		return
 	}
 
-	messages = append(messages, db.Message{
-		ThreadID:  threadID,
-		Role:      "user",
-		Content:   userMessage,
-		CreatedAt: time.Now(),
-	})
-
 	logger.Info("starting agent stream")
 	agent := agents.NewAgent()
 
@@ -217,6 +225,12 @@ func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string
 		logger.Error("create assistant message", "err", err)
 		return
 	}
+
+	publishThreadMessage(s.bus, threadID, threadEvent{
+		isFirst:   true,
+		messageID: assistantMsgID,
+		message:   "",
+	})
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -231,10 +245,14 @@ func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string
 
 		assistantMsg.WriteString(token)
 
-		publishThreadMessage(s.bus, threadID, assistantMsg.String())
+		publishThreadMessage(s.bus, threadID, threadEvent{
+			messageID: assistantMsgID,
+			message:   assistantMsg.String(),
+		})
 
 		select {
 		case <-ticker.C:
+			logger.Info("assistant batched message update")
 			err := s.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
 			if err != nil {
 				logger.Error("update assistant message", "err", err)
@@ -243,7 +261,7 @@ func (s *Server) writeAgentStreamToThread(threadID uuid.UUID, userMessage string
 		}
 	}
 
-	// Final update with complete message
+	logger.Info("assistant message update")
 	err = s.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
 	if err != nil {
 		logger.Error("final update assistant message", "err", err)
@@ -263,26 +281,57 @@ func (s *Server) updateThreadTitle(ctx context.Context, threadID uuid.UUID, user
 func (s *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
 	ctx := r.Context()
 
-	messagesC := make(chan string)
-	handler := func(message string) {
-		messagesC <- message
+	evtsC := make(chan threadEvent, 100)
+	handler := func(evt threadEvent) {
+		evtsC <- evt
 	}
 
 	unsub := subscribeToThread(s.bus, threadID, handler)
 	defer unsub()
 
-	// create datastar sse with brotli compression
 	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli()))
+	threadPage, err := s.getThreadPage(ctx, threadID)
+	if err != nil {
+		handleBadReq(w, "get thread", err)
+		return
+	}
+
+	var sb strings.Builder
+	s.renderer.RenderThread(&sb, *threadPage)
+
+	sse.PatchElements(sb.String())
 
 msgloop:
 	for {
 		select {
-		case msg := <-messagesC:
-			html := renderMarkdown(msg)
-			var sb strings.Builder
-			views.RenderAssistantMessage(&sb, threadID, html)
+		case evt := <-evtsC:
+			slog.Debug("received event", "evt", evt)
 
-			sse.PatchElements(sb.String())
+			if evt.isFromUser {
+				var sb strings.Builder
+				views.RenderUserMessage(&sb, evt.messageID, evt.message)
+				sse.PatchElements(sb.String(),
+					datastar.WithSelectorID("messages"),
+					datastar.WithModeAppend(),
+				)
+
+				continue
+			}
+
+			html := renderMarkdown(evt.message)
+
+			var sb strings.Builder
+			views.RenderAssistantMessage(&sb, evt.messageID, html)
+
+			if evt.isFirst {
+				sse.PatchElements(sb.String(),
+					datastar.WithSelectorID("messages"),
+					datastar.WithModeAppend(),
+				)
+			} else {
+				sse.PatchElements(sb.String())
+			}
+
 		case <-ctx.Done():
 			break msgloop
 		}

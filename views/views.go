@@ -50,55 +50,23 @@ func renderNode(w io.Writer, node g.Node) {
 	}
 }
 
-func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID uuid.UUID) error {
+func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID uuid.UUID) {
 	for _, t := range threads {
-		if err := threadItem(t, t.ID == activeThreadID).Render(w); err != nil {
-			return err
-		}
+		renderNode(w, threadListItem(t, t.ID == activeThreadID))
 	}
-
-	return nil
 }
 
 func (r *Renderer) indexPage(data IndexData) g.Node {
 	return r.page(
 		sidebar(data.Threads, uuid.Nil),
-		Main(
-			Class("main"),
-			Div(
-				ID("messages"),
-				Class("main-body empty-thread"),
-				Div(
-					Class("empty-state"),
-					H1(Class("empty-state-title"), g.Text("How can I help?")),
-					P(Class("empty-state-subtitle"), g.Text("Start a new conversation with datastar.chat.")),
-				),
-				Div(
-					ID("scroll-anchor"),
-					Class("scroll-anchor"),
-				),
-			),
-			newThreadChatInput(),
-		),
+		threadContentsEmpty(),
 	)
 }
 
 func (r *Renderer) threadPage(data ThreadData) g.Node {
 	return r.page(
 		sidebar(data.Threads, data.Thread.ID),
-		Main(
-			Class("main"),
-			Div(
-				ID("messages"),
-				Class("main-body"),
-				messageList(data.Messages),
-				Div(
-					ID("scroll-anchor"),
-					Class("scroll-anchor"),
-				),
-			),
-			existingThreadChatInput(data.Thread.ID),
-		),
+		threadContents(data.Messages, data.Thread.ID),
 	)
 }
 
@@ -130,6 +98,10 @@ func (r *Renderer) page(body ...g.Node) g.Node {
 func sidebar(threads []db.Thread, activeThreadID uuid.UUID) g.Node {
 	return Aside(
 		Class("sidebar"),
+		g.If(activeThreadID != uuid.Nil,
+			g.Attr("data-init", fmt.Sprintf("@get('/threads/%s/events')", activeThreadID)),
+		),
+
 		Div(Class("sidebar-header"),
 			Span(
 				Class("logo"),
@@ -159,7 +131,7 @@ func sidebar(threads []db.Thread, activeThreadID uuid.UUID) g.Node {
 			),
 			Div(ID("thread-items"),
 				g.Map(threads, func(thread db.Thread) g.Node {
-					return threadItem(thread, thread.ID == activeThreadID)
+					return threadListItem(thread, thread.ID == activeThreadID)
 				}),
 			),
 		),
@@ -171,7 +143,7 @@ func sidebar(threads []db.Thread, activeThreadID uuid.UUID) g.Node {
 	)
 }
 
-func threadItem(thread db.Thread, isActive bool) g.Node {
+func threadListItem(thread db.Thread, isActive bool) g.Node {
 	className := "thread-item"
 	if isActive {
 		className += " active"
@@ -185,22 +157,73 @@ func threadItem(thread db.Thread, isActive bool) g.Node {
 		Button(
 			Type("button"),
 			Class("archive-btn"),
-			g.Attr("data-on:click", fmt.Sprintf("event.preventDefault(); event.stopPropagation(); @post('/threads/%s/archive')", thread.ID)),
+			g.Attr("data-on:click", fmt.Sprintf(`
+				evt.preventDefault();
+				evt.stopPropagation();
+				@post('/threads/%s/archive');
+			`, thread.ID)),
 			iconArchive(),
 		),
 	)
 }
 
+func threadContentsEmpty() g.Node {
+	return threadContents(nil, uuid.Nil)
+}
+
+func threadContents(messages []db.Message, threadID uuid.UUID) g.Node {
+	return Main(
+		Class("main"),
+
+		g.If(len(messages) == 0, Div(
+			Div(
+				ID("messages"),
+				Class("main-body empty-thread"),
+				Div(
+					Class("empty-state"),
+					H1(Class("empty-state-title"), g.Text("How can I help?")),
+					P(Class("empty-state-subtitle"),
+						g.Text("Start a new conversation with datastar.chat."),
+					),
+				),
+			),
+			newThreadChatInput(),
+		)),
+
+		g.If(len(messages) != 0, g.Group{
+			Div(
+				ID("messages"),
+				Class("main-body"),
+				g.Map(messages, func(message db.Message) g.Node {
+					switch message.Role {
+					case "user":
+						return userMessage(message.ID, message.Content)
+					case "assistant":
+						return assistantMessage(message.ID, message.Content)
+					default:
+						return nil
+					}
+				}),
+			),
+			existingThreadChatInput(threadID),
+		}),
+	)
+}
+
 type chatInputProps struct {
-	threadID *uuid.UUID
+	threadID uuid.UUID
 }
 
 func chatInput(props chatInputProps) g.Node {
+	var threadIDSignal g.Node
+	if props.threadID != uuid.Nil {
+		threadIDSignal = g.Attr("data-signals:threadId",
+			fmt.Sprintf("'%s'", props.threadID.String()))
+	}
+
 	return Div(
 		Class("chat-input-area"),
-		g.If(props.threadID != nil,
-			g.Attr("data-signals:threadId", fmt.Sprintf("'%s'", props.threadID.String())),
-		),
+		threadIDSignal,
 
 		Div(
 			Class("chat-input-box"),
@@ -211,14 +234,11 @@ func chatInput(props chatInputProps) g.Node {
 				Placeholder("Type your message here..."),
 				g.Attr("data-bind:message"),
 				g.Attr("data-indicator:loading"),
-				g.Attr("data-attr:disabled", "$loading"),
 				g.Attr("data-on:keydown", `
-					if (event.key !== 'Enter') return;
-					if (event.shiftKey) return;
-					if ($loading) return;
-					event.preventDefault();
+					if (evt.key !== 'Enter') return;
+					if (evt.shiftKey) return;
+
 					@post('/chat/send');
-					$message = '';
 				`),
 			),
 		),
@@ -227,28 +247,12 @@ func chatInput(props chatInputProps) g.Node {
 
 func existingThreadChatInput(threadID uuid.UUID) g.Node {
 	return chatInput(chatInputProps{
-		threadID: &threadID,
+		threadID: threadID,
 	})
 }
 
 func newThreadChatInput() g.Node {
-	return chatInput(chatInputProps{})
-}
-
-func messageList(messages []db.Message) g.Node {
-	return g.Map(messages, func(message db.Message) g.Node {
-		switch message.Role {
-		case "user":
-			if message.Content == "" {
-				return nil
-			}
-			return userMessage(message.ID, message.Content)
-		case "assistant":
-			return assistantMessage(message.ID, message.Content)
-		default:
-			return nil
-		}
-	})
+	return chatInput(chatInputProps{uuid.Nil})
 }
 
 func userMessage(messageID uuid.UUID, content string) g.Node {
@@ -261,6 +265,10 @@ func userMessage(messageID uuid.UUID, content string) g.Node {
 
 func RenderAssistantMessage(w io.Writer, messageID uuid.UUID, contentHTML string) {
 	renderNode(w, assistantMessage(messageID, contentHTML))
+}
+
+func RenderUserMessage(w io.Writer, messageID uuid.UUID, contentHTML string) {
+	renderNode(w, userMessage(messageID, contentHTML))
 }
 
 func assistantMessage(messageID uuid.UUID, contentHTML string) g.Node {
