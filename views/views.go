@@ -172,10 +172,9 @@ func threadContentsEmpty() g.Node {
 }
 
 func threadContents(messages []db.Message, threadID uuid.UUID) g.Node {
-	return Main(
-		Class("main"),
-
-		g.If(len(messages) == 0, Div(
+	var contents g.Node
+	if len(messages) == 0 {
+		contents = Div(
 			Div(
 				ID("messages"),
 				Class("main-body empty-thread"),
@@ -188,9 +187,9 @@ func threadContents(messages []db.Message, threadID uuid.UUID) g.Node {
 				),
 			),
 			newThreadChatInput(),
-		)),
-
-		g.If(len(messages) != 0, g.Group{
+		)
+	} else {
+		contents = g.Group{
 			Div(
 				ID("messages"),
 				Class("main-body"),
@@ -206,8 +205,10 @@ func threadContents(messages []db.Message, threadID uuid.UUID) g.Node {
 				}),
 			),
 			existingThreadChatInput(threadID),
-		}),
-	)
+		}
+	}
+
+	return Main(Class("main"), contents)
 }
 
 type chatInputProps struct {
@@ -228,7 +229,6 @@ func chatInput(props chatInputProps) g.Node {
 		Div(
 			Class("chat-input-box"),
 			Textarea(
-				Rows("1"),
 				AutoFocus(),
 				Name("message"),
 				Placeholder("Type your message here..."),

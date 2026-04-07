@@ -465,7 +465,9 @@
             font-size: var(--font-size-1);
             resize: none;
             outline: none;
+            field-sizing: content;
             min-height: 24px;
+            max-height: 72px;
 
             &::placeholder {
                 color: var(--text-muted);
