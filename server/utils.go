@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -35,14 +34,14 @@ func handleSignals[T any](fn func(w http.ResponseWriter, r *http.Request, v T)) 
 	}
 }
 
-func handleUUIDPathVal(
-	fn func(w http.ResponseWriter, r *http.Request, val uuid.UUID),
+func handlePathVal(
+	fn func(w http.ResponseWriter, r *http.Request, val string),
 	pathValName string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		val, err := uuid.Parse(chi.URLParam(r, pathValName))
-		if err != nil {
-			handleBadReq(w, "invalid uuid", err)
+		val := chi.URLParam(r, pathValName)
+		if val == "" {
+			handleBadReq(w, "missing path value", nil)
 			return
 		}
 

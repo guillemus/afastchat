@@ -5,16 +5,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"datastar-chat/validate"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DatabaseURL  string `env:"DATABASE_URL" validate:"required"`
-	OpenAIAPIKey string `env:"OPENAI_API_KEY" validate:"required"`
-	Port         string `env:"PORT"`
-	AssetVersion string `env:"RAILWAY_DEPLOYMENT_ID"`
-	Dev          bool   `env:"DEV"`
+	DBPath       string `validate:"required"`
+	OpenAIAPIKey string `validate:"required"`
+	Port         string `validate:"required"`
+	AssetVersion string `validate:"required"`
+	Dev          bool   `validate:"required"`
 }
 
 var Env = parseEnv()
@@ -25,17 +25,11 @@ func parseEnv() *Config {
 	}
 
 	cfg := &Config{
-		DatabaseURL:  os.Getenv("DATABASE_URL"),
+		DBPath:       getEnvOr("DB_PATH", "./tmp/app.db"),
 		OpenAIAPIKey: os.Getenv("OPENAI_API_KEY"),
-		Port:         os.Getenv("PORT"),
-		AssetVersion: os.Getenv("RAILWAY_DEPLOYMENT_ID"),
+		Port:         getEnvOr("PORT", "3000"),
+		AssetVersion: fmt.Sprintf("%d", time.Now().Unix()),
 		Dev:          os.Getenv("DEV") == "true",
-	}
-	if cfg.AssetVersion == "" {
-		cfg.AssetVersion = fmt.Sprintf("%d", time.Now().Unix())
-	}
-	if cfg.Port == "" {
-		cfg.Port = "3000"
 	}
 
 	if err := validate.V.Struct(cfg); err != nil {
@@ -43,4 +37,11 @@ func parseEnv() *Config {
 	}
 
 	return cfg
+}
+
+func getEnvOr(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
 }

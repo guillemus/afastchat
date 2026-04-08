@@ -1,10 +1,11 @@
-version: "2"
+version: '2'
 sql:
-  - engine: "postgresql"
-    queries: "db/queries.sql"
-    schema: "db/schema.sql"
-    gen:
-      go:
-        package: "db"
-        out: "db"
-        query_parameter_limit: 3
+    - engine: 'sqlite'
+      queries: 'db/queries.sql'
+      schema: 'db/schema.sql'
+      gen:
+          go:
+              package: 'sqlc'
+              out: 'db/sqlc'
+              emit_interface: true
+              query_parameter_limit: 3

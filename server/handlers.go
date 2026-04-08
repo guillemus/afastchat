@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,7 +13,6 @@ import (
 	"datastar-chat/db"
 	"datastar-chat/views"
 
-	"github.com/google/uuid"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -28,7 +26,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderer.RenderIndex(w, views.IndexData{Threads: threads})
 }
 
-func (s *Server) getThreadPage(ctx context.Context, threadID uuid.UUID) (*views.ThreadData, error) {
+func (s *Server) getThreadPage(ctx context.Context, threadID string) (*views.ThreadData, error) {
 	thread, err := s.db.GetThread(ctx, threadID)
 	if err != nil {
 		return nil, err
@@ -58,7 +56,7 @@ func (s *Server) getThreadPage(ctx context.Context, threadID uuid.UUID) (*views.
 	}, nil
 }
 
-func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
+func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID string) {
 	ctx := r.Context()
 
 	threadPage, err := s.getThreadPage(ctx, threadID)
@@ -70,7 +68,7 @@ func (s *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID u
 	s.renderer.RenderThread(w, *threadPage)
 }
 
-func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
+func (s *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID string) {
 	if err := s.db.ArchiveThread(r.Context(), threadID); err != nil {
 		handleBadReq(w, "archive thread", err)
 		return
@@ -111,18 +109,8 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 		}
 	}
 
-	var activeThreadID uuid.UUID
-	if sig.ThreadID != "" {
-		parsed, err := uuid.Parse(sig.ThreadID)
-		if err != nil {
-			slog.Warn("invalid threadId signal", "threadId", sig.ThreadID, "err", err)
-		} else {
-			activeThreadID = parsed
-		}
-	}
-
 	var threadsSb strings.Builder
-	views.RenderThreads(&threadsSb, filtered, activeThreadID)
+	views.RenderThreads(&threadsSb, filtered, sig.ThreadID)
 
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElements(
@@ -132,8 +120,8 @@ func (s *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 }
 
 type SendMessageSignals struct {
-	Message  string     `json:"message"`
-	ThreadID *uuid.UUID `json:"threadId"`
+	Message  string  `json:"message"`
+	ThreadID *string `json:"threadId"`
 }
 
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig SendMessageSignals) {
@@ -141,7 +129,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 
 	userMessage := sig.Message
 
-	var threadID uuid.UUID
+	var threadID string
 	isNewThread := sig.ThreadID == nil
 	if isNewThread {
 		id, err := s.db.InitThread(ctx, "New Chat", "You are a helpful assistant", userMessage)
@@ -150,7 +138,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 			return
 		}
 
-		threadID = *id
+		threadID = id
 
 		slog.Info("created thread", "threadId", threadID)
 
@@ -165,7 +153,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 		sse.Redirectf("/threads/%s", threadID)
 	} else {
 		_, err := s.db.GetThread(ctx, *sig.ThreadID)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, db.ErrNotFound) {
 			handleBadReq(w, "thread not found", err)
 			return
 		} else if err != nil {
@@ -194,7 +182,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	s.writeAgentStreamToThread(threadID)
 }
 
-func (s *Server) writeAgentStreamToThread(threadID uuid.UUID) {
+func (s *Server) writeAgentStreamToThread(threadID string) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID)
@@ -268,7 +256,7 @@ func (s *Server) writeAgentStreamToThread(threadID uuid.UUID) {
 	}
 }
 
-func (s *Server) updateThreadTitle(ctx context.Context, threadID uuid.UUID, userMessage string) {
+func (s *Server) updateThreadTitle(ctx context.Context, threadID string, userMessage string) {
 	agent := agents.NewAgent()
 	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
 
@@ -278,7 +266,7 @@ func (s *Server) updateThreadTitle(ctx context.Context, threadID uuid.UUID, user
 	}
 }
 
-func (s *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, threadID uuid.UUID) {
+func (s *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, threadID string) {
 	ctx := r.Context()
 
 	evtsC := make(chan threadEvent, 100)

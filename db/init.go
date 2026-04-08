@@ -1,25 +1,29 @@
 package db
 
 import (
-	"database/sql"
+	"errors"
 	"fmt"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
+var ErrNotFound = errors.New("not found")
+
 type Conn struct {
-	db *sql.DB
-	*Queries
+	pool *sqlitex.Pool
 }
 
-func Connect(databaseURL string) (*Conn, error) {
-	conn, err := sql.Open("pgx", databaseURL)
+func Connect(dbPath string) (*Conn, error) {
+	pool, err := sqlitex.NewPool(dbPath, sqlitex.PoolOptions{
+		PoolSize: 10,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("open db: %w", err)
-	}
-	if err := conn.Ping(); err != nil {
-		return nil, fmt.Errorf("ping db: %w", err)
+		return nil, fmt.Errorf("open db pool: %w", err)
 	}
 
-	return &Conn{conn, New(conn)}, nil
+	return &Conn{pool: pool}, nil
+}
+
+func (c *Conn) Close() error {
+	return c.pool.Close()
 }

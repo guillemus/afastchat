@@ -8,7 +8,6 @@ import (
 
 	"datastar-chat/db"
 
-	"github.com/google/uuid"
 	g "maragu.dev/gomponents"
 	"maragu.dev/gomponents/components"
 	. "maragu.dev/gomponents/html"
@@ -50,7 +49,7 @@ func renderNode(w io.Writer, node g.Node) {
 	}
 }
 
-func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID uuid.UUID) {
+func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID string) {
 	for _, t := range threads {
 		renderNode(w, threadListItem(t, t.ID == activeThreadID))
 	}
@@ -58,7 +57,7 @@ func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID uuid.UUID) {
 
 func (r *Renderer) indexPage(data IndexData) g.Node {
 	return r.page(
-		sidebar(data.Threads, uuid.Nil),
+		sidebar(data.Threads, ""),
 		threadContentsEmpty(),
 	)
 }
@@ -95,10 +94,10 @@ func (r *Renderer) page(body ...g.Node) g.Node {
 	})
 }
 
-func sidebar(threads []db.Thread, activeThreadID uuid.UUID) g.Node {
+func sidebar(threads []db.Thread, activeThreadID string) g.Node {
 	return Aside(
 		Class("sidebar"),
-		g.If(activeThreadID != uuid.Nil,
+		g.If(activeThreadID != "",
 			g.Attr("data-init", fmt.Sprintf("@get('/threads/%s/events')", activeThreadID)),
 		),
 
@@ -150,8 +149,8 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 	}
 
 	return A(
-		ID("thread-"+thread.ID.String()),
-		Href("/threads/"+thread.ID.String()),
+		ID("thread-"+thread.ID),
+		Href("/threads/"+thread.ID),
 		Class(className),
 		Span(Class("thread-item-text"), g.Text(thread.Title)),
 		Button(
@@ -168,10 +167,10 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 }
 
 func threadContentsEmpty() g.Node {
-	return threadContents(nil, uuid.Nil)
+	return threadContents(nil, "")
 }
 
-func threadContents(messages []db.Message, threadID uuid.UUID) g.Node {
+func threadContents(messages []db.Message, threadID string) g.Node {
 	var contents g.Node
 	if len(messages) == 0 {
 		contents = Div(
@@ -212,14 +211,14 @@ func threadContents(messages []db.Message, threadID uuid.UUID) g.Node {
 }
 
 type chatInputProps struct {
-	threadID uuid.UUID
+	threadID string
 }
 
 func chatInput(props chatInputProps) g.Node {
 	var threadIDSignal g.Node
-	if props.threadID != uuid.Nil {
+	if props.threadID != "" {
 		threadIDSignal = g.Attr("data-signals:threadId",
-			fmt.Sprintf("'%s'", props.threadID.String()))
+			fmt.Sprintf("'%s'", props.threadID))
 	}
 
 	return Div(
@@ -245,35 +244,35 @@ func chatInput(props chatInputProps) g.Node {
 	)
 }
 
-func existingThreadChatInput(threadID uuid.UUID) g.Node {
+func existingThreadChatInput(threadID string) g.Node {
 	return chatInput(chatInputProps{
 		threadID: threadID,
 	})
 }
 
 func newThreadChatInput() g.Node {
-	return chatInput(chatInputProps{uuid.Nil})
+	return chatInput(chatInputProps{""})
 }
 
-func userMessage(messageID uuid.UUID, content string) g.Node {
+func userMessage(messageID string, content string) g.Node {
 	return Div(
-		ID("msg-"+messageID.String()),
+		ID("msg-"+messageID),
 		Class("message user-message"),
 		g.Text(content),
 	)
 }
 
-func RenderAssistantMessage(w io.Writer, messageID uuid.UUID, contentHTML string) {
+func RenderAssistantMessage(w io.Writer, messageID string, contentHTML string) {
 	renderNode(w, assistantMessage(messageID, contentHTML))
 }
 
-func RenderUserMessage(w io.Writer, messageID uuid.UUID, contentHTML string) {
+func RenderUserMessage(w io.Writer, messageID string, contentHTML string) {
 	renderNode(w, userMessage(messageID, contentHTML))
 }
 
-func assistantMessage(messageID uuid.UUID, contentHTML string) g.Node {
+func assistantMessage(messageID string, contentHTML string) g.Node {
 	return Div(
-		ID("msg-"+messageID.String()),
+		ID("msg-"+messageID),
 		Class("message assistant-message"),
 		g.Raw(contentHTML),
 	)

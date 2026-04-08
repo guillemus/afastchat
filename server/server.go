@@ -23,7 +23,7 @@ type Server struct {
 }
 
 func StartServer() {
-	conn, err := db.Connect(env.Env.DatabaseURL)
+	conn, err := db.Connect(env.Env.DBPath)
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
@@ -46,9 +46,9 @@ func StartServer() {
 		)
 
 	s.router.Get("/", s.handleIndex)
-	s.router.Get("/threads/{id}", handleUUIDPathVal(s.handleThread, "id"))
-	s.router.Get("/threads/{id}/events", handleUUIDPathVal(s.handleThreadEvents, "id"))
-	s.router.Post("/threads/{id}/archive", handleUUIDPathVal(s.handleArchiveThread, "id"))
+	s.router.Get("/threads/{id}", handlePathVal(s.handleThread, "id"))
+	s.router.Get("/threads/{id}/events", handlePathVal(s.handleThreadEvents, "id"))
+	s.router.Post("/threads/{id}/archive", handlePathVal(s.handleArchiveThread, "id"))
 	s.router.Get("/threads/search", handleSignals(s.handleSearchThreads))
 	s.router.Post("/chat/send", handleSignals(s.handleSendMessage))
 

@@ -1,18 +1,18 @@
 CREATE TABLE threads (
-    id UUID PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     title TEXT NOT NULL DEFAULT '',
-    archived_at TIMESTAMPTZ,
-    is_streaming BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    archived_at DATETIME,
+    is_streaming INTEGER NOT NULL DEFAULT 0 CHECK (is_streaming IN (0, 1)),
+    created_at DATETIME NOT NULL DEFAULT datetime('now'),
+    updated_at DATETIME NOT NULL DEFAULT datetime('now')
 );
 
 CREATE TABLE messages (
-    id UUID PRIMARY KEY,
-    thread_id UUID NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at DATETIME NOT NULL DEFAULT datetime('now')
 );
 
 CREATE INDEX idx_messages_thread_id ON messages(thread_id);
