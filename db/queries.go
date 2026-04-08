@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
@@ -15,26 +16,25 @@ func (c *Conn) GetThread(ctx context.Context, id string) (Thread, error) {
 	}
 	defer c.pool.Put(conn)
 
-	stmt, err := conn.Prepare(`
+	var thread Thread
+	err = sqlitex.Execute(conn, `
 		SELECT id, title, archived_at, is_streaming, created_at, updated_at 
 		FROM threads 
 		WHERE id = ?
-	`)
+	`, &sqlitex.ExecOptions{
+		Args: []any{id},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			thread = scanThread(stmt)
+			return nil
+		},
+	})
 	if err != nil {
-		return Thread{}, fmt.Errorf("prepare: %w", err)
+		return Thread{}, fmt.Errorf("query: %w", err)
 	}
-	defer stmt.Finalize()
-
-	stmt.BindText(1, id)
-	hasRow, err := stmt.Step()
-	if err != nil {
-		return Thread{}, fmt.Errorf("step: %w", err)
-	}
-	if !hasRow {
+	if thread.ID == "" {
 		return Thread{}, ErrNotFound
 	}
-
-	return scanThread(stmt), nil
+	return thread, nil
 }
 
 func (c *Conn) ListThreads(ctx context.Context) ([]Thread, error) {
@@ -44,29 +44,21 @@ func (c *Conn) ListThreads(ctx context.Context) ([]Thread, error) {
 	}
 	defer c.pool.Put(conn)
 
-	stmt, err := conn.Prepare(`
+	var threads []Thread
+	err = sqlitex.Execute(conn, `
 		SELECT id, title, archived_at, is_streaming, created_at, updated_at 
 		FROM threads 
 		WHERE archived_at IS NULL 
 		ORDER BY created_at DESC
-	`)
+	`, &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			threads = append(threads, scanThread(stmt))
+			return nil
+		},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("prepare: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
-	defer stmt.Finalize()
-
-	var threads []Thread
-	for {
-		hasRow, err := stmt.Step()
-		if err != nil {
-			return nil, fmt.Errorf("step: %w", err)
-		}
-		if !hasRow {
-			break
-		}
-		threads = append(threads, scanThread(stmt))
-	}
-
 	return threads, nil
 }
 
@@ -78,28 +70,22 @@ func (c *Conn) CreateThread(ctx context.Context, title string) (Thread, error) {
 	defer c.pool.Put(conn)
 
 	id := uuid.New().String()
-	stmt, err := conn.Prepare(`
+	var thread Thread
+	err = sqlitex.Execute(conn, `
 		INSERT INTO threads (id, title) 
 		VALUES (?, ?) 
 		RETURNING id, title, archived_at, is_streaming, created_at, updated_at
-	`)
-	if err != nil {
-		return Thread{}, fmt.Errorf("prepare: %w", err)
-	}
-	defer stmt.Finalize()
-
-	stmt.BindText(1, id)
-	stmt.BindText(2, title)
-
-	hasRow, err := stmt.Step()
+	`, &sqlitex.ExecOptions{
+		Args: []any{id, title},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			thread = scanThread(stmt)
+			return nil
+		},
+	})
 	if err != nil {
 		return Thread{}, fmt.Errorf("insert: %w", err)
 	}
-	if !hasRow {
-		return Thread{}, fmt.Errorf("no row returned")
-	}
-
-	return scanThread(stmt), nil
+	return thread, nil
 }
 
 func (c *Conn) UpdateThreadTitle(ctx context.Context, id, title string) error {
@@ -178,30 +164,22 @@ func (c *Conn) CreateMessage(ctx context.Context, threadID, role, content string
 	defer c.pool.Put(conn)
 
 	id := uuid.New().String()
-	stmt, err := conn.Prepare(`
+	var msg Message
+	err = sqlitex.Execute(conn, `
 		INSERT INTO messages (id, thread_id, role, content) 
 		VALUES (?, ?, ?, ?) 
 		RETURNING id, thread_id, role, content, created_at
-	`)
-	if err != nil {
-		return Message{}, fmt.Errorf("prepare: %w", err)
-	}
-	defer stmt.Finalize()
-
-	stmt.BindText(1, id)
-	stmt.BindText(2, threadID)
-	stmt.BindText(3, role)
-	stmt.BindText(4, content)
-
-	hasRow, err := stmt.Step()
+	`, &sqlitex.ExecOptions{
+		Args: []any{id, threadID, role, content},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			msg = scanMessage(stmt)
+			return nil
+		},
+	})
 	if err != nil {
 		return Message{}, fmt.Errorf("insert: %w", err)
 	}
-	if !hasRow {
-		return Message{}, fmt.Errorf("no row returned")
-	}
-
-	return scanMessage(stmt), nil
+	return msg, nil
 }
 
 func (c *Conn) GetMessagesByThread(ctx context.Context, threadID string) ([]Message, error) {
@@ -211,31 +189,22 @@ func (c *Conn) GetMessagesByThread(ctx context.Context, threadID string) ([]Mess
 	}
 	defer c.pool.Put(conn)
 
-	stmt, err := conn.Prepare(`
+	var messages []Message
+	err = sqlitex.Execute(conn, `
 		SELECT id, thread_id, role, content, created_at 
 		FROM messages 
 		WHERE thread_id = ? 
 		ORDER BY created_at ASC
-	`)
+	`, &sqlitex.ExecOptions{
+		Args: []any{threadID},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			messages = append(messages, scanMessage(stmt))
+			return nil
+		},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("prepare: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
-	defer stmt.Finalize()
-
-	stmt.BindText(1, threadID)
-
-	var messages []Message
-	for {
-		hasRow, err := stmt.Step()
-		if err != nil {
-			return nil, fmt.Errorf("step: %w", err)
-		}
-		if !hasRow {
-			break
-		}
-		messages = append(messages, scanMessage(stmt))
-	}
-
 	return messages, nil
 }
 
@@ -279,7 +248,8 @@ func (c *Conn) InitThread(ctx context.Context, title, sysMsg, userMsg string) (s
 
 	threadID := uuid.New().String()
 
-	err = sqlitex.Execute(conn, `
+	// Insert thread
+	err = sqlitex.ExecuteTransient(conn, `
 		INSERT INTO threads (id, title) 
 		VALUES (?, ?)
 	`, &sqlitex.ExecOptions{
@@ -289,7 +259,8 @@ func (c *Conn) InitThread(ctx context.Context, title, sysMsg, userMsg string) (s
 		return "", fmt.Errorf("create thread: %w", err)
 	}
 
-	err = sqlitex.Execute(conn, `
+	// Insert system message
+	err = sqlitex.ExecuteTransient(conn, `
 		INSERT INTO messages (id, thread_id, role, content) 
 		VALUES (?, ?, ?, ?)
 	`, &sqlitex.ExecOptions{
@@ -299,7 +270,8 @@ func (c *Conn) InitThread(ctx context.Context, title, sysMsg, userMsg string) (s
 		return "", fmt.Errorf("create system message: %w", err)
 	}
 
-	err = sqlitex.Execute(conn, `
+	// Insert user message
+	err = sqlitex.ExecuteTransient(conn, `
 		INSERT INTO messages (id, thread_id, role, content) 
 		VALUES (?, ?, ?, ?)
 	`, &sqlitex.ExecOptions{
