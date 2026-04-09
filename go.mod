@@ -26,6 +26,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -37,6 +38,7 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	modernc.org/libc v1.55.3 // indirect

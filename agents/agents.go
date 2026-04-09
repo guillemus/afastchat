@@ -20,7 +20,8 @@ type Agent struct {
 func NewAgent() *Agent {
 	return &Agent{
 		client: openai.NewClient(option.WithAPIKey(env.Env.OpenAIAPIKey)),
-		model:  openai.ChatModelGPT5_4Mini,
+		// model:  openai.ChatModelGPT5_4Mini,
+		model: openai.ChatModelGPT5_4Nano,
 	}
 }
 
@@ -42,6 +43,22 @@ func MapToOpenaiMessages(dbMessages []db.Message) []openai.ChatCompletionMessage
 
 	return oaiMessages
 }
+
+type (
+	StreamEvent struct {
+		MessageDelta   *string
+		ReasoningDelta *string
+		ToolCallStart  bool
+		ToolCall       *ToolCall
+	}
+
+	ToolCall struct {
+		WebSearch ToolCallWebSearch
+	}
+
+	ToolCallWebSearch struct {
+	}
+)
 
 func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[string, error] {
 	return func(yield func(string, error) bool) {

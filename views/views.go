@@ -85,6 +85,7 @@ func (x *Renderer) page(body ...g.Node) g.Node {
 				Type("module"),
 				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"),
 			),
+			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 		},
 		Body: []g.Node{
 			// Pre(g.Attr("data-json-signals")),
@@ -173,7 +174,7 @@ func threadContentsEmpty() g.Node {
 func threadContents(messages []db.Message, threadID string) g.Node {
 	var contents g.Node
 	if len(messages) == 0 {
-		contents = Div(
+		contents = g.Group{
 			Div(
 				ID("messages"),
 				Class("main-body empty-thread"),
@@ -186,7 +187,7 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 				),
 			),
 			newThreadChatInput(),
-		)
+		}
 	} else {
 		contents = g.Group{
 			Div(
