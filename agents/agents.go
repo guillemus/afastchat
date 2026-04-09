@@ -26,29 +26,29 @@ func NewAgent() *Agent {
 
 func MapToOpenaiMessages(dbMessages []db.Message) []openai.ChatCompletionMessageParamUnion {
 	oaiMessages := make([]openai.ChatCompletionMessageParamUnion, 0, len(dbMessages))
-	for _, m := range dbMessages {
-		if m.Content == "" {
+	for _, it := range dbMessages {
+		if it.Content == "" {
 			continue
 		}
-		switch m.Role {
+		switch it.Role {
 		case "user":
-			oaiMessages = append(oaiMessages, openai.UserMessage(m.Content))
+			oaiMessages = append(oaiMessages, openai.UserMessage(it.Content))
 		case "assistant":
-			oaiMessages = append(oaiMessages, openai.AssistantMessage(m.Content))
+			oaiMessages = append(oaiMessages, openai.AssistantMessage(it.Content))
 		case "system":
-			oaiMessages = append(oaiMessages, openai.SystemMessage(m.Content))
+			oaiMessages = append(oaiMessages, openai.SystemMessage(it.Content))
 		}
 	}
 
 	return oaiMessages
 }
 
-func (a *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[string, error] {
+func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[string, error] {
 	return func(yield func(string, error) bool) {
 		openaiMsgs := MapToOpenaiMessages(messages)
 
-		stream := a.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
-			Model:    a.model,
+		stream := x.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
+			Model:    x.model,
 			Messages: openaiMsgs,
 		})
 		defer func() {
@@ -78,8 +78,8 @@ func (a *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[str
 	}
 }
 
-func (a *Agent) GenerateTitleFromUserMessage(ctx context.Context, userMessage string) string {
-	resp, err := a.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+func (x *Agent) GenerateTitleFromUserMessage(ctx context.Context, userMessage string) string {
+	resp, err := x.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model: openai.ChatModelGPT5Nano,
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("Generate a concise title (max 6 words) for a chat thread based on the user's first message. Return only the title, no quotes or punctuation."),

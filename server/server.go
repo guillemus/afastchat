@@ -18,7 +18,7 @@ type Server struct {
 	bus      EventBus.Bus
 	router   chi.Router
 	renderer *views.Renderer
-	db       *db.Conn
+	db       *db.Pool
 	port     string
 }
 

@@ -34,12 +34,12 @@ type ThreadData struct {
 	Streaming bool
 }
 
-func (r *Renderer) RenderIndex(w io.Writer, data IndexData) {
-	renderNode(w, r.indexPage(data))
+func (x *Renderer) RenderIndex(w io.Writer, data IndexData) {
+	renderNode(w, x.indexPage(data))
 }
 
-func (r *Renderer) RenderThread(w io.Writer, data ThreadData) {
-	renderNode(w, r.threadPage(data))
+func (x *Renderer) RenderThread(w io.Writer, data ThreadData) {
+	renderNode(w, x.threadPage(data))
 }
 
 func renderNode(w io.Writer, node g.Node) {
@@ -50,26 +50,26 @@ func renderNode(w io.Writer, node g.Node) {
 }
 
 func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID string) {
-	for _, t := range threads {
-		renderNode(w, threadListItem(t, t.ID == activeThreadID))
+	for _, it := range threads {
+		renderNode(w, threadListItem(it, it.ID == activeThreadID))
 	}
 }
 
-func (r *Renderer) indexPage(data IndexData) g.Node {
-	return r.page(
+func (x *Renderer) indexPage(data IndexData) g.Node {
+	return x.page(
 		sidebar(data.Threads, ""),
 		threadContentsEmpty(),
 	)
 }
 
-func (r *Renderer) threadPage(data ThreadData) g.Node {
-	return r.page(
+func (x *Renderer) threadPage(data ThreadData) g.Node {
+	return x.page(
 		sidebar(data.Threads, data.Thread.ID),
 		threadContents(data.Messages, data.Thread.ID),
 	)
 }
 
-func (r *Renderer) page(body ...g.Node) g.Node {
+func (x *Renderer) page(body ...g.Node) g.Node {
 	return components.HTML5(components.HTML5Props{
 		Title:    "datastar.chat",
 		Language: "en",
@@ -80,7 +80,7 @@ func (r *Renderer) page(body ...g.Node) g.Node {
 				Rel("stylesheet"),
 				Href("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap"),
 			),
-			Link(Rel("stylesheet"), Href("/public/styles.css?v="+r.assetVersion)),
+			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
 			Script(
 				Type("module"),
 				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"),
