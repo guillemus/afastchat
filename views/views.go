@@ -104,8 +104,8 @@ func sidebar(threads []db.Thread, activeThreadID string) g.Node {
 		Div(Class("sidebar-header"),
 			Span(
 				Class("logo"),
-				g.Text("datastar"),
-				Span(Class("logo-accent"), g.Text(".chat")),
+				g.Text("afastchat"),
+				Span(Class("logo-accent"), g.Text(".com")),
 			),
 		),
 		A(Href("/"), Class("new-chat-btn"),
