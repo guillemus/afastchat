@@ -71,7 +71,7 @@ func (x *Renderer) threadPage(data ThreadData) g.Node {
 
 func (x *Renderer) page(body ...g.Node) g.Node {
 	return components.HTML5(components.HTML5Props{
-		Title:    "datastar.chat",
+		Title:    "afastchat",
 		Language: "en",
 		Head: []g.Node{
 			Link(Rel("preconnect"), Href("https://fonts.googleapis.com")),
@@ -181,7 +181,7 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 					Class("empty-state"),
 					H1(Class("empty-state-title"), g.Text("How can I help?")),
 					P(Class("empty-state-subtitle"),
-						g.Text("Start a new conversation with datastar.chat."),
+						g.Text("Start a new conversation with afastchat."),
 					),
 				),
 			),

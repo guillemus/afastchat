@@ -3,6 +3,7 @@ module afastchat.com
 go 1.25.0
 
 require (
+	github.com/alecthomas/chroma/v2 v2.2.0
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-playground/validator/v10 v10.30.1
@@ -12,6 +13,7 @@ require (
 	github.com/openai/openai-go/v3 v3.30.0
 	github.com/starfederation/datastar-go v1.1.0
 	github.com/yuin/goldmark v1.8.2
+	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	maragu.dev/gomponents v1.2.0
 	zombiezen.com/go/sqlite v1.4.0
 )
@@ -19,6 +21,7 @@ require (
 require (
 	github.com/CAFxX/httpcompression v0.0.9 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
