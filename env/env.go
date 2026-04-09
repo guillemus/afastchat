@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"datastar-chat/validate"
+	"afastchat.com/validate"
 	"github.com/joho/godotenv"
 )
 

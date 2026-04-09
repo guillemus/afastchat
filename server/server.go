@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"datastar-chat/db"
-	"datastar-chat/env"
-	"datastar-chat/views"
+	"afastchat.com/db"
+	"afastchat.com/env"
+	"afastchat.com/views"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/go-chi/chi/v5"

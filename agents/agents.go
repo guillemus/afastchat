@@ -1,9 +1,9 @@
 package agents
 
 import (
+	"afastchat.com/db"
+	"afastchat.com/env"
 	"context"
-	"datastar-chat/db"
-	"datastar-chat/env"
 	"iter"
 	"log/slog"
 	"strings"

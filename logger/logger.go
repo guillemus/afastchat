@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"datastar-chat/env"
+	"afastchat.com/env"
 	"github.com/lmittmann/tint"
 )
 

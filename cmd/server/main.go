@@ -1,8 +1,8 @@
 package main
 
 import (
-	"datastar-chat/logger"
-	"datastar-chat/server"
+	"afastchat.com/logger"
+	"afastchat.com/server"
 )
 
 func main() {

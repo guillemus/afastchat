@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 
-	"datastar-chat/db"
+	"afastchat.com/db"
 
 	g "maragu.dev/gomponents"
 	"maragu.dev/gomponents/components"

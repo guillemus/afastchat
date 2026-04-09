@@ -1,4 +1,4 @@
-module datastar-chat
+module afastchat.com
 
 go 1.25.0
 

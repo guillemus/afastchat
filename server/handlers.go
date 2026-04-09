@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"datastar-chat/agents"
-	"datastar-chat/db"
-	"datastar-chat/views"
+	"afastchat.com/agents"
+	"afastchat.com/db"
+	"afastchat.com/views"
 
 	"github.com/starfederation/datastar-go/datastar"
 )
@@ -240,7 +240,7 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 
 		select {
 		case <-ticker.C:
-			logger.Info("assistant batched message update")
+			logger.Debug("updating assistant message")
 			err := x.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
 			if err != nil {
 				logger.Error("update assistant message", "err", err)
@@ -249,7 +249,7 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 		}
 	}
 
-	logger.Info("assistant message update")
+	logger.Debug("updating assistant message")
 	err = x.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
 	if err != nil {
 		logger.Error("final update assistant message", "err", err)
