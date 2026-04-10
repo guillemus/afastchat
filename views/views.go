@@ -80,6 +80,7 @@ func (x *Renderer) page(body ...g.Node) g.Node {
 				Rel("stylesheet"),
 				Href("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap"),
 			),
+			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
 			Script(
 				Type("module"),
@@ -88,8 +89,7 @@ func (x *Renderer) page(body ...g.Node) g.Node {
 			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 		},
 		Body: []g.Node{
-			// Pre(g.Attr("data-json-signals")),
-
+			// DebugSignals(),
 			Div(Class("app"), g.Group(body)),
 		},
 	})
@@ -216,16 +216,14 @@ type chatInputProps struct {
 }
 
 func chatInput(props chatInputProps) g.Node {
-	var threadIDSignal g.Node
-	if props.threadID != "" {
-		threadIDSignal = g.Attr("data-signals:threadId",
-			fmt.Sprintf("'%s'", props.threadID))
-	}
-
 	return Div(
-		Class("chat-input-area"),
-		threadIDSignal,
-
+		Class("chat-input"),
+		g.If(props.threadID != "",
+			g.Attr("data-signals:threadId", fmt.Sprintf("'%s'", props.threadID)),
+		),
+		g.Attr("data-signals:is-streaming", "false"),
+		g.Attr("data-signals:message", "''"),
+		g.Attr("data-computed:can-submit", "$message.trim() !== ''"),
 		Div(
 			Class("chat-input-box"),
 			Textarea(
@@ -233,13 +231,23 @@ func chatInput(props chatInputProps) g.Node {
 				Name("message"),
 				Placeholder("Type your message here..."),
 				g.Attr("data-bind:message"),
-				g.Attr("data-indicator:loading"),
 				g.Attr("data-on:keydown", `
-					if (evt.key !== 'Enter') return;
-					if (evt.shiftKey) return;
-
-					@post('/chat/send');
+					if (evt.key !== 'Enter' || evt.shiftKey) return;
+					if (!$canSubmit) return;
+					el.form.requestSubmit();
 				`),
+			),
+			Div(Class("chat-input-actions"),
+				Button(
+					Disabled(),
+					Class("chat-input-submit-btn"),
+					Type("submit"),
+					g.Attr("data-attr:disabled", "!$canSubmit || $isStreaming"),
+					g.Attr("data-on:click", `
+						@post('/chat/send')
+					`),
+					iconArrowUp(),
+				),
 			),
 		),
 	)
@@ -276,5 +284,17 @@ func assistantMessage(messageID string, contentHTML string) g.Node {
 		ID("msg-"+messageID),
 		Class("message assistant-message"),
 		g.Raw(contentHTML),
+	)
+}
+
+func DebugSignals() g.Node {
+	return Div(
+		Style(`
+			background: black;
+			position: absolute;	
+			top: 0;
+			right: 0;
+		`),
+		Pre(g.Attr("data-json-signals")),
 	)
 }

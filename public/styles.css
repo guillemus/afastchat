@@ -1,4 +1,4 @@
-@import 'https://unpkg.com/open-props@1.7.23/open-props.min.css';
+/* css vars coming from open-props@1.7.23 */
 
 @layer reset, tokens, layout, components;
 
@@ -78,7 +78,6 @@
 }
 
 @layer components {
-    /* Sidebar */
     .sidebar {
         width: 260px;
         min-width: 260px;
@@ -293,7 +292,7 @@
     }
 
     /* Messages */
-    #messages > .message {
+    #messages .message {
         display: table;
         font-size: var(--font-size-1);
         line-height: var(--font-lineheight-4);
@@ -304,7 +303,7 @@
         max-width: min(100%, 72ch);
     }
 
-    #messages > .user-message {
+    #messages .user-message {
         background: color-mix(in oklch, var(--bg-button) 18%, transparent);
         border: 1px solid color-mix(in oklch, var(--bg-button) 30%, transparent);
         color: var(--text-primary);
@@ -313,7 +312,7 @@
         margin-right: 0;
     }
 
-    #messages > .assistant-message {
+    #messages .assistant-message {
         color: var(--gray-3);
         white-space: normal;
         margin-left: 0;
@@ -542,38 +541,74 @@
         line-height: var(--font-lineheight-3);
     }
 
-    /* Chat input */
-    .chat-input-area {
+    .chat-input {
         flex-shrink: 0;
         padding: var(--size-2) var(--size-6) var(--size-5);
         width: 100%;
         max-width: 768px;
         margin: 0 auto;
-    }
 
-    .chat-input-box {
-        background: var(--bg-input);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-3);
-        padding: var(--size-3) var(--size-3) var(--size-2);
+        .chat-input-box {
+            display: flex;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-3);
+            padding: var(--size-3);
 
-        & textarea {
-            width: 100%;
-            background: none;
+            textarea {
+                width: 100%;
+                background: none;
+                border: none;
+                color: var(--text-primary);
+                font-family: inherit;
+                font-size: var(--font-size-1);
+                resize: none;
+                outline: none;
+                field-sizing: content;
+                min-height: 24px;
+                max-height: 180px;
+                scrollbar-width: thin;
+                scrollbar-color: var(--gray-9) transparent;
+
+                &::placeholder {
+                    color: var(--text-muted);
+                }
+            }
+        }
+
+        .chat-input-actions {
+            display: flex;
+            justify-content: left;
+        }
+        .chat-input-submit-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--bg-button);
+            color: white;
             border: none;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: var(--font-size-1);
-            resize: none;
-            outline: none;
-            field-sizing: content;
-            min-height: 24px;
-            max-height: 180px;
-            scrollbar-width: thin;
-            scrollbar-color: var(--gray-9) transparent;
+            border-radius: var(--radius-2);
+            cursor: pointer;
+            transition:
+                background-color 0.2s var(--ease-3),
+                color 0.2s var(--ease-3),
+                filter 0.15s var(--ease-3);
 
-            &::placeholder {
+            & svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            &:hover:not(:disabled) {
+                filter: brightness(1.1);
+            }
+
+            &:disabled {
+                background: var(--gray-10);
                 color: var(--text-muted);
+                cursor: not-allowed;
             }
         }
     }
