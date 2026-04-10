@@ -3,7 +3,6 @@ package exa
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -27,11 +26,6 @@ func New(apiKey string) *Client {
 		rc:     rc,
 		apiKey: apiKey,
 	}
-}
-
-func (c *Client) SetHTTPClient(client *http.Client) {
-	c.rc.SetTransport(client.Transport)
-	c.rc.SetTimeout(client.Timeout)
 }
 
 // Search performs a search with Exa's prompt-engineered query.
