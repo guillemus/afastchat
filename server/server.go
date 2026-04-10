@@ -20,6 +20,8 @@ type Server struct {
 	renderer *views.Renderer
 	db       *db.Pool
 	port     string
+
+	agentCanceller *agentCanceller
 }
 
 func StartServer() {
@@ -29,11 +31,12 @@ func StartServer() {
 	}
 
 	s := &Server{
-		bus:      EventBus.New(),
-		router:   chi.NewRouter(),
-		renderer: views.NewRenderer(env.Env.AssetVersion),
-		db:       conn,
-		port:     env.Env.Port,
+		bus:            EventBus.New(),
+		router:         chi.NewRouter(),
+		renderer:       views.NewRenderer(env.Env.AssetVersion),
+		db:             conn,
+		port:           env.Env.Port,
+		agentCanceller: newAgentCanceller(),
 	}
 
 	s.router.
@@ -51,6 +54,7 @@ func StartServer() {
 	s.router.Post("/threads/{id}/archive", handlePathVal(s.handleArchiveThread, "id"))
 	s.router.Get("/threads/search", handleSignals(s.handleSearchThreads))
 	s.router.Post("/chat/send", handleSignals(s.handleSendMessage))
+	s.router.Post("/chat/stop", handleSignals(s.handleStopStreaming))
 
 	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)

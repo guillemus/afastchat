@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/starfederation/datastar-go/datastar"
@@ -56,4 +58,27 @@ func patchSignals(sse *datastar.ServerSentEventGenerator, v any) {
 	}
 
 	sse.PatchSignals(bs)
+}
+
+type agentCanceller struct {
+	cancelMap *sync.Map
+}
+
+func newAgentCanceller() *agentCanceller {
+	return &agentCanceller{
+		cancelMap: &sync.Map{},
+	}
+}
+
+func (x *agentCanceller) get(threadID string) (context.CancelFunc, bool) {
+	val, ok := x.cancelMap.Load(threadID)
+	return val.(context.CancelFunc), ok
+}
+
+func (x *agentCanceller) set(threadID string, cancel context.CancelFunc) {
+	x.cancelMap.Store(threadID, cancel)
+}
+
+func (x *agentCanceller) clear(threadID string) {
+	x.cancelMap.Delete(threadID)
 }

@@ -239,6 +239,7 @@ func chatInput(props chatInputProps) g.Node {
 			),
 			Div(Class("chat-input-actions"),
 				Button(
+					g.Attr("data-show", "!$isStreaming"),
 					Disabled(),
 					Class("chat-input-submit-btn"),
 					Type("submit"),
@@ -247,6 +248,15 @@ func chatInput(props chatInputProps) g.Node {
 						@post('/chat/send')
 					`),
 					iconArrowUp(),
+				),
+				Button(
+					g.Attr("data-show", "$isStreaming"),
+					Class("chat-input-submit-btn"),
+					Type("submit"),
+					g.Attr("data-on:click", `
+						@post('/chat/stop')
+					`),
+					iconSquare(),
 				),
 			),
 		),

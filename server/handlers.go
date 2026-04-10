@@ -187,6 +187,12 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 
 	logger := slog.With("threadId", threadID)
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	x.agentCanceller.set(threadID, cancel)
+	defer x.agentCanceller.clear(threadID)
+
 	// Set streaming state
 	if err := x.db.SetThreadStreaming(ctx, threadID, true); err != nil {
 		logger.Error("set streaming state", "err", err)
@@ -248,6 +254,9 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 		default:
 		}
 	}
+
+	// By now, context might be cancelled already because of of a thread stop. We should use a fresh context.
+	ctx = context.Background()
 
 	logger.Debug("updating assistant message")
 	err = x.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
@@ -323,5 +332,18 @@ msgloop:
 		case <-ctx.Done():
 			break msgloop
 		}
+	}
+}
+
+type StopStreamingSignals struct {
+	ThreadID string `json:"threadId"`
+}
+
+func (x *Server) handleStopStreaming(
+	w http.ResponseWriter, r *http.Request, sig StopStreamingSignals) {
+
+	cancel, ok := x.agentCanceller.get(sig.ThreadID)
+	if ok {
+		cancel()
 	}
 }

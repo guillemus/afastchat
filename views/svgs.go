@@ -56,3 +56,12 @@ func iconArrowUp() g.Node {
 		g.El("path", g.Attr("d", "M5 12l7-7 7 7")),
 	)
 }
+
+func iconSquare() g.Node {
+	return g.El("svg",
+		g.Attr("xmlns", "http://www.w3.org/2000/svg"),
+		g.Attr("viewBox", "0 0 24 24"),
+		g.Attr("fill", "currentColor"),
+		g.El("rect", g.Attr("x", "5"), g.Attr("y", "5"), g.Attr("width", "14"), g.Attr("height", "14"), g.Attr("rx", "2")),
+	)
+}
