@@ -313,7 +313,7 @@ func DebugSignals() g.Node {
 			width: 320px;
 			overflow: hidden;
 		`),
-		Small(g.Text("client side signals:")),
+		Small(g.Text("signals:")),
 		Pre(
 			Style(`
 				margin: 0;
