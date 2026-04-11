@@ -190,8 +190,8 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	x.agentCanceller.set(threadID, cancel)
-	defer x.agentCanceller.clear(threadID)
+	unsub := subscribeToStops(x.bus, threadID, cancel)
+	defer unsub()
 
 	// Set streaming state
 	if err := x.db.SetThreadStreaming(ctx, threadID, true); err != nil {
@@ -342,8 +342,5 @@ type StopStreamingSignals struct {
 func (x *Server) handleStopStreaming(
 	w http.ResponseWriter, r *http.Request, sig StopStreamingSignals) {
 
-	cancel, ok := x.agentCanceller.get(sig.ThreadID)
-	if ok {
-		cancel()
-	}
+	publishThreadStop(x.bus, sig.ThreadID)
 }

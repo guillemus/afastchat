@@ -20,8 +20,6 @@ type Server struct {
 	renderer *views.Renderer
 	db       *db.Pool
 	port     string
-
-	agentCanceller *agentCanceller
 }
 
 func StartServer() {
@@ -31,12 +29,11 @@ func StartServer() {
 	}
 
 	s := &Server{
-		bus:            EventBus.New(),
-		router:         chi.NewRouter(),
-		renderer:       views.NewRenderer(env.Env.AssetVersion),
-		db:             conn,
-		port:           env.Env.Port,
-		agentCanceller: newAgentCanceller(),
+		bus:      EventBus.New(),
+		router:   chi.NewRouter(),
+		renderer: views.NewRenderer(env.Env.AssetVersion),
+		db:       conn,
+		port:     env.Env.Port,
 	}
 
 	s.router.

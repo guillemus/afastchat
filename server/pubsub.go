@@ -28,3 +28,17 @@ func subscribeToThread(
 		bus.Unsubscribe(topic, handler)
 	}
 }
+
+func publishThreadStop(bus EventBus.Bus, threadID string) {
+	topic := fmt.Sprintf("threads:%s:stop", threadID)
+	bus.Publish(topic)
+}
+
+func subscribeToStops(bus EventBus.Bus, threadID string, handler func()) (unsub func()) {
+	topic := fmt.Sprintf("threads:%s:stop", threadID)
+	bus.Subscribe(topic, handler)
+
+	return func() {
+		bus.Unsubscribe(topic, handler)
+	}
+}
