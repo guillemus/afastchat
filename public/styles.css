@@ -550,6 +550,7 @@
 
         .chat-input-box {
             display: flex;
+            align-items: center;
             background: var(--bg-input);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-3);

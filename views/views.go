@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"afastchat.com/db"
+	"afastchat.com/env"
 
 	g "maragu.dev/gomponents"
 	"maragu.dev/gomponents/components"
@@ -89,7 +90,7 @@ func (x *Renderer) page(body ...g.Node) g.Node {
 			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 		},
 		Body: []g.Node{
-			// DebugSignals(),
+			DebugSignals(),
 			Div(Class("app"), g.Group(body)),
 		},
 	})
@@ -299,13 +300,27 @@ func assistantMessage(messageID string, contentHTML string) g.Node {
 }
 
 func DebugSignals() g.Node {
+	if !env.Env.Dev {
+		return nil
+	}
+
 	return Div(
 		Style(`
 			background: black;
 			position: absolute;	
 			top: 0;
 			right: 0;
+			width: 320px;
+			overflow: hidden;
 		`),
-		Pre(g.Attr("data-json-signals")),
+		P(g.Text("client side signals:")),
+		Pre(
+			Style(`
+				margin: 0;
+				white-space: pre;
+				overflow: hidden;
+			`),
+			g.Attr("data-json-signals"),
+		),
 	)
 }

@@ -335,6 +335,10 @@ msgloop:
 					datastar.WithModeAppend(),
 				)
 			} else {
+				// TODO: this patch is kind of a hack. In theory it should be done by the first
+				// signals patch. Or better yet, just patch the last message + the textarea.
+				// Or better yet, just fat morph the entire page.
+				patchSignals(sse, map[string]any{"isStreaming": true})
 				sse.PatchElements(sb.String())
 			}
 
