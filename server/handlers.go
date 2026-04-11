@@ -132,7 +132,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	var threadID string
 	isNewThread := sig.ThreadID == nil
 	if isNewThread {
-		id, err := x.db.InitThread(ctx, "New Chat", "You are a helpful assistant", userMessage)
+		id, err := x.db.InitThread(ctx, "New Chat", "You are a helpful assistant")
 		if err != nil {
 			handleBadReq(w, "create thread", err)
 			return
@@ -162,27 +162,15 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 		}
 
 		threadID = *sig.ThreadID
-
-		dbUserMessage, err := x.db.CreateUserMessage(ctx, threadID, userMessage)
-		if err != nil {
-			handleBadReq(w, "create user message", err)
-			return
-		}
-
-		publishThreadMessage(x.bus, threadID, threadEvent{
-			isFromUser: true,
-			messageID:  dbUserMessage.ID,
-			message:    dbUserMessage.Content,
-		})
 	}
 
 	sse := datastar.NewSSE(w, r)
 	patchSignals(sse, map[string]any{"message": ""})
 
-	x.writeAgentStreamToThread(threadID)
+	x.writeAgentStreamToThread(threadID, userMessage)
 }
 
-func (x *Server) writeAgentStreamToThread(threadID string) {
+func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID)
@@ -204,14 +192,11 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 		}
 	}()
 
-	messages, err := x.db.GetMessagesByThread(ctx, threadID)
+	dbUserMessage, err := x.db.CreateUserMessage(ctx, threadID, userMessage)
 	if err != nil {
-		logger.Error("get messages", "err", err)
+		logger.Error("create user message", "err", err)
 		return
 	}
-
-	logger.Info("starting agent stream")
-	agent := agents.NewAgent()
 
 	// create empty assistant message so that we have an id to go and update.
 	assistantMsgID, err := x.db.CreateAssistantMessage(ctx, threadID, "")
@@ -221,10 +206,21 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 	}
 
 	publishThreadMessage(x.bus, threadID, threadEvent{
-		isFirst:   true,
-		messageID: assistantMsgID,
-		message:   "",
+		assistantStart: &evtAssistantStart{
+			userMessageID:      dbUserMessage.ID,
+			userMessage:        userMessage,
+			assistantMessageID: assistantMsgID,
+		},
 	})
+
+	messages, err := x.db.GetMessagesByThread(ctx, threadID)
+	if err != nil {
+		logger.Error("get messages", "err", err)
+		return
+	}
+
+	logger.Info("starting agent stream")
+	agent := agents.NewAgent()
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -240,8 +236,10 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 		assistantMsg.WriteString(token)
 
 		publishThreadMessage(x.bus, threadID, threadEvent{
-			messageID: assistantMsgID,
-			message:   assistantMsg.String(),
+			assistantChunk: &evtAssistantChunk{
+				messageID: assistantMsgID,
+				content:   assistantMsg.String(),
+			},
 		})
 
 		select {
@@ -257,7 +255,8 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 
 	publishThreadFinishedStreaming(x.bus, threadID)
 
-	// By now, context might be cancelled already because of of a thread stop. We should use a fresh context.
+	// By now, context might be cancelled already because of of a thread stop.
+	// We should use a fresh context.
 	ctx = context.Background()
 
 	logger.Debug("updating assistant message")
@@ -306,42 +305,46 @@ msgloop:
 		case evt := <-evtsC:
 			slog.Debug("received event", "evt", evt)
 
-			if evt.finishedStreaming {
-				patchSignals(sse, map[string]any{"isStreaming": false})
-				continue
-			}
+			switch {
+			case evt.assistantStart != nil:
 
-			if evt.isFromUser {
+				patchSignals(sse, map[string]any{"isStreaming": true})
+
+				sse.ExecuteScript(`(() => {
+					const last = document.querySelector('#messages .assistant-message.last')
+					if (last) {
+						last.classList.remove('last')
+					}
+				})()`)
+
 				var sb strings.Builder
-				views.RenderUserMessage(&sb, evt.messageID, evt.message)
-				sse.PatchElements(sb.String(),
-					datastar.WithSelectorID("messages"),
-					datastar.WithModeAppend(),
-				)
-
-				continue
-			}
-
-			html := renderMarkdown(evt.message)
-
-			var sb strings.Builder
-			views.RenderAssistantMessage(&sb, evt.messageID, html)
-
-			if evt.isFirst {
-				patchSignals(sse, map[string]any{"isStreaming": true})
+				views.RenderUserMessage(&sb, evt.assistantStart.userMessageID, evt.assistantStart.userMessage)
+				views.RenderAssistantMessageAsLast(&sb, evt.assistantStart.assistantMessageID, "")
 
 				sse.PatchElements(sb.String(),
 					datastar.WithSelectorID("messages"),
 					datastar.WithModeAppend(),
 				)
-			} else {
-				// TODO: this patch is kind of a hack. In theory it should be done by the first
-				// signals patch. Or better yet, just patch the last message + the textarea.
-				// Or better yet, just fat morph the entire page.
-				patchSignals(sse, map[string]any{"isStreaming": true})
+
+				sse.ExecuteScript(`(() => {
+				  	const el = document.getElementById('messages')
+				  	if (el) {
+						el.scrollTop = el.scrollHeight
+					}
+				})()`)
+
+			case evt.assistantChunk != nil:
+
+				html := renderMarkdown(evt.assistantChunk.content)
+
+				var sb strings.Builder
+				views.RenderAssistantMessageAsLast(&sb, evt.assistantChunk.messageID, html)
 				sse.PatchElements(sb.String())
-			}
 
+			case evt.finishedStreaming != nil:
+				patchSignals(sse, map[string]any{"isStreaming": false})
+
+			}
 		case <-ctx.Done():
 			break msgloop
 		}

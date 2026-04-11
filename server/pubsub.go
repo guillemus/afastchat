@@ -6,13 +6,23 @@ import (
 	"github.com/asaskevich/EventBus"
 )
 
-type threadEvent struct {
-	isFirst           bool
-	isFromUser        bool
-	finishedStreaming bool
-	messageID         string
-	message           string
-}
+type (
+	threadEvent struct {
+		assistantStart    *evtAssistantStart
+		assistantChunk    *evtAssistantChunk
+		finishedStreaming *evtFinishedStreaming
+	}
+	evtAssistantStart struct {
+		userMessageID      string
+		userMessage        string
+		assistantMessageID string
+	}
+	evtAssistantChunk struct {
+		messageID string
+		content   string
+	}
+	evtFinishedStreaming struct{}
+)
 
 func publishThreadMessage(bus EventBus.Bus, threadID string, evt threadEvent) {
 	topic := fmt.Sprintf("threads:%s:message", threadID)
@@ -20,9 +30,7 @@ func publishThreadMessage(bus EventBus.Bus, threadID string, evt threadEvent) {
 }
 
 func publishThreadFinishedStreaming(bus EventBus.Bus, threadID string) {
-	publishThreadMessage(bus, threadID, threadEvent{
-		finishedStreaming: true,
-	})
+	publishThreadMessage(bus, threadID, threadEvent{finishedStreaming: &evtFinishedStreaming{}})
 }
 
 func subscribeToThread(

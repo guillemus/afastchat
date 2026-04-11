@@ -120,7 +120,7 @@ func sidebar(threads []db.Thread, activeThreadID string) g.Node {
 				Type("text"),
 				Name("thread-search"),
 				Placeholder("Search threads..."),
-				g.Attr("data-bind:threadSearch"),
+				g.Attr("data-bind:thread-search"),
 				g.Attr("data-on:input__debounce.150ms", "@get('/threads/search')"),
 			),
 		),
@@ -193,13 +193,21 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 		contents = g.Group{
 			Div(
 				ID("messages"),
-				Class("main-body"),
+				Class("main-body visibility-hidden"),
+				// Bit hacky but it somewhat works? This avoids jumpiness.
+				// But there might be better way of handling this.
+				g.Attr("data-init", `
+					el.scrollTop = el.scrollHeight;
+					setTimeout(() => {
+						el.classList.remove('visibility-hidden');
+					}, 10);
+				`),
 				g.Map(messages, func(message db.Message) g.Node {
 					switch message.Role {
 					case "user":
 						return userMessage(message.ID, message.Content)
 					case "assistant":
-						return assistantMessage(message.ID, message.Content)
+						return assistantMessage(message.ID, message.Content, false)
 					default:
 						return nil
 					}
@@ -220,7 +228,7 @@ func chatInput(props chatInputProps) g.Node {
 	return Div(
 		Class("chat-input"),
 		g.If(props.threadID != "",
-			g.Attr("data-signals:threadId", fmt.Sprintf("'%s'", props.threadID)),
+			g.Attr("data-signals:thread-id", fmt.Sprintf("'%s'", props.threadID)),
 		),
 		g.Attr("data-signals:is-streaming", "false"),
 		g.Attr("data-signals:message", "''"),
@@ -284,17 +292,24 @@ func userMessage(messageID string, content string) g.Node {
 }
 
 func RenderAssistantMessage(w io.Writer, messageID string, contentHTML string) {
-	renderNode(w, assistantMessage(messageID, contentHTML))
+	renderNode(w, assistantMessage(messageID, contentHTML, false))
+}
+
+func RenderAssistantMessageAsLast(w io.Writer, messageID string, contentHTML string) {
+	renderNode(w, assistantMessage(messageID, contentHTML, true))
 }
 
 func RenderUserMessage(w io.Writer, messageID string, contentHTML string) {
 	renderNode(w, userMessage(messageID, contentHTML))
 }
 
-func assistantMessage(messageID string, contentHTML string) g.Node {
+func assistantMessage(messageID string, contentHTML string, asLast bool) g.Node {
 	return Div(
 		ID("msg-"+messageID),
-		Class("message assistant-message"),
+		components.Classes{
+			"message assistant-message": true,
+			"last":                      asLast,
+		},
 		g.Raw(contentHTML),
 	)
 }

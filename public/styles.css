@@ -71,9 +71,12 @@
         width: 100%;
         max-width: 768px;
         margin: 0 auto;
-        scroll-behavior: smooth;
         scrollbar-width: thin;
         scrollbar-color: var(--gray-9) transparent;
+    }
+
+    .visibility-hidden {
+        visibility: hidden;
     }
 }
 
@@ -185,7 +188,6 @@
         overflow-y: auto;
         padding: var(--size-1) var(--size-2);
         overscroll-behavior: contain;
-        scroll-behavior: smooth;
         scrollbar-width: thin;
         scrollbar-color: var(--gray-9) transparent;
     }
@@ -317,6 +319,10 @@
         white-space: normal;
         margin-left: 0;
         margin-right: auto;
+
+        &.last {
+            min-height: calc(100vh - 13rem);
+        }
 
         & pre {
             background: var(--gray-11);

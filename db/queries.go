@@ -193,7 +193,7 @@ func (x *Pool) DeleteMessage(ctx context.Context, id string) error {
 	})
 }
 
-func (x *Pool) InitThread(ctx context.Context, title, sysMsg, userMsg string) (string, error) {
+func (x *Pool) InitThread(ctx context.Context, title, sysMsg string) (string, error) {
 	threadID := uuid.New().String()
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		// Insert thread
@@ -216,17 +216,6 @@ func (x *Pool) InitThread(ctx context.Context, title, sysMsg, userMsg string) (s
 		})
 		if err != nil {
 			return fmt.Errorf("create system message: %w", err)
-		}
-
-		// Insert user message
-		err = sqlitex.ExecuteTransient(conn, `
-			INSERT INTO messages (id, thread_id, role, content) 
-			VALUES (?, ?, ?, ?)
-		`, &sqlitex.ExecOptions{
-			Args: []any{uuid.New().String(), threadID, "user", userMsg},
-		})
-		if err != nil {
-			return fmt.Errorf("create user message: %w", err)
 		}
 
 		return nil
