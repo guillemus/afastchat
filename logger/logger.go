@@ -16,7 +16,7 @@ func Setup() {
 
 	if env.Env.Dev {
 		opts := &tint.Options{
-			// Level:     slog.LevelDebug,
+			// Level: slog.LevelDebug,
 			Level:     slog.LevelInfo,
 			AddSource: true,
 			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {

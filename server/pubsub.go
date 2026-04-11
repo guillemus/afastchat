@@ -7,15 +7,22 @@ import (
 )
 
 type threadEvent struct {
-	isFirst    bool
-	isFromUser bool
-	messageID  string
-	message    string
+	isFirst           bool
+	isFromUser        bool
+	finishedStreaming bool
+	messageID         string
+	message           string
 }
 
 func publishThreadMessage(bus EventBus.Bus, threadID string, evt threadEvent) {
 	topic := fmt.Sprintf("threads:%s:message", threadID)
 	bus.Publish(topic, evt)
+}
+
+func publishThreadFinishedStreaming(bus EventBus.Bus, threadID string) {
+	publishThreadMessage(bus, threadID, threadEvent{
+		finishedStreaming: true,
+	})
 }
 
 func subscribeToThread(

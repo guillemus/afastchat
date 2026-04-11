@@ -234,7 +234,8 @@ func chatInput(props chatInputProps) g.Node {
 				g.Attr("data-on:keydown", `
 					if (evt.key !== 'Enter' || evt.shiftKey) return;
 					if (!$canSubmit) return;
-					el.form.requestSubmit();
+
+					@post('/chat/send');
 				`),
 			),
 			Div(Class("chat-input-actions"),

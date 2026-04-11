@@ -255,6 +255,8 @@ func (x *Server) writeAgentStreamToThread(threadID string) {
 		}
 	}
 
+	publishThreadFinishedStreaming(x.bus, threadID)
+
 	// By now, context might be cancelled already because of of a thread stop. We should use a fresh context.
 	ctx = context.Background()
 
@@ -304,6 +306,11 @@ msgloop:
 		case evt := <-evtsC:
 			slog.Debug("received event", "evt", evt)
 
+			if evt.finishedStreaming {
+				patchSignals(sse, map[string]any{"isStreaming": false})
+				continue
+			}
+
 			if evt.isFromUser {
 				var sb strings.Builder
 				views.RenderUserMessage(&sb, evt.messageID, evt.message)
@@ -321,6 +328,8 @@ msgloop:
 			views.RenderAssistantMessage(&sb, evt.messageID, html)
 
 			if evt.isFirst {
+				patchSignals(sse, map[string]any{"isStreaming": true})
+
 				sse.PatchElements(sb.String(),
 					datastar.WithSelectorID("messages"),
 					datastar.WithModeAppend(),
