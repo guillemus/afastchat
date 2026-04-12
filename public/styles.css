@@ -27,8 +27,12 @@
 }
 
 @layer utils {
-    .hidden {
+    .invisible {
         visibility: hidden;
+    }
+
+    .hidden {
+        display: none;
     }
 }
 
@@ -549,6 +553,16 @@
         line-height: var(--font-lineheight-3);
     }
 
+    @keyframes pulse-border {
+        0%,
+        100% {
+            box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-button) 10%, transparent);
+        }
+        50% {
+            box-shadow: 0 0 0 4px color-mix(in oklch, var(--bg-button) 30%, transparent);
+        }
+    }
+
     .chat-input {
         flex-shrink: 0;
         padding: var(--size-2) var(--size-6) var(--size-5);
@@ -563,6 +577,12 @@
             border: 1px solid var(--border-color);
             border-radius: var(--radius-3);
             padding: var(--size-3);
+
+            &.is-sending {
+                border-color: color-mix(in oklch, var(--bg-button) 60%, transparent);
+                box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-button) 20%, transparent);
+                animation: pulse-border 1.5s ease-in-out infinite;
+            }
 
             textarea {
                 width: 100%;

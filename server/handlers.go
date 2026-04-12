@@ -65,7 +65,7 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID s
 		return
 	}
 
-	x.renderer.RenderThread(w, *threadPage)
+	x.renderer.RenderThread(w, *threadPage, true)
 }
 
 func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID string) {
@@ -167,7 +167,10 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	sse := datastar.NewSSE(w, r)
 	patchSignals(sse, map[string]any{"message": ""})
 
-	x.writeAgentStreamToThread(threadID, userMessage)
+	go func() {
+		defer recoverAndLog()
+		x.writeAgentStreamToThread(threadID, userMessage)
+	}()
 }
 
 func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
@@ -295,7 +298,7 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 	}
 
 	var sb strings.Builder
-	x.renderer.RenderThread(&sb, *threadPage)
+	x.renderer.RenderThread(&sb, *threadPage, false)
 
 	sse.PatchElements(sb.String())
 
@@ -311,9 +314,9 @@ msgloop:
 				patchSignals(sse, map[string]any{"isStreaming": true})
 
 				sse.ExecuteScript(`(() => {
-					const last = document.querySelector('#messages .assistant-message.last')
-					if (last) {
-						last.classList.remove('last')
+					const el = document.querySelector('#messages .assistant-message.last')
+					if (el) {
+						el.classList.remove('last')
 					}
 				})()`)
 

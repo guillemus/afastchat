@@ -39,8 +39,8 @@ func (x *Renderer) RenderIndex(w io.Writer, data IndexData) {
 	renderNode(w, x.indexPage(data))
 }
 
-func (x *Renderer) RenderThread(w io.Writer, data ThreadData) {
-	renderNode(w, x.threadPage(data))
+func (x *Renderer) RenderThread(w io.Writer, data ThreadData, hidden bool) {
+	renderNode(w, x.threadPage(data, hidden))
 }
 
 func renderNode(w io.Writer, node g.Node) {
@@ -63,10 +63,10 @@ func (x *Renderer) indexPage(data IndexData) g.Node {
 	)
 }
 
-func (x *Renderer) threadPage(data ThreadData) g.Node {
+func (x *Renderer) threadPage(data ThreadData, hidden bool) g.Node {
 	return x.page(
 		sidebar(data.Threads, data.Thread.ID),
-		threadContents(data.Messages, data.Thread.ID),
+		threadContents(data.Messages, data.Thread.ID, hidden),
 	)
 }
 
@@ -169,10 +169,10 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 }
 
 func threadContentsEmpty() g.Node {
-	return threadContents(nil, "")
+	return threadContents(nil, "", true)
 }
 
-func threadContents(messages []db.Message, threadID string) g.Node {
+func threadContents(messages []db.Message, threadID string, hidden bool) g.Node {
 	var contents g.Node
 	if len(messages) == 0 {
 		contents = g.Group{
@@ -190,17 +190,20 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 			newThreadChatInput(),
 		}
 	} else {
-		contents = messagesList(messages, threadID)
+		contents = messagesList(messages, threadID, hidden)
 	}
 
 	return Main(Class("main"), contents)
 }
 
-func messagesList(messages []db.Message, threadID string) g.Node {
+func messagesList(messages []db.Message, threadID string, hidden bool) g.Node {
 	return g.Group{
 		Div(
 			ID("messages"),
-			Class("main-body hidden"),
+			components.Classes{
+				"main-body": true,
+				"hidden":    hidden,
+			},
 			g.Map(messages, func(message db.Message) g.Node {
 				switch message.Role {
 				case "user":
@@ -231,15 +234,17 @@ func chatInput(props chatInputProps) g.Node {
 		g.Attr("data-computed:can-submit", "$message.trim() !== ''"),
 		Div(
 			Class("chat-input-box"),
+			g.Attr("data-class:is-sending", "$sendingMessage"),
 			Textarea(
 				AutoFocus(),
 				Name("message"),
 				Placeholder("Type your message here..."),
+				g.Attr("data-indicator:sending-message"),
 				g.Attr("data-bind:message"),
 				g.Attr("data-on:keydown", `
 					if (evt.key !== 'Enter' || evt.shiftKey) return;
 					if (!$canSubmit) return;
-
+					evt.preventDefault(); // prevent writing an enter character.
 					@post('/chat/send');
 				`),
 			),
@@ -255,7 +260,6 @@ func chatInput(props chatInputProps) g.Node {
 					iconArrowUp(),
 				),
 				Button(Class("chat-input-submit-btn hidden"),
-					g.Attr("data-show", "$isStreaming"),
 					g.Attr("data-class:hidden", "!$isStreaming"),
 					Type("submit"),
 					g.Attr("data-on:click", `
