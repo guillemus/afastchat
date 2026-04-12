@@ -152,8 +152,9 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 
 	return A(
 		ID("thread-"+thread.ID),
-		Href("/threads/"+thread.ID),
 		Class(className),
+		g.Attr("data-on:click", fmt.Sprintf("@get('/threads/%s')", thread.ID)),
+
 		Span(Class("thread-item-text"), g.Text(thread.Title)),
 		Button(
 			Type("button"),
