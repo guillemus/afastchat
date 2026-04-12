@@ -190,30 +190,30 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 			newThreadChatInput(),
 		}
 	} else {
-		contents = g.Group{
-			Div(
-				ID("messages"),
-				Class("main-body"),
-				g.Map(messages, func(message db.Message) g.Node {
-					switch message.Role {
-					case "user":
-						return userMessage(message.ID, message.Content)
-					case "assistant":
-						return assistantMessage(message.ID, message.Content, false)
-					default:
-						return nil
-					}
-				}),
-			),
-			Script(g.Raw(`{
-				let el = document.querySelector('#messages')
-				el.scrollTop = el.scrollHeight;
-			}`)),
-			existingThreadChatInput(threadID),
-		}
+		contents = messagesList(messages, threadID)
 	}
 
 	return Main(Class("main"), contents)
+}
+
+func messagesList(messages []db.Message, threadID string) g.Node {
+	return g.Group{
+		Div(
+			ID("messages"),
+			Class("main-body hidden"),
+			g.Map(messages, func(message db.Message) g.Node {
+				switch message.Role {
+				case "user":
+					return userMessage(message.ID, message.Content)
+				case "assistant":
+					return assistantMessage(message.ID, message.Content, false)
+				default:
+					return nil
+				}
+			}),
+		),
+		existingThreadChatInput(threadID),
+	}
 }
 
 type chatInputProps struct {
@@ -244,10 +244,9 @@ func chatInput(props chatInputProps) g.Node {
 				`),
 			),
 			Div(Class("chat-input-actions"),
-				Button(
+				Button(Class("chat-input-submit-btn"),
 					g.Attr("data-show", "!$isStreaming"),
 					Disabled(),
-					Class("chat-input-submit-btn"),
 					Type("submit"),
 					g.Attr("data-attr:disabled", "!$canSubmit || $isStreaming"),
 					g.Attr("data-on:click", `
@@ -255,9 +254,9 @@ func chatInput(props chatInputProps) g.Node {
 					`),
 					iconArrowUp(),
 				),
-				Button(
+				Button(Class("chat-input-submit-btn hidden"),
 					g.Attr("data-show", "$isStreaming"),
-					Class("chat-input-submit-btn"),
+					g.Attr("data-class:hidden", "!$isStreaming"),
 					Type("submit"),
 					g.Attr("data-on:click", `
 						@post('/chat/stop')

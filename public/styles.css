@@ -1,6 +1,6 @@
 /* css vars coming from open-props@1.7.23 */
 
-@layer reset, tokens, layout, components;
+@layer reset, tokens, layout, components, utils;
 
 @layer reset {
     *,
@@ -23,6 +23,12 @@
         --text-secondary: var(--gray-5);
         --text-muted: var(--gray-7);
         --border-color: var(--gray-10);
+    }
+}
+
+@layer utils {
+    .hidden {
+        visibility: hidden;
     }
 }
 
