@@ -193,15 +193,7 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 		contents = g.Group{
 			Div(
 				ID("messages"),
-				Class("main-body visibility-hidden"),
-				// Bit hacky but it somewhat works? This avoids jumpiness.
-				// But there might be better way of handling this.
-				g.Attr("data-init", `
-					el.scrollTop = el.scrollHeight;
-					setTimeout(() => {
-						el.classList.remove('visibility-hidden');
-					}, 10);
-				`),
+				Class("main-body"),
 				g.Map(messages, func(message db.Message) g.Node {
 					switch message.Role {
 					case "user":
@@ -213,6 +205,10 @@ func threadContents(messages []db.Message, threadID string) g.Node {
 					}
 				}),
 			),
+			Script(g.Raw(`{
+				let el = document.querySelector('#messages')
+				el.scrollTop = el.scrollHeight;
+			}`)),
 			existingThreadChatInput(threadID),
 		}
 	}
