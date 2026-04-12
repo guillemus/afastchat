@@ -7,11 +7,7 @@ import (
 )
 
 type (
-	threadEvent struct {
-		assistantStart    *evtAssistantStart
-		assistantChunk    *evtAssistantChunk
-		finishedStreaming *evtFinishedStreaming
-	}
+	threadEvent       interface{ isThreadEvent() }
 	evtAssistantStart struct {
 		userMessageID      string
 		userMessage        string
@@ -24,13 +20,17 @@ type (
 	evtFinishedStreaming struct{}
 )
 
+func (evtAssistantStart) isThreadEvent()    {}
+func (evtAssistantChunk) isThreadEvent()    {}
+func (evtFinishedStreaming) isThreadEvent() {}
+
 func publishThreadMessage(bus EventBus.Bus, threadID string, evt threadEvent) {
 	topic := fmt.Sprintf("threads:%s:message", threadID)
 	bus.Publish(topic, evt)
 }
 
 func publishThreadFinishedStreaming(bus EventBus.Bus, threadID string) {
-	publishThreadMessage(bus, threadID, threadEvent{finishedStreaming: &evtFinishedStreaming{}})
+	publishThreadMessage(bus, threadID, evtFinishedStreaming{})
 }
 
 func subscribeToThread(

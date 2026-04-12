@@ -26,15 +26,17 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	x.renderer.RenderIndex(w, views.IndexData{Threads: threads})
 }
 
-func (x *Server) getThreadPage(ctx context.Context, threadID string) (*views.ThreadData, error) {
+func (x *Server) getThreadPage(ctx context.Context, threadID string) (views.ThreadData, error) {
+	var td views.ThreadData
+
 	thread, err := x.db.GetThread(ctx, threadID)
 	if err != nil {
-		return nil, err
+		return td, err
 	}
 
 	messages, err := x.db.GetMessagesByThread(ctx, threadID)
 	if err != nil {
-		return nil, fmt.Errorf("get messages: %w", err)
+		return td, fmt.Errorf("get messages: %w", err)
 	}
 
 	for i := range messages {
@@ -45,10 +47,10 @@ func (x *Server) getThreadPage(ctx context.Context, threadID string) (*views.Thr
 
 	threads, err := x.db.ListThreads(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list threads: %w", err)
+		return td, fmt.Errorf("list threads: %w", err)
 	}
 
-	return &views.ThreadData{
+	return views.ThreadData{
 		Threads:   threads,
 		Thread:    thread,
 		Messages:  messages,
@@ -66,9 +68,9 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID s
 	}
 
 	if isDatastarRequest(r) {
-		x.renderer.RenderThread(w, *threadPage, false)
+		x.renderer.RenderThread(w, threadPage, false)
 	} else {
-		x.renderer.RenderThread(w, *threadPage, true)
+		x.renderer.RenderThread(w, threadPage, true)
 	}
 }
 
@@ -212,12 +214,10 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 		return
 	}
 
-	publishThreadMessage(x.bus, threadID, threadEvent{
-		assistantStart: &evtAssistantStart{
-			userMessageID:      dbUserMessage.ID,
-			userMessage:        userMessage,
-			assistantMessageID: assistantMsgID,
-		},
+	publishThreadMessage(x.bus, threadID, evtAssistantStart{
+		userMessageID:      dbUserMessage.ID,
+		userMessage:        userMessage,
+		assistantMessageID: assistantMsgID,
 	})
 
 	messages, err := x.db.GetMessagesByThread(ctx, threadID)
@@ -242,11 +242,9 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 
 		assistantMsg.WriteString(token)
 
-		publishThreadMessage(x.bus, threadID, threadEvent{
-			assistantChunk: &evtAssistantChunk{
-				messageID: assistantMsgID,
-				content:   assistantMsg.String(),
-			},
+		publishThreadMessage(x.bus, threadID, evtAssistantChunk{
+			messageID: assistantMsgID,
+			content:   assistantMsg.String(),
 		})
 
 		select {
@@ -302,18 +300,18 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 	}
 
 	var sb strings.Builder
-	x.renderer.RenderThread(&sb, *threadPage, false)
+	x.renderer.RenderThread(&sb, threadPage, false)
 
 	sse.PatchElements(sb.String())
 
 msgloop:
 	for {
 		select {
-		case evt := <-evtsC:
-			slog.Debug("received event", "evt", evt)
+		case event := <-evtsC:
+			slog.Debug("received event", "evt", event)
 
-			switch {
-			case evt.assistantStart != nil:
+			switch evt := event.(type) {
+			case evtAssistantStart:
 
 				patchSignals(sse, map[string]any{"isStreaming": true})
 
@@ -325,8 +323,8 @@ msgloop:
 				})()`)
 
 				var sb strings.Builder
-				views.RenderUserMessage(&sb, evt.assistantStart.userMessageID, evt.assistantStart.userMessage)
-				views.RenderAssistantMessageAsLast(&sb, evt.assistantStart.assistantMessageID, "")
+				views.RenderUserMessage(&sb, evt.userMessageID, evt.userMessage)
+				views.RenderAssistantMessageAsLast(&sb, evt.assistantMessageID, "")
 
 				sse.PatchElements(sb.String(),
 					datastar.WithSelectorID("messages"),
@@ -340,15 +338,15 @@ msgloop:
 					}
 				})()`)
 
-			case evt.assistantChunk != nil:
+			case evtAssistantChunk:
 
-				html := renderMarkdown(evt.assistantChunk.content)
+				html := renderMarkdown(evt.content)
 
 				var sb strings.Builder
-				views.RenderAssistantMessageAsLast(&sb, evt.assistantChunk.messageID, html)
+				views.RenderAssistantMessageAsLast(&sb, evt.messageID, html)
 				sse.PatchElements(sb.String())
 
-			case evt.finishedStreaming != nil:
+			case evtFinishedStreaming:
 				patchSignals(sse, map[string]any{"isStreaming": false})
 
 			}
