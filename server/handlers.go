@@ -96,7 +96,6 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 	threads, err := x.db.ListThreads(r.Context())
 	if err != nil {
 		handleBadReq(w, "list threads", err)
-
 		return
 	}
 
