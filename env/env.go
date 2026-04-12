@@ -5,16 +5,17 @@ import (
 	"os"
 	"time"
 
-	"afastchat.com/validate"
+	"github.com/guillemus/required"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DBPath       string `validate:"required"`
-	OpenAIAPIKey string `validate:"required"`
-	Port         string `validate:"required"`
-	AssetVersion string `validate:"required"`
-	Dev          bool   `validate:"required"`
+	DBPath           string
+	OpenAIAPIKey     string
+	OpenRouterAPIKey string
+	Port             string
+	AssetVersion     string
+	Dev              bool
 }
 
 var Env = parseEnv()
@@ -25,14 +26,15 @@ func parseEnv() *Config {
 	}
 
 	cfg := &Config{
-		DBPath:       getEnvOr("DB_PATH", "./tmp/app.db"),
-		OpenAIAPIKey: os.Getenv("OPENAI_API_KEY"),
-		Port:         getEnvOr("PORT", "3000"),
-		AssetVersion: fmt.Sprintf("%d", time.Now().Unix()),
-		Dev:          os.Getenv("DEV") == "true",
+		DBPath:           getEnvOr("DB_PATH", "./tmp/app.db"),
+		OpenAIAPIKey:     os.Getenv("OPENAI_API_KEY"),
+		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
+		Port:             getEnvOr("PORT", "3000"),
+		AssetVersion:     fmt.Sprintf("%d", time.Now().Unix()),
+		Dev:              os.Getenv("DEV") == "true",
 	}
 
-	if err := validate.V.Struct(cfg); err != nil {
+	if err := required.Required(cfg); err != nil {
 		panic(fmt.Sprintf("validate env vars: %v", err))
 	}
 

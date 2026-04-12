@@ -18,31 +18,34 @@ type (
 		content   string
 	}
 	evtFinishedStreaming struct{}
+	evtTitleUpdate       struct {
+		newTitle string
+	}
 )
 
 func (evtAssistantStart) isThreadEvent()    {}
 func (evtAssistantChunk) isThreadEvent()    {}
 func (evtFinishedStreaming) isThreadEvent() {}
+func (evtTitleUpdate) isThreadEvent()       {}
 
-func publishThreadMessage(bus EventBus.Bus, threadID string, evt threadEvent) {
-	topic := fmt.Sprintf("threads:%s:message", threadID)
-	bus.Publish(topic, evt)
-}
-
-func publishThreadFinishedStreaming(bus EventBus.Bus, threadID string) {
-	publishThreadMessage(bus, threadID, evtFinishedStreaming{})
+func (x *Server) publishThreadEvent(threadID string, evt threadEvent) {
+	topic := fmt.Sprintf("threads:%s", threadID)
+	x.bus.Publish(topic, evt)
 }
 
 func subscribeToThread(
 	bus EventBus.Bus, threadID string, handler func(threadEvent),
 ) (unsub func()) {
-	topic := fmt.Sprintf("threads:%s:message", threadID)
+	topic := fmt.Sprintf("threads:%s", threadID)
 	bus.Subscribe(topic, handler)
 
 	return func() {
 		bus.Unsubscribe(topic, handler)
 	}
 }
+
+// We keep a separate topic so that it's simple to communicate the stop between a request and
+// the agent streaming goroutine.
 
 func publishThreadStop(bus EventBus.Bus, threadID string) {
 	topic := fmt.Sprintf("threads:%s:stop", threadID)

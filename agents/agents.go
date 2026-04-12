@@ -97,7 +97,7 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[str
 
 func (x *Agent) GenerateTitleFromUserMessage(ctx context.Context, userMessage string) string {
 	resp, err := x.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model: openai.ChatModelGPT5Nano,
+		Model: openai.ChatModelGPT5_4Nano,
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("Generate a concise title (max 6 words) for a chat thread based on the user's first message. Return only the title, no quotes or punctuation."),
 			openai.UserMessage(userMessage),

@@ -214,7 +214,7 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 		return
 	}
 
-	publishThreadMessage(x.bus, threadID, evtAssistantStart{
+	x.publishThreadEvent(threadID, evtAssistantStart{
 		userMessageID:      dbUserMessage.ID,
 		userMessage:        userMessage,
 		assistantMessageID: assistantMsgID,
@@ -242,7 +242,7 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 
 		assistantMsg.WriteString(token)
 
-		publishThreadMessage(x.bus, threadID, evtAssistantChunk{
+		x.publishThreadEvent(threadID, evtAssistantChunk{
 			messageID: assistantMsgID,
 			content:   assistantMsg.String(),
 		})
@@ -258,7 +258,7 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 		}
 	}
 
-	publishThreadFinishedStreaming(x.bus, threadID)
+	x.publishThreadEvent(threadID, evtFinishedStreaming{})
 
 	// By now, context might be cancelled already because of of a thread stop.
 	// We should use a fresh context.
@@ -279,6 +279,8 @@ func (x *Server) updateThreadTitle(ctx context.Context, threadID string, userMes
 	if err != nil {
 		slog.Error("update thread title", "err", err)
 	}
+
+	x.publishThreadEvent(threadID, evtTitleUpdate{newTitle: title})
 }
 
 func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, threadID string) {
@@ -348,6 +350,17 @@ msgloop:
 
 			case evtFinishedStreaming:
 				patchSignals(sse, map[string]any{"isStreaming": false})
+
+			case evtTitleUpdate:
+				thread, err := x.db.GetThread(ctx, threadID)
+				if err != nil {
+					slog.Error("error getting thread", "err", err)
+					continue msgloop
+				}
+
+				var sb strings.Builder
+				views.RenderThreadItem(&sb, thread)
+				sse.PatchElements(sb.String())
 
 			}
 		case <-ctx.Done():

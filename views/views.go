@@ -56,6 +56,10 @@ func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID string) {
 	}
 }
 
+func RenderThreadItem(w io.Writer, thread db.Thread) {
+	renderNode(w, threadListItem(thread, false))
+}
+
 func (x *Renderer) indexPage(data IndexData) g.Node {
 	return x.page(
 		sidebar(data.Threads, ""),
