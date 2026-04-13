@@ -57,7 +57,3 @@ func patchSignals(sse *datastar.ServerSentEventGenerator, v any) {
 
 	sse.PatchSignals(bs)
 }
-
-func isDatastarRequest(r *http.Request) bool {
-	return r.Header.Get("Datastar-Request") == "true"
-}

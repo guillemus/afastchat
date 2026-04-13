@@ -7,9 +7,7 @@ function scrollMessages() {
 
     requestAnimationFrame(() => {
         el.scrollTop = el.scrollHeight
-        requestAnimationFrame(() => {
-            el.classList.remove('hidden')
-        })
+        el.classList.remove('hidden')
     })
 }
 

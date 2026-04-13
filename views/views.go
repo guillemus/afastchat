@@ -39,8 +39,8 @@ func (x *Renderer) RenderIndex(w io.Writer, data IndexData) {
 	renderNode(w, x.indexPage(data))
 }
 
-func (x *Renderer) RenderThread(w io.Writer, data ThreadData, hidden bool) {
-	renderNode(w, x.threadPage(data, hidden))
+func (x *Renderer) RenderThread(w io.Writer, data ThreadData) {
+	renderNode(w, x.threadPage(data))
 }
 
 func renderNode(w io.Writer, node g.Node) {
@@ -67,17 +67,18 @@ func (x *Renderer) indexPage(data IndexData) g.Node {
 	)
 }
 
-func (x *Renderer) threadPage(data ThreadData, hidden bool) g.Node {
+func (x *Renderer) threadPage(data ThreadData) g.Node {
 	return x.page(
 		sidebar(data.Threads, data.Thread.ID),
-		threadContents(data.Messages, data.Thread.ID, hidden),
+		threadContents(data.Messages, data.Thread.ID),
 	)
 }
 
 func (x *Renderer) page(body ...g.Node) g.Node {
 	return components.HTML5(components.HTML5Props{
-		Title:    "afastchat",
-		Language: "en",
+		Title:       "afastchat",
+		Description: "",
+		Language:    "en",
 		Head: []g.Node{
 			Link(Rel("preconnect"), Href("https://fonts.googleapis.com")),
 			Link(Rel("preconnect"), Href("https://fonts.gstatic.com"), g.Attr("crossorigin")),
@@ -174,10 +175,10 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 }
 
 func threadContentsEmpty() g.Node {
-	return threadContents(nil, "", true)
+	return threadContents(nil, "")
 }
 
-func threadContents(messages []db.Message, threadID string, hidden bool) g.Node {
+func threadContents(messages []db.Message, threadID string) g.Node {
 	var contents g.Node
 	if len(messages) == 0 {
 		contents = g.Group{
@@ -195,19 +196,18 @@ func threadContents(messages []db.Message, threadID string, hidden bool) g.Node 
 			newThreadChatInput(),
 		}
 	} else {
-		contents = messagesList(messages, threadID, hidden)
+		contents = messagesList(messages, threadID)
 	}
 
 	return Main(Class("main"), contents)
 }
 
-func messagesList(messages []db.Message, threadID string, hidden bool) g.Node {
+func messagesList(messages []db.Message, threadID string) g.Node {
 	return g.Group{
 		Div(
 			ID("messages"),
 			components.Classes{
 				"main-body": true,
-				"hidden":    hidden,
 			},
 			g.Map(messages, func(message db.Message) g.Node {
 				switch message.Role {

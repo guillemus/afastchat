@@ -60,14 +60,13 @@ func (x *Server) getThreadPage(ctx context.Context, threadID string) (views.Thre
 
 func (x *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID string) {
 	ctx := r.Context()
-
 	threadPage, err := x.getThreadPage(ctx, threadID)
 	if err != nil {
 		handleBadReq(w, "get thread", err)
 		return
 	}
 
-	x.renderer.RenderThread(w, threadPage, true)
+	x.renderer.RenderThread(w, threadPage)
 }
 
 func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID string) {
@@ -298,7 +297,7 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 	}
 
 	var sb strings.Builder
-	x.renderer.RenderThread(&sb, threadPage, false)
+	x.renderer.RenderThread(&sb, threadPage)
 
 	sse.PatchElements(sb.String())
 
