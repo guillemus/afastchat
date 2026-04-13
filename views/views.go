@@ -89,7 +89,7 @@ func (x *Renderer) page(body ...g.Node) g.Node {
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
 			Script(
 				Type("module"),
-				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"),
+				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"),
 			),
 			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 		},
@@ -157,7 +157,7 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 	return A(
 		ID("thread-"+thread.ID),
 		Class(className),
-		g.Attr("data-on:click", fmt.Sprintf("@get('/threads/%s')", thread.ID)),
+		Href(fmt.Sprintf("/threads/%s", thread.ID)),
 
 		Span(Class("thread-item-text"), g.Text(thread.Title)),
 		Button(

@@ -67,11 +67,7 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID s
 		return
 	}
 
-	if isDatastarRequest(r) {
-		x.renderer.RenderThread(w, threadPage, false)
-	} else {
-		x.renderer.RenderThread(w, threadPage, true)
-	}
+	x.renderer.RenderThread(w, threadPage, true)
 }
 
 func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID string) {
