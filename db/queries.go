@@ -129,6 +129,7 @@ func (x *Pool) SetThreadStreaming(ctx context.Context, id string, isStreaming bo
 
 func (x *Pool) CreateMessage(ctx context.Context, threadID, role, content string) (Message, error) {
 	var message Message
+	compressedContent := compressMessageContent(content)
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		id := uuid.New().String()
 		err := sqlitex.Execute(conn, `
@@ -136,9 +137,13 @@ func (x *Pool) CreateMessage(ctx context.Context, threadID, role, content string
 		VALUES (?, ?, ?, ?) 
 		RETURNING id, thread_id, role, content, created_at
 	`, &sqlitex.ExecOptions{
-			Args: []any{id, threadID, role, content},
+			Args: []any{id, threadID, role, compressedContent},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
-				message = scanMessage(stmt)
+				scannedMessage, err := scanMessage(stmt)
+				if err != nil {
+					return fmt.Errorf("scan message: %w", err)
+				}
+				message = scannedMessage
 				return nil
 			},
 		})
@@ -162,7 +167,11 @@ func (x *Pool) GetMessagesByThread(ctx context.Context, threadID string) ([]Mess
 		`, &sqlitex.ExecOptions{
 			Args: []any{threadID},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
-				messages = append(messages, scanMessage(stmt))
+				message, err := scanMessage(stmt)
+				if err != nil {
+					return fmt.Errorf("scan message: %w", err)
+				}
+				messages = append(messages, message)
 				return nil
 			},
 		})
@@ -171,13 +180,14 @@ func (x *Pool) GetMessagesByThread(ctx context.Context, threadID string) ([]Mess
 }
 
 func (x *Pool) UpdateMessageContent(ctx context.Context, id, content string) error {
+	compressedContent := compressMessageContent(content)
 	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.ExecuteTransient(conn, `
 			UPDATE messages 
 			SET content = ? 
 			WHERE id = ?
 		`, &sqlitex.ExecOptions{
-			Args: []any{content, id},
+			Args: []any{compressedContent, id},
 		})
 	})
 }
@@ -195,6 +205,7 @@ func (x *Pool) DeleteMessage(ctx context.Context, id string) error {
 
 func (x *Pool) InitThread(ctx context.Context, title, sysMsg string) (string, error) {
 	threadID := uuid.New().String()
+	compressedSysMsg := compressMessageContent(sysMsg)
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		// Insert thread
 		err := sqlitex.ExecuteTransient(conn, `
@@ -212,7 +223,7 @@ func (x *Pool) InitThread(ctx context.Context, title, sysMsg string) (string, er
 			INSERT INTO messages (id, thread_id, role, content) 
 			VALUES (?, ?, ?, ?)
 		`, &sqlitex.ExecOptions{
-			Args: []any{uuid.New().String(), threadID, "system", sysMsg},
+			Args: []any{uuid.New().String(), threadID, "system", compressedSysMsg},
 		})
 		if err != nil {
 			return fmt.Errorf("create system message: %w", err)

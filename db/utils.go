@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -31,14 +32,19 @@ func scanThread(stmt *sqlite.Stmt) Thread {
 	}
 }
 
-func scanMessage(stmt *sqlite.Stmt) Message {
+func scanMessage(stmt *sqlite.Stmt) (Message, error) {
+	content, err := scanMessageContent(stmt)
+	if err != nil {
+		return Message{}, fmt.Errorf("scan content: %w", err)
+	}
+
 	return Message{
 		ID:        stmt.GetText("id"),
 		ThreadID:  stmt.GetText("thread_id"),
 		Role:      stmt.GetText("role"),
-		Content:   stmt.GetText("content"),
+		Content:   content,
 		CreatedAt: parseTime(stmt.GetText("created_at")),
-	}
+	}, nil
 }
 
 func nullableTime(isNull bool, val string) *time.Time {

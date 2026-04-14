@@ -2,12 +2,16 @@ package db
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
+
+//go:embed schema.sql
+var schema string
 
 var ErrNotFound = errors.New("not found")
 
