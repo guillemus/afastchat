@@ -376,7 +376,6 @@ msgloop:
 				var sb strings.Builder
 				views.RenderThreadItem(&sb, thread)
 				sse.PatchElements(sb.String())
-
 			}
 		case sidebarEvt := <-sidebarEvtsC:
 			switch sidebarEvt.(type) {

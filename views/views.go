@@ -80,11 +80,11 @@ func (x *Renderer) page(body ...Node) Node {
 			),
 			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
+			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 			Script(
 				Type("module"),
 				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"),
 			),
-			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 		},
 		Body: []Node{
 			DebugSignals(),
@@ -214,15 +214,28 @@ func threadContents(messages []db.Message, threadID string, doScrollSidebar bool
 		contents = Group{
 			Div(
 				ID("messages"),
+
 				components.Classes{
 					"main-body": true,
 					"invisible": doScrollSidebar,
 				},
-				Class("main-body invisible"),
 				If(doScrollSidebar, Data("init", `
 					el.scrollTop = el.scrollHeight;
 					el.classList.remove('invisible');
 				`)),
+
+				Style(`position: relative`),
+				Data("signals:messages-scroll-top", "0"),
+				Data("on:scroll__debounce.10ms", `
+					$messagesScrollTop = el.scrollTop
+				`),
+
+				Div(
+					Data("show", "$"),
+					Style(`position: absolute; bottom: 0; left: 0;`),
+
+					Text("scroll to bottom button"),
+				),
 
 				Map(messages, func(message db.Message) Node {
 					switch message.Role {
