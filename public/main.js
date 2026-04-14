@@ -1,10 +1,13 @@
 /**
  * @param {string} key
  * @param {string} value
- * @param {number} ms
  */
-function setSessionVal(key, value, ms) {
-    sessionStorage.setItem(key, JSON.stringify({ value, expiresAt: Date.now() + ms }))
+function setSessionVal(key, value) {
+    try {
+        sessionStorage.setItem(key, JSON.stringify({ value }))
+    } catch (err) {
+        console.error(err)
+    }
 }
 
 window.setSessionVal = setSessionVal
@@ -18,14 +21,13 @@ function getSessionVal(key) {
 
     if (!raw) return null
 
-    const item = JSON.parse(raw)
-
-    if (item.expiresAt <= Date.now()) {
-        sessionStorage.removeItem(key)
+    try {
+        const item = JSON.parse(raw)
+        return item.value
+    } catch (err) {
+        console.error(err)
         return null
     }
-
-    return item.value
 }
 
 window.getSessionVal = getSessionVal

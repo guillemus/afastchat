@@ -139,7 +139,7 @@ func sidebar(threads []db.Thread, activeThreadID string, doScrollSidebar bool) N
 
 			Data("on:scroll__debounce.10ms", `
 				let val = String(Math.round(el.scrollTop));
-				setSessionVal('thread_list_scroll', val, 7 * 60 * 1000);
+				setSessionVal('thread_list_scroll', val);
 			`),
 
 			Div(
