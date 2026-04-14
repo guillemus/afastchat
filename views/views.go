@@ -213,40 +213,55 @@ func threadContents(messages []db.Message, threadID string, doScrollSidebar bool
 	} else {
 		contents = Group{
 			Div(
-				ID("messages"),
-
-				components.Classes{
-					"main-body": true,
-					"invisible": doScrollSidebar,
-				},
-				If(doScrollSidebar, Data("init", `
-					el.scrollTop = el.scrollHeight;
-					el.classList.remove('invisible');
-				`)),
-
-				Style(`position: relative`),
-				Data("signals:messages-scroll-top", "0"),
-				Data("on:scroll__debounce.10ms", `
-					$messagesScrollTop = el.scrollTop
+				Class("thread-shell"),
+				Data("signals:show-jump-to-bottom", "false"),
+				Data("on:resize__window__debounce.50ms", `
+					if (!$messages) return;
+					const overflow = $messages.scrollHeight - $messages.clientHeight;
+					const distanceFromBottom = overflow - $messages.scrollTop;
+					$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 				`),
-
 				Div(
-					Data("show", "$"),
-					Style(`position: absolute; bottom: 0; left: 0;`),
-
-					Text("scroll to bottom button"),
+					ID("messages"),
+					Data("ref:messages", ""),
+					components.Classes{
+						"main-body": true,
+						"invisible": doScrollSidebar,
+					},
+					Data("on:scroll__debounce.10ms", `
+						const overflow = el.scrollHeight - el.clientHeight;
+						const distanceFromBottom = overflow - el.scrollTop;
+						$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+					`),
+					If(doScrollSidebar, Data("init", `
+						el.scrollTop = el.scrollHeight;
+						el.classList.remove('invisible');
+						const overflow = el.scrollHeight - el.clientHeight;
+						const distanceFromBottom = overflow - el.scrollTop;
+						$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+					`)),
+					Map(messages, func(message db.Message) Node {
+						switch message.Role {
+						case "user":
+							return userMessage(message.ID, message.Content)
+						case "assistant":
+							return assistantMessage(message.ID, message.Content, false)
+						default:
+							return nil
+						}
+					}),
 				),
-
-				Map(messages, func(message db.Message) Node {
-					switch message.Role {
-					case "user":
-						return userMessage(message.ID, message.Content)
-					case "assistant":
-						return assistantMessage(message.ID, message.Content, false)
-					default:
-						return nil
-					}
-				}),
+				Button(
+					Type("button"),
+					Style("display: none"),
+					Class("jump-to-bottom-btn"),
+					Data("show", "$showJumpToBottom"),
+					Data("on:click", `
+						$messages.scrollTo({ top: $messages.scrollHeight, behavior: 'smooth' });
+						$showJumpToBottom = false;
+					`),
+					iconArrowDown(),
+				),
 			),
 			existingThreadChatInput(threadID),
 		}
