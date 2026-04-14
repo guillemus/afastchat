@@ -63,7 +63,7 @@ func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID string) {
 }
 
 func RenderThreadItem(w io.Writer, thread db.Thread) {
-	renderNode(w, threadListItem(thread, false))
+	renderNode(w, threadListItem(thread, true))
 }
 
 func (x *Renderer) page(body ...Node) Node {
@@ -173,6 +173,9 @@ func threadListItem(thread db.Thread, isActive bool) Node {
 		Href(fmt.Sprintf("/threads/%s", thread.ID)),
 
 		Span(Class("thread-item-text"), Text(thread.Title)),
+		If(thread.IsStreaming,
+			Span(Class("thread-item-spinner"), iconSpinner()),
+		),
 		Button(
 			Type("button"),
 			Class("archive-btn"),

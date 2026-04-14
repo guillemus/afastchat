@@ -5,6 +5,7 @@
 function setSessionVal(key, value) {
     try {
         sessionStorage.setItem(key, JSON.stringify({ value }))
+        console.debug('set sessionStorage', key, value)
     } catch (err) {
         console.error(err)
     }
@@ -23,6 +24,7 @@ function getSessionVal(key) {
 
     try {
         const item = JSON.parse(raw)
+        console.debug('get sessionStorage', key, item.value)
         return item.value
     } catch (err) {
         console.error(err)

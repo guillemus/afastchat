@@ -43,6 +43,26 @@ func iconArchive() g.Node {
 	)
 }
 
+func iconSpinner() g.Node {
+	return g.El("svg",
+		g.Attr("xmlns", "http://www.w3.org/2000/svg"),
+		g.Attr("viewBox", "0 0 24 24"),
+		g.Attr("fill", "none"),
+		g.Attr("stroke", "currentColor"),
+		g.Attr("stroke-width", "2.5"),
+		g.El("circle",
+			g.Attr("cx", "12"),
+			g.Attr("cy", "12"),
+			g.Attr("r", "9"),
+			g.Attr("stroke-opacity", "0.25"),
+		),
+		g.El("path",
+			g.Attr("d", "M12 3a9 9 0 0 1 9 9"),
+			g.Attr("stroke-linecap", "round"),
+		),
+	)
+}
+
 func iconArrowUp() g.Node {
 	return g.El("svg",
 		g.Attr("xmlns", "http://www.w3.org/2000/svg"),

@@ -250,6 +250,28 @@
         flex: 1;
     }
 
+    @keyframes thread-item-spinner-rotate {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .thread-item-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        color: var(--bg-button);
+
+        & svg {
+            width: 14px;
+            height: 14px;
+            animation: thread-item-spinner-rotate 0.8s linear infinite;
+        }
+    }
+
     .archive-btn {
         display: flex;
         opacity: 0;
