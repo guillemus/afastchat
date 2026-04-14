@@ -185,7 +185,7 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 	unsub := subscribeToStops(x.bus, threadID, cancel)
 	defer unsub()
 
-	// Publish a sidebar update after the thread stops streaming
+	// Publish a sidebar update after the thread stops streaming.
 	defer x.publishSidebarEvent(evtThreadUpdate{})
 
 	// Set streaming state
