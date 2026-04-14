@@ -1,14 +1,31 @@
-// scrollMessages makes the thread messages appear scrolled to the bottom, which is normally the
-// place that you are mostly interested with when starting to read a thread. The
-// requestAnimationFrame does avoid the manual scrollTop glitchiness.
-function scrollMessages() {
-    const el = document.querySelector('#messages')
-    if (!el) return
-
-    requestAnimationFrame(() => {
-        el.scrollTop = el.scrollHeight
-        el.classList.remove('hidden')
-    })
+/**
+ * @param {string} key
+ * @param {string} value
+ * @param {number} ms
+ */
+function setSessionVal(key, value, ms) {
+    sessionStorage.setItem(key, JSON.stringify({ value, expiresAt: Date.now() + ms }))
 }
 
-window.addEventListener('pageshow', scrollMessages)
+window.setSessionVal = setSessionVal
+
+/**
+ * @param {string} key
+ * @returns {string | null}
+ */
+function getSessionVal(key) {
+    const raw = sessionStorage.getItem(key)
+
+    if (!raw) return null
+
+    const item = JSON.parse(raw)
+
+    if (item.expiresAt <= Date.now()) {
+        sessionStorage.removeItem(key)
+        return null
+    }
+
+    return item.value
+}
+
+window.getSessionVal = getSessionVal

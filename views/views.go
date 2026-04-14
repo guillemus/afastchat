@@ -9,7 +9,7 @@ import (
 	"afastchat.com/db"
 	"afastchat.com/env"
 
-	g "maragu.dev/gomponents"
+	. "maragu.dev/gomponents"
 	"maragu.dev/gomponents/components"
 	. "maragu.dev/gomponents/html"
 )
@@ -35,15 +35,21 @@ type ThreadData struct {
 	Streaming bool
 }
 
-func (x *Renderer) RenderIndex(w io.Writer, data IndexData) {
-	renderNode(w, x.indexPage(data))
+func (x *Renderer) RenderIndex(w io.Writer, data IndexData, doScrollSidebar bool) {
+	renderNode(w, x.page(
+		sidebar(data.Threads, "", doScrollSidebar),
+		threadContentsEmpty(),
+	))
 }
 
-func (x *Renderer) RenderThread(w io.Writer, data ThreadData) {
-	renderNode(w, x.threadPage(data))
+func (x *Renderer) RenderThread(w io.Writer, data ThreadData, doScrollSidebar bool) {
+	renderNode(w, x.page(
+		sidebar(data.Threads, data.Thread.ID, doScrollSidebar),
+		threadContents(data.Messages, data.Thread.ID, doScrollSidebar),
+	))
 }
 
-func renderNode(w io.Writer, node g.Node) {
+func renderNode(w io.Writer, node Node) {
 	err := node.Render(w)
 	if err != nil {
 		slog.Error("view render error", "err", err)
@@ -60,28 +66,14 @@ func RenderThreadItem(w io.Writer, thread db.Thread) {
 	renderNode(w, threadListItem(thread, false))
 }
 
-func (x *Renderer) indexPage(data IndexData) g.Node {
-	return x.page(
-		sidebar(data.Threads, ""),
-		threadContentsEmpty(),
-	)
-}
-
-func (x *Renderer) threadPage(data ThreadData) g.Node {
-	return x.page(
-		sidebar(data.Threads, data.Thread.ID),
-		threadContents(data.Messages, data.Thread.ID),
-	)
-}
-
-func (x *Renderer) page(body ...g.Node) g.Node {
+func (x *Renderer) page(body ...Node) Node {
 	return components.HTML5(components.HTML5Props{
 		Title:       "afastchat",
 		Description: "",
 		Language:    "en",
-		Head: []g.Node{
+		Head: []Node{
 			Link(Rel("preconnect"), Href("https://fonts.googleapis.com")),
-			Link(Rel("preconnect"), Href("https://fonts.gstatic.com"), g.Attr("crossorigin")),
+			Link(Rel("preconnect"), Href("https://fonts.gstatic.com"), Attr("crossorigin")),
 			Link(
 				Rel("stylesheet"),
 				Href("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap"),
@@ -94,30 +86,30 @@ func (x *Renderer) page(body ...g.Node) g.Node {
 			),
 			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 		},
-		Body: []g.Node{
+		Body: []Node{
 			DebugSignals(),
-			Div(Class("app"), g.Group(body)),
+			Div(Class("app"), Group(body)),
 		},
 	})
 }
 
-func sidebar(threads []db.Thread, activeThreadID string) g.Node {
+func sidebar(threads []db.Thread, activeThreadID string, doScrollSidebar bool) Node {
 	return Aside(
 		Class("sidebar"),
-		g.If(activeThreadID != "",
-			g.Attr("data-init", fmt.Sprintf("@get('/threads/%s/events')", activeThreadID)),
+		If(activeThreadID != "",
+			Data("init", fmt.Sprintf("@get('/threads/%s/events')", activeThreadID)),
 		),
 
 		Div(Class("sidebar-header"),
 			Span(
 				Class("logo"),
-				g.Text("afastchat"),
-				Span(Class("logo-accent"), g.Text(".com")),
+				Text("afastchat"),
+				Span(Class("logo-accent"), Text(".com")),
 			),
 		),
 		A(Href("/"), Class("new-chat-btn"),
 			iconPlus(),
-			g.Text("New Chat"),
+			Text("New Chat"),
 		),
 		Div(Class("search-box"),
 			iconSearch(),
@@ -125,31 +117,51 @@ func sidebar(threads []db.Thread, activeThreadID string) g.Node {
 				Type("text"),
 				Name("thread-search"),
 				Placeholder("Search threads..."),
-				g.Attr("data-bind:thread-search"),
-				g.Attr("data-on:input__debounce.150ms", "@get('/threads/search')"),
+				Data("bind:thread-search", ""),
+				Data("on:input__debounce.150ms", "@get('/threads/search')"),
 			),
 		),
-		Div(Class("thread-list"),
+		Div(
+			components.Classes{
+				"thread-list": true,
+				"invisible":   doScrollSidebar,
+			},
+			If(doScrollSidebar, Group{
+				Data("init", `
+					const value = getSessionVal('thread_list_scroll');
+					if (value) {
+						el.scrollTop = Number.parseInt(value, 10) || 0;
+					}
+
+					el.classList.remove('invisible');
+				`),
+			}),
+
+			Data("on:scroll__debounce.10ms", `
+				let val = String(Math.round(el.scrollTop));
+				setSessionVal('thread_list_scroll', val, 7 * 60 * 1000);
+			`),
+
 			Div(
 				ID("thread-section-recent"),
 				Class("thread-section-label"),
-				g.Text("Recent"),
+				Text("Recent"),
 			),
 			Div(ID("thread-items"),
-				g.Map(threads, func(thread db.Thread) g.Node {
+				Map(threads, func(thread db.Thread) Node {
 					return threadListItem(thread, thread.ID == activeThreadID)
 				}),
 			),
 		),
 		Div(
 			Class("sidebar-footer"),
-			Div(Class("avatar"), g.Text("G")),
-			Span(Class("sidebar-footer-name"), g.Text("Guillem")),
+			Div(Class("avatar"), Text("G")),
+			Span(Class("sidebar-footer-name"), Text("Guillem")),
 		),
 	)
 }
 
-func threadListItem(thread db.Thread, isActive bool) g.Node {
+func threadListItem(thread db.Thread, isActive bool) Node {
 	className := "thread-item"
 	if isActive {
 		className += " active"
@@ -160,11 +172,11 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 		Class(className),
 		Href(fmt.Sprintf("/threads/%s", thread.ID)),
 
-		Span(Class("thread-item-text"), g.Text(thread.Title)),
+		Span(Class("thread-item-text"), Text(thread.Title)),
 		Button(
 			Type("button"),
 			Class("archive-btn"),
-			g.Attr("data-on:click", fmt.Sprintf(`
+			Data("on:click", fmt.Sprintf(`
 				evt.preventDefault();
 				evt.stopPropagation();
 				@post('/threads/%s/archive');
@@ -174,79 +186,82 @@ func threadListItem(thread db.Thread, isActive bool) g.Node {
 	)
 }
 
-func threadContentsEmpty() g.Node {
-	return threadContents(nil, "")
+func threadContentsEmpty() Node {
+	return threadContents(nil, "", false)
 }
 
-func threadContents(messages []db.Message, threadID string) g.Node {
-	var contents g.Node
+func threadContents(messages []db.Message, threadID string, doScrollSidebar bool) Node {
+	var contents Node
 	if len(messages) == 0 {
-		contents = g.Group{
+		contents = Group{
 			Div(
 				ID("messages"),
 				Class("main-body empty-thread"),
 				Div(
 					Class("empty-state"),
-					H1(Class("empty-state-title"), g.Text("How can I help?")),
+					H1(Class("empty-state-title"), Text("How can I help?")),
 					P(Class("empty-state-subtitle"),
-						g.Text("Start a new conversation with afastchat."),
+						Text("Start a new conversation with afastchat."),
 					),
 				),
 			),
 			newThreadChatInput(),
 		}
 	} else {
-		contents = messagesList(messages, threadID)
+		contents = Group{
+			Div(
+				ID("messages"),
+				components.Classes{
+					"main-body": true,
+					"invisible": doScrollSidebar,
+				},
+				Class("main-body invisible"),
+				If(doScrollSidebar, Data("init", `
+					el.scrollTop = el.scrollHeight;
+					el.classList.remove('invisible');
+				`)),
+
+				Map(messages, func(message db.Message) Node {
+					switch message.Role {
+					case "user":
+						return userMessage(message.ID, message.Content)
+					case "assistant":
+						return assistantMessage(message.ID, message.Content, false)
+					default:
+						return nil
+					}
+				}),
+			),
+			existingThreadChatInput(threadID),
+		}
 	}
 
 	return Main(Class("main"), contents)
-}
-
-func messagesList(messages []db.Message, threadID string) g.Node {
-	return g.Group{
-		Div(
-			ID("messages"),
-			components.Classes{
-				"main-body": true,
-			},
-			g.Map(messages, func(message db.Message) g.Node {
-				switch message.Role {
-				case "user":
-					return userMessage(message.ID, message.Content)
-				case "assistant":
-					return assistantMessage(message.ID, message.Content, false)
-				default:
-					return nil
-				}
-			}),
-		),
-		existingThreadChatInput(threadID),
-	}
 }
 
 type chatInputProps struct {
 	threadID string
 }
 
-func chatInput(props chatInputProps) g.Node {
+func chatInput(props chatInputProps) Node {
 	return Div(
 		Class("chat-input"),
-		g.If(props.threadID != "",
-			g.Attr("data-signals:thread-id", fmt.Sprintf("'%s'", props.threadID)),
+		If(props.threadID != "",
+			Data("signals:thread-id", fmt.Sprintf("'%s'", props.threadID)),
 		),
-		g.Attr("data-signals:is-streaming", "false"),
-		g.Attr("data-signals:message", "''"),
-		g.Attr("data-computed:can-submit", "$message.trim() !== ''"),
+		Data("signals:is-streaming", "false"),
+		Data("signals:message", "''"),
+		Data("computed:can-submit", "$message.trim() !== ''"),
 		Div(
 			Class("chat-input-box"),
-			g.Attr("data-class:is-sending", "$sendingMessage"),
+			Data("class:is-sending", "$sendingMessage"),
 			Textarea(
 				AutoFocus(),
 				Name("message"),
 				Placeholder("Type your message here..."),
-				g.Attr("data-indicator:sending-message"),
-				g.Attr("data-bind:message"),
-				g.Attr("data-on:keydown", `
+				Data("indicator:sending-message", ""),
+				Data("bind:message", ""),
+				Data("on:keydown", `
 					if (evt.key !== 'Enter' || evt.shiftKey) return;
 					if (!$canSubmit) return;
 					evt.preventDefault(); // prevent writing an enter character.
@@ -255,19 +270,19 @@ func chatInput(props chatInputProps) g.Node {
 			),
 			Div(Class("chat-input-actions"),
 				Button(Class("chat-input-submit-btn"),
-					g.Attr("data-show", "!$isStreaming"),
+					Data("show", "!$isStreaming"),
 					Disabled(),
 					Type("submit"),
-					g.Attr("data-attr:disabled", "!$canSubmit || $isStreaming"),
-					g.Attr("data-on:click", `
+					Data("attr:disabled", "!$canSubmit || $isStreaming"),
+					Data("on:click", `
 						@post('/chat/send')
 					`),
 					iconArrowUp(),
 				),
 				Button(Class("chat-input-submit-btn hidden"),
-					g.Attr("data-class:hidden", "!$isStreaming"),
+					Data("class:hidden", "!$isStreaming"),
 					Type("submit"),
-					g.Attr("data-on:click", `
+					Data("on:click", `
 						@post('/chat/stop')
 					`),
 					iconSquare(),
@@ -277,21 +292,21 @@ func chatInput(props chatInputProps) g.Node {
 	)
 }
 
-func existingThreadChatInput(threadID string) g.Node {
+func existingThreadChatInput(threadID string) Node {
 	return chatInput(chatInputProps{
 		threadID: threadID,
 	})
 }
 
-func newThreadChatInput() g.Node {
+func newThreadChatInput() Node {
 	return chatInput(chatInputProps{""})
 }
 
-func userMessage(messageID string, content string) g.Node {
+func userMessage(messageID string, content string) Node {
 	return Div(
 		ID("msg-"+messageID),
 		Class("message user-message"),
-		g.Text(content),
+		Text(content),
 	)
 }
 
@@ -307,18 +322,18 @@ func RenderUserMessage(w io.Writer, messageID string, contentHTML string) {
 	renderNode(w, userMessage(messageID, contentHTML))
 }
 
-func assistantMessage(messageID string, contentHTML string, asLast bool) g.Node {
+func assistantMessage(messageID string, contentHTML string, asLast bool) Node {
 	return Div(
 		ID("msg-"+messageID),
 		components.Classes{
 			"message assistant-message": true,
 			"last":                      asLast,
 		},
-		g.Raw(contentHTML),
+		Raw(contentHTML),
 	)
 }
 
-func DebugSignals() g.Node {
+func DebugSignals() Node {
 	if !env.Env.Dev {
 		return nil
 	}
@@ -332,14 +347,14 @@ func DebugSignals() g.Node {
 			width: 320px;
 			overflow: hidden;
 		`),
-		Small(g.Text("signals:")),
+		Small(Text("signals:")),
 		Pre(
 			Style(`
 				margin: 0;
 				white-space: pre;
 				overflow: hidden;
 			`),
-			g.Attr("data-json-signals"),
+			Data("json-signals", ""),
 		),
 	)
 }

@@ -23,7 +23,7 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderIndex(w, views.IndexData{Threads: threads})
+	x.renderer.RenderIndex(w, views.IndexData{Threads: threads}, true)
 }
 
 func (x *Server) getThreadPage(ctx context.Context, threadID string) (views.ThreadData, error) {
@@ -66,7 +66,7 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID s
 		return
 	}
 
-	x.renderer.RenderThread(w, threadPage)
+	x.renderer.RenderThread(w, threadPage, true)
 }
 
 func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID string) {
@@ -290,16 +290,17 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 	defer unsub()
 
 	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli()))
-	threadPage, err := x.getThreadPage(ctx, threadID)
-	if err != nil {
-		handleBadReq(w, "get thread", err)
-		return
+	{
+		threadPage, err := x.getThreadPage(ctx, threadID)
+		if err != nil {
+			handleBadReq(w, "get thread", err)
+			return
+		}
+
+		var sb strings.Builder
+		x.renderer.RenderThread(&sb, threadPage, false)
+		sse.PatchElements(sb.String())
 	}
-
-	var sb strings.Builder
-	x.renderer.RenderThread(&sb, threadPage)
-
-	sse.PatchElements(sb.String())
 
 msgloop:
 	for {
