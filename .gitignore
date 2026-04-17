@@ -11,3 +11,4 @@ bin/
 coverage.out
 *.test
 *.out
+scripts/

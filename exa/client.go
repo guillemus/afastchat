@@ -16,7 +16,7 @@ type Client struct {
 	apiKey string
 }
 
-func New(apiKey string) *Client {
+func NewClient(apiKey string) *Client {
 	rc := resty.New()
 	rc.SetBaseURL(DefaultBaseURL)
 	rc.SetHeader("x-api-key", apiKey)

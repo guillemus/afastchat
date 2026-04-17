@@ -230,13 +230,18 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 
 	var assistantMsg strings.Builder
 
-	for token, err := range agent.Stream(ctx, messages) {
+	for tokenEvt, err := range agent.Stream(ctx, messages) {
 		if err != nil {
 			logger.Error("stream error", "err", err)
 			break
 		}
 
-		assistantMsg.WriteString(token)
+		switch evt := tokenEvt.(type) {
+		case agents.AssistantDelta:
+			assistantMsg.WriteString(evt.Delta)
+		case agents.ReasoningDelta:
+		case agents.Toolcall:
+		}
 
 		x.publishThreadEvent(threadID, evtAssistantChunk{
 			messageID: assistantMsgID,

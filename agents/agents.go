@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"iter"
@@ -53,6 +54,7 @@ func MapToResponseInput(dbMessages []db.Message) responses.ResponseInputParam {
 		if it.Content == "" {
 			continue
 		}
+
 		switch it.Role {
 		case "user":
 			input = append(input, responses.ResponseInputItemParamOfMessage(
@@ -75,19 +77,43 @@ func MapToResponseInput(dbMessages []db.Message) responses.ResponseInputParam {
 	return input
 }
 
-func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[string, error] {
-	return func(yield func(string, error) bool) {
+type (
+	StreamEvent interface {
+		isStreamEvent()
+	}
+	AssistantDelta struct {
+		Delta string
+	}
+	ReasoningDelta struct {
+		Delta string
+	}
+	Toolcall struct {
+		Name string
+		Args string
+	}
+)
+
+func (AssistantDelta) isStreamEvent() {}
+func (ReasoningDelta) isStreamEvent() {}
+func (Toolcall) isStreamEvent()       {}
+
+func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[StreamEvent, error] {
+	return func(yield func(StreamEvent, error) bool) {
 		input := MapToResponseInput(messages)
 
-		for range 3 {
-			state, err := x.streamResponseRound(ctx, input, yield)
+		var currResponseID string
+
+		for range 10 {
+			state, responseID, err := x.streamResponseRound(ctx, input, currResponseID, yield)
 			if err != nil {
 				if errors.Is(err, errStopStreaming) {
 					return
 				}
-				yield("", err)
+				yield(AssistantDelta{""}, err)
 				return
 			}
+
+			currResponseID = responseID
 
 			if len(state.Order) == 0 {
 				return
@@ -97,7 +123,7 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[str
 				call := state.FunctionCalls[itemID]
 				input = append(input, responses.ResponseInputItemParamOfFunctionCall(
 					call.Args.String(),
-					call.ID,
+					call.CallID,
 					call.Name,
 				))
 
@@ -107,20 +133,21 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[str
 				}
 
 				input = append(input, responses.ResponseInputItemParamOfFunctionCallOutput(
-					call.ID,
+					call.CallID,
 					result,
 				))
 			}
 		}
 
-		yield("", fmt.Errorf("too many tool rounds"))
+		yield(AssistantDelta{""}, fmt.Errorf("too many tool rounds"))
 	}
 }
 
 type functionCallBuf struct {
-	ID   string
-	Name string
-	Args strings.Builder
+	ItemID string
+	CallID string
+	Name   string
+	Args   strings.Builder
 }
 
 type responseRoundState struct {
@@ -131,19 +158,22 @@ type responseRoundState struct {
 func (x *Agent) streamResponseRound(
 	ctx context.Context,
 	input responses.ResponseInputParam,
-	yield func(string, error) bool,
-) (*responseRoundState, error) {
+	previousResponseID string,
+	yield func(StreamEvent, error) bool,
+) (*responseRoundState, string, error) {
 	stream := x.client.Responses.NewStreaming(ctx, responses.ResponseNewParams{
-		Model: x.model,
+		PreviousResponseID: openai.String(previousResponseID),
+		Model:              x.model,
 		Input: responses.ResponseNewParamsInputUnion{
 			OfInputItemList: input,
 		},
+		Instructions: openai.String("You are a helpful assistant. Before each tool call, briefly tell the user what you are about to do in one short sentence."),
 		Tools: []responses.ToolUnionParam{
 			websearchToolDef,
 		},
 		ParallelToolCalls: param.NewOpt(true),
 		Reasoning: shared.ReasoningParam{
-			Effort:  responses.ReasoningEffortMedium,
+			Effort:  responses.ReasoningEffortXhigh,
 			Summary: responses.ReasoningSummaryDetailed,
 		},
 	})
@@ -156,53 +186,114 @@ func (x *Agent) streamResponseRound(
 	state := &responseRoundState{
 		FunctionCalls: map[string]*functionCallBuf{},
 	}
+	var responseID string
 
 	for stream.Next() {
 		event := stream.Current()
 		logResponseEvent(event)
 
 		switch ev := event.AsAny().(type) {
+		case responses.ResponseCreatedEvent:
+			responseID = ev.Response.ID
 		case responses.ResponseTextDeltaEvent:
 			if ev.Delta == "" {
 				continue
 			}
-			if !yield(ev.Delta, nil) {
-				return nil, errStopStreaming
+
+			delta := AssistantDelta{ev.Delta}
+			if !yield(delta, nil) {
+				return nil, responseID, errStopStreaming
+			}
+
+		case responses.ResponseOutputItemAddedEvent:
+			if ev.Item.Type != "function_call" {
+				continue
+			}
+
+			item := ev.Item.AsFunctionCall()
+			call := state.functionCall(item.ID)
+			call.ItemID = item.ID
+			call.CallID = item.CallID
+			call.Name = item.Name
+			if call.Args.Len() == 0 && item.Arguments != "" {
+				call.Args.WriteString(item.Arguments)
 			}
 
 		case responses.ResponseFunctionCallArgumentsDeltaEvent:
 			call := state.functionCall(ev.ItemID)
+			call.ItemID = ev.ItemID
 			call.Args.WriteString(ev.Delta)
 
 		case responses.ResponseFunctionCallArgumentsDoneEvent:
 			call := state.functionCall(ev.ItemID)
-			call.Name = ev.Name
+			call.ItemID = ev.ItemID
+			if call.Name == "" {
+				call.Name = ev.Name
+			}
 			if call.Args.Len() == 0 {
 				call.Args.WriteString(ev.Arguments)
 			}
 
+		case responses.ResponseOutputItemDoneEvent:
+			if ev.Item.Type != "function_call" {
+				continue
+			}
+
+			item := ev.Item.AsFunctionCall()
+			call := state.functionCall(item.ID)
+			call.ItemID = item.ID
+			call.CallID = item.CallID
+			call.Name = item.Name
+			if call.Args.Len() == 0 && item.Arguments != "" {
+				call.Args.WriteString(item.Arguments)
+			}
+
+			toolcall := Toolcall{Name: call.Name, Args: call.Args.String()}
+			if !yield(toolcall, nil) {
+				return nil, responseID, errStopStreaming
+			}
+
 		case responses.ResponseCompletedEvent:
-			return state, nil
+			return state, responseID, nil
 
 		case responses.ResponseErrorEvent:
-			return nil, fmt.Errorf("response error: %s", ev.Message)
+			return nil, responseID, fmt.Errorf("response error: %s", ev.Message)
 
 		case responses.ResponseFailedEvent:
-			return nil, fmt.Errorf("response failed")
+			return nil, responseID, fmt.Errorf("response failed")
+
+		case responses.ResponseReasoningTextDeltaEvent:
+			if ev.Delta == "" {
+				continue
+			}
+
+			delta := ReasoningDelta{ev.Delta}
+			if !yield(delta, nil) {
+				return nil, responseID, errStopStreaming
+			}
+
+		case responses.ResponseRefusalDeltaEvent:
+		case responses.ResponseRefusalDoneEvent:
+		case responses.ResponseTextDoneEvent:
 		}
 	}
 
 	if err := stream.Err(); err != nil {
-		return nil, fmt.Errorf("response stream failed: %w", err)
+		return nil, responseID, fmt.Errorf("response stream failed: %w", err)
 	}
 
-	return state, nil
+	return state, responseID, nil
 }
 
 func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, error) {
 	switch name {
 	case "web_search":
-		return x.webSearch(ctx, rawArgs)
+		var args webSearchArgs
+		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+			return "", err
+		}
+
+		return webSearch(ctx, args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
@@ -214,7 +305,7 @@ func (x *responseRoundState) functionCall(itemID string) *functionCallBuf {
 		return call
 	}
 
-	call = &functionCallBuf{ID: itemID}
+	call = &functionCallBuf{ItemID: itemID}
 	x.FunctionCalls[itemID] = call
 	x.Order = append(x.Order, itemID)
 
@@ -250,9 +341,6 @@ func logResponseEvent(event responses.ResponseStreamEventUnion) {
 		"type", event.Type,
 	}
 
-	if event.ItemID != "" {
-		attrs = append(attrs, "item_id", event.ItemID)
-	}
 	if event.Delta != "" {
 		attrs = append(attrs, "delta", event.Delta)
 	}
