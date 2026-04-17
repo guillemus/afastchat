@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"afastchat.com"
 	"afastchat.com/db"
 	"afastchat.com/env"
 	"afastchat.com/views"
@@ -41,9 +42,7 @@ func StartServer() {
 			middleware.NoCache,
 			func(*http.Request) bool { return env.Env.Dev },
 		)).
-		Get("/public/*",
-			http.StripPrefix("/public/", http.FileServer(http.Dir("public"))).ServeHTTP,
-		)
+		Get("/public/*", afastchat.GetPublicHandler().ServeHTTP)
 
 	s.router.Get("/", s.handleIndex)
 	s.router.Get("/threads/{id}", handlePathVal(s.handleThread, "id"))

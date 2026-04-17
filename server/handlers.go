@@ -143,10 +143,9 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 
 		slog.Info("created thread", "threadId", threadID)
 
-		go func() {
-			defer recoverAndLog()
+		GoRecover(func() {
 			x.updateThreadTitle(context.Background(), threadID, userMessage)
-		}()
+		})
 
 		sse := datastar.NewSSE(w, r)
 
@@ -168,10 +167,9 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	sse := datastar.NewSSE(w, r)
 	patchSignals(sse, map[string]any{"message": ""})
 
-	go func() {
-		defer recoverAndLog()
+	GoRecover(func() {
 		x.writeAgentStreamToThread(threadID, userMessage)
-	}()
+	})
 }
 
 func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
@@ -270,8 +268,7 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 }
 
 func (x *Server) updateThreadTitle(ctx context.Context, threadID string, userMessage string) {
-	agent := agents.NewAgent()
-	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
+	title := agents.GenerateTitleFromUserMessage(ctx, userMessage)
 
 	err := x.db.UpdateThreadTitle(ctx, threadID, title)
 	if err != nil {

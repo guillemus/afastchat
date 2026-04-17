@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"html"
+	"unsafe"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/yuin/goldmark"
@@ -23,7 +24,8 @@ var md = goldmark.New(
 
 func renderMarkdown(src string) string {
 	var buf bytes.Buffer
-	if err := md.Convert([]byte(src), &buf); err != nil {
+	b := unsafe.Slice(unsafe.StringData(src), len(src))
+	if err := md.Convert(b, &buf); err != nil {
 		return html.EscapeString(src)
 	}
 	return buf.String()

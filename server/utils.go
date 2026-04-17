@@ -9,10 +9,15 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func recoverAndLog() {
-	if p := recover(); p != nil {
-		slog.Error("panic recovered in goroutine", "panic", p)
-	}
+func GoRecover(fn func()) {
+	go func() {
+		defer func() {
+			if p := recover(); p != nil {
+				slog.Error("panic recovered in goroutine", "panic", p)
+			}
+		}()
+		fn()
+	}()
 }
 
 func handleBadReq(w http.ResponseWriter, msg string, err error) {

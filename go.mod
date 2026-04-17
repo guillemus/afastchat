@@ -8,7 +8,6 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/google/uuid v1.6.0
-	github.com/guillemus/required v0.1.1
 	github.com/joho/godotenv v1.5.1
 	github.com/klauspost/compress v1.18.5
 	github.com/lmittmann/tint v1.1.3

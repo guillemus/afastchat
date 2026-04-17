@@ -2,10 +2,11 @@ tmp/
 node_modules/
 data/
 
-.env
+.env*
 .air/
 .DS_Store
 
+dist/
 bin/
 coverage.out
 *.test

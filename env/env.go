@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/guillemus/required"
 	"github.com/joho/godotenv"
 )
 
@@ -21,7 +20,7 @@ type Config struct {
 var Env = parseEnv()
 
 func parseEnv() *Config {
-	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+	if err := godotenv.Load(); err != nil {
 		panic(fmt.Sprintf("load .env file: %v", err))
 	}
 
@@ -32,10 +31,6 @@ func parseEnv() *Config {
 		Port:             getEnvOr("PORT", "3000"),
 		AssetVersion:     fmt.Sprintf("%d", time.Now().Unix()),
 		Dev:              os.Getenv("DEV") == "true",
-	}
-
-	if err := required.Required(cfg); err != nil {
-		panic(fmt.Sprintf("validate env vars: %v", err))
 	}
 
 	return cfg
