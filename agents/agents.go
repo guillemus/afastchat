@@ -104,23 +104,23 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 		var currResponseID string
 
 		for range 10 {
-			state, responseID, err := x.streamResponseRound(ctx, input, currResponseID, yield)
+			calledTools, responseID, err := x.streamResponse(ctx, input, currResponseID, yield)
 			if err != nil {
 				if errors.Is(err, errStopStreaming) {
 					return
 				}
-				yield(AssistantDelta{""}, err)
+				yield(nil, err)
 				return
 			}
 
 			currResponseID = responseID
 
-			if len(state.Order) == 0 {
+			if len(calledTools.Order) == 0 {
 				return
 			}
 
-			for _, itemID := range state.Order {
-				call := state.FunctionCalls[itemID]
+			for _, itemID := range calledTools.Order {
+				call := calledTools.Tools[itemID]
 				input = append(input, responses.ResponseInputItemParamOfFunctionCall(
 					call.Args.String(),
 					call.CallID,
@@ -139,28 +139,28 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 			}
 		}
 
-		yield(AssistantDelta{""}, fmt.Errorf("too many tool rounds"))
+		yield(nil, fmt.Errorf("too many tool rounds"))
 	}
 }
 
-type functionCallBuf struct {
+type ToolcallBuf struct {
 	ItemID string
 	CallID string
 	Name   string
 	Args   strings.Builder
 }
 
-type responseRoundState struct {
-	FunctionCalls map[string]*functionCallBuf
-	Order         []string
+type CalledTools struct {
+	Tools map[string]*ToolcallBuf
+	Order []string
 }
 
-func (x *Agent) streamResponseRound(
+func (x *Agent) streamResponse(
 	ctx context.Context,
 	input responses.ResponseInputParam,
 	previousResponseID string,
 	yield func(StreamEvent, error) bool,
-) (*responseRoundState, string, error) {
+) (*CalledTools, string, error) {
 	stream := x.client.Responses.NewStreaming(ctx, responses.ResponseNewParams{
 		PreviousResponseID: openai.String(previousResponseID),
 		Model:              x.model,
@@ -183,8 +183,8 @@ func (x *Agent) streamResponseRound(
 		}
 	}()
 
-	state := &responseRoundState{
-		FunctionCalls: map[string]*functionCallBuf{},
+	state := &CalledTools{
+		Tools: map[string]*ToolcallBuf{},
 	}
 	var responseID string
 
@@ -299,14 +299,14 @@ func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, erro
 	}
 }
 
-func (x *responseRoundState) functionCall(itemID string) *functionCallBuf {
-	call := x.FunctionCalls[itemID]
+func (x *CalledTools) functionCall(itemID string) *ToolcallBuf {
+	call := x.Tools[itemID]
 	if call != nil {
 		return call
 	}
 
-	call = &functionCallBuf{ItemID: itemID}
-	x.FunctionCalls[itemID] = call
+	call = &ToolcallBuf{ItemID: itemID}
+	x.Tools[itemID] = call
 	x.Order = append(x.Order, itemID)
 
 	return call
