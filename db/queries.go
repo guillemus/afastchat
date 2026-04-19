@@ -15,9 +15,9 @@ func (x *Pool) GetThread(ctx context.Context, id string) (Thread, error) {
 		err := sqlitex.Execute(conn, `
 			SELECT id, title, archived_at, is_streaming, created_at, updated_at 
 			FROM threads 
-			WHERE id = ?
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{id},
+			Named: map[string]any{":id": id},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				thread = scanThread(stmt)
 				return nil
@@ -58,10 +58,10 @@ func (x *Pool) CreateThread(ctx context.Context, title string) (Thread, error) {
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		err := sqlitex.Execute(conn, `
 			INSERT INTO threads (id, title) 
-			VALUES (?, ?) 
+			VALUES (:id, :title) 
 			RETURNING id, title, archived_at, is_streaming, created_at, updated_at
 		`, &sqlitex.ExecOptions{
-			Args: []any{id, title},
+			Named: map[string]any{":id": id, ":title": title},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				thread = scanThread(stmt)
 				return nil
@@ -79,10 +79,10 @@ func (x *Pool) UpdateThreadTitle(ctx context.Context, id, title string) error {
 	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.ExecuteTransient(conn, `
 			UPDATE threads 
-			SET title = ?, updated_at = datetime('now') 
-			WHERE id = ?
+			SET title = :title, updated_at = datetime('now') 
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{title, id},
+			Named: map[string]any{":title": title, ":id": id},
 		})
 	})
 }
@@ -92,9 +92,9 @@ func (x *Pool) ArchiveThread(ctx context.Context, id string) error {
 		return sqlitex.ExecuteTransient(conn, `
 			UPDATE threads 
 			SET archived_at = datetime('now'), updated_at = datetime('now') 
-			WHERE id = ?
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{id},
+			Named: map[string]any{":id": id},
 		})
 	})
 }
@@ -103,9 +103,9 @@ func (x *Pool) DeleteThread(ctx context.Context, id string) error {
 	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.ExecuteTransient(conn, `
 			DELETE FROM threads 
-			WHERE id = ?
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{id},
+			Named: map[string]any{":id": id},
 		})
 	})
 }
@@ -119,31 +119,65 @@ func (x *Pool) SetThreadStreaming(ctx context.Context, id string, isStreaming bo
 
 		return sqlitex.ExecuteTransient(conn, `
 			UPDATE threads 
-			SET is_streaming = ?, updated_at = datetime('now') 
-			WHERE id = ?
+			SET is_streaming = :is_streaming, updated_at = datetime('now') 
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{streamingInt, id},
+			Named: map[string]any{":is_streaming": streamingInt, ":id": id},
 		})
 	})
 }
 
-func (x *Pool) CreateMessage(ctx context.Context, threadID, role, content string) (Message, error) {
-	var message Message
-	compressedContent := compressMessageContent(content)
+func (x *Pool) CreateMessage(ctx context.Context, threadID, typ, content string) (Message, error) {
+	return x.CreateMessageWithMeta(ctx, Message{
+		ThreadID: threadID,
+		Type:     typ,
+		Content:  content,
+	})
+}
+
+func (x *Pool) CreateMessageWithMeta(ctx context.Context, message Message) (Message, error) {
+	var created Message
+	compressedContent := compressMessageContent(message.Content)
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		id := uuid.New().String()
+		seq := 1
+
 		err := sqlitex.Execute(conn, `
-		INSERT INTO messages (id, thread_id, role, content) 
-		VALUES (?, ?, ?, ?) 
-		RETURNING id, thread_id, role, content, created_at
-	`, &sqlitex.ExecOptions{
-			Args: []any{id, threadID, role, compressedContent},
+			SELECT COALESCE(MAX(seq) + 1, 1) AS next_seq
+			FROM messages
+			WHERE thread_id = :thread_id
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":thread_id": message.ThreadID},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				seq = int(stmt.GetInt64("next_seq"))
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("select next seq: %w", err)
+		}
+
+		err = sqlitex.Execute(conn, `
+			INSERT INTO messages (id, thread_id, type, seq, content, tool_call_id, tool_name, provider_response_id) 
+			VALUES (:id, :thread_id, :type, :seq, :content, :tool_call_id, :tool_name, :provider_response_id) 
+			RETURNING id, thread_id, type, seq, content, tool_call_id, tool_name, provider_response_id, created_at, updated_at
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{
+				":id":                   id,
+				":thread_id":            message.ThreadID,
+				":type":                 message.Type,
+				":seq":                  seq,
+				":content":              compressedContent,
+				":tool_call_id":         message.ToolCallID,
+				":tool_name":            message.ToolName,
+				":provider_response_id": message.ProviderResponseID,
+			},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				scannedMessage, err := scanMessage(stmt)
 				if err != nil {
 					return fmt.Errorf("scan message: %w", err)
 				}
-				message = scannedMessage
+				created = scannedMessage
 				return nil
 			},
 		})
@@ -153,19 +187,19 @@ func (x *Pool) CreateMessage(ctx context.Context, threadID, role, content string
 		return nil
 	})
 
-	return message, err
+	return created, err
 }
 
 func (x *Pool) GetMessagesByThread(ctx context.Context, threadID string) ([]Message, error) {
 	var messages []Message
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.Execute(conn, `
-			SELECT id, thread_id, role, content, created_at 
+			SELECT id, thread_id, type, seq, content, tool_call_id, tool_name, provider_response_id, created_at, updated_at 
 			FROM messages 
-			WHERE thread_id = ? 
-			ORDER BY created_at ASC
+			WHERE thread_id = :thread_id 
+			ORDER BY seq ASC
 		`, &sqlitex.ExecOptions{
-			Args: []any{threadID},
+			Named: map[string]any{":thread_id": threadID},
 			ResultFunc: func(stmt *sqlite.Stmt) error {
 				message, err := scanMessage(stmt)
 				if err != nil {
@@ -184,10 +218,10 @@ func (x *Pool) UpdateMessageContent(ctx context.Context, id, content string) err
 	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.ExecuteTransient(conn, `
 			UPDATE messages 
-			SET content = ? 
-			WHERE id = ?
+			SET content = :content, updated_at = datetime('now') 
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{compressedContent, id},
+			Named: map[string]any{":content": compressedContent, ":id": id},
 		})
 	})
 }
@@ -196,9 +230,9 @@ func (x *Pool) DeleteMessage(ctx context.Context, id string) error {
 	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		return sqlitex.ExecuteTransient(conn, `
 			DELETE FROM messages 
-			WHERE id = ?
+			WHERE id = :id
 		`, &sqlitex.ExecOptions{
-			Args: []any{id},
+			Named: map[string]any{":id": id},
 		})
 	})
 }
@@ -210,9 +244,9 @@ func (x *Pool) InitThread(ctx context.Context, title, sysMsg string) (string, er
 		// Insert thread
 		err := sqlitex.ExecuteTransient(conn, `
 			INSERT INTO threads (id, title) 
-			VALUES (?, ?)
+			VALUES (:id, :title)
 		`, &sqlitex.ExecOptions{
-			Args: []any{threadID, title},
+			Named: map[string]any{":id": threadID, ":title": title},
 		})
 		if err != nil {
 			return fmt.Errorf("create thread: %w", err)
@@ -220,10 +254,10 @@ func (x *Pool) InitThread(ctx context.Context, title, sysMsg string) (string, er
 
 		// Insert system message
 		err = sqlitex.ExecuteTransient(conn, `
-			INSERT INTO messages (id, thread_id, role, content) 
-			VALUES (?, ?, ?, ?)
+			INSERT INTO messages (id, thread_id, type, seq, content) 
+			VALUES (:id, :thread_id, 'system_message', 1, :content)
 		`, &sqlitex.ExecOptions{
-			Args: []any{uuid.New().String(), threadID, "system", compressedSysMsg},
+			Named: map[string]any{":id": uuid.New().String(), ":thread_id": threadID, ":content": compressedSysMsg},
 		})
 		if err != nil {
 			return fmt.Errorf("create system message: %w", err)
@@ -235,15 +269,15 @@ func (x *Pool) InitThread(ctx context.Context, title, sysMsg string) (string, er
 }
 
 func (x *Pool) CreateUserMessage(ctx context.Context, threadID, msg string) (Message, error) {
-	return x.CreateMessage(ctx, threadID, "user", msg)
+	return x.CreateMessage(ctx, threadID, "user_message", msg)
 }
 
 func (x *Pool) CreateAssistantMessage(ctx context.Context, threadID, msg string) (string, error) {
-	m, err := x.CreateMessage(ctx, threadID, "assistant", msg)
+	m, err := x.CreateMessage(ctx, threadID, "assistant_message", msg)
 	return m.ID, err
 }
 
 func (x *Pool) CreateSystemMessage(ctx context.Context, threadID, msg string) (string, error) {
-	m, err := x.CreateMessage(ctx, threadID, "system", msg)
+	m, err := x.CreateMessage(ctx, threadID, "system_message", msg)
 	return m.ID, err
 }

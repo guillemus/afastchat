@@ -32,19 +32,9 @@ var errStopStreaming = errors.New("stop streaming")
 var openaiClient = openai.NewClient(option.WithAPIKey(env.Env.OpenAIAPIKey))
 
 func NewAgent() *Agent {
-
-	// var openrouterClient = openai.NewClient(
-	// 	option.WithAPIKey(env.Env.OpenRouterAPIKey),
-	// 	option.WithBaseURL("https://openrouter.ai/api/v1"),
-	// )
-
 	return &Agent{
 		client: openaiClient,
-		// model:  openai.ChatModelGPT5_4Mini,
-		model: openai.ChatModelGPT5_4Nano,
-
-		// client: openrouterClient,
-		// model:  "minimax/minimax-m2.7",
+		model:  openai.ChatModelGPT5_4Nano,
 	}
 }
 
@@ -55,21 +45,32 @@ func MapToResponseInput(dbMessages []db.Message) responses.ResponseInputParam {
 			continue
 		}
 
-		switch it.Role {
-		case "user":
+		switch it.Type {
+		case "user_message":
 			input = append(input, responses.ResponseInputItemParamOfMessage(
 				it.Content,
 				responses.EasyInputMessageRoleUser,
 			))
-		case "assistant":
+		case "assistant_message":
 			input = append(input, responses.ResponseInputItemParamOfMessage(
 				it.Content,
 				responses.EasyInputMessageRoleAssistant,
 			))
-		case "system":
+		case "system_message":
 			input = append(input, responses.ResponseInputItemParamOfMessage(
 				it.Content,
 				responses.EasyInputMessageRoleSystem,
+			))
+		case "assistant_tool_call":
+			input = append(input, responses.ResponseInputItemParamOfFunctionCall(
+				it.Content,
+				it.ToolCallID,
+				it.ToolName,
+			))
+		case "tool_output":
+			input = append(input, responses.ResponseInputItemParamOfFunctionCallOutput(
+				it.ToolCallID,
+				it.Content,
 			))
 		}
 	}
@@ -88,14 +89,21 @@ type (
 		Delta string
 	}
 	Toolcall struct {
-		Name string
-		Args string
+		CallID string
+		Name   string
+		Args   string
+	}
+	ToolOutput struct {
+		CallID string
+		Name   string
+		Output string
 	}
 )
 
 func (AssistantDelta) isStreamEvent() {}
 func (ReasoningDelta) isStreamEvent() {}
 func (Toolcall) isStreamEvent()       {}
+func (ToolOutput) isStreamEvent()     {}
 
 func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[StreamEvent, error] {
 	return func(yield func(StreamEvent, error) bool) {
@@ -132,6 +140,10 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 					result = fmt.Sprintf(`{"error":%q}`, err.Error())
 				}
 
+				if !yield(ToolOutput{CallID: call.CallID, Name: call.Name, Output: result}, nil) {
+					return
+				}
+
 				input = append(input, responses.ResponseInputItemParamOfFunctionCallOutput(
 					call.CallID,
 					result,
@@ -161,9 +173,8 @@ func (x *Agent) streamResponse(
 	previousResponseID string,
 	yield func(StreamEvent, error) bool,
 ) (*CalledTools, string, error) {
-	stream := x.client.Responses.NewStreaming(ctx, responses.ResponseNewParams{
-		PreviousResponseID: openai.String(previousResponseID),
-		Model:              x.model,
+	params := responses.ResponseNewParams{
+		Model: x.model,
 		Input: responses.ResponseNewParamsInputUnion{
 			OfInputItemList: input,
 		},
@@ -176,7 +187,12 @@ func (x *Agent) streamResponse(
 			Effort:  responses.ReasoningEffortXhigh,
 			Summary: responses.ReasoningSummaryDetailed,
 		},
-	})
+	}
+	if previousResponseID != "" {
+		params.PreviousResponseID = param.NewOpt(previousResponseID)
+	}
+
+	stream := x.client.Responses.NewStreaming(ctx, params)
 	defer func() {
 		if err := stream.Close(); err != nil {
 			slog.Error("failed to close response stream", "err", err)
@@ -248,7 +264,7 @@ func (x *Agent) streamResponse(
 				call.Args.WriteString(item.Arguments)
 			}
 
-			toolcall := Toolcall{Name: call.Name, Args: call.Args.String()}
+			toolcall := Toolcall{CallID: call.CallID, Name: call.Name, Args: call.Args.String()}
 			if !yield(toolcall, nil) {
 				return nil, responseID, errStopStreaming
 			}

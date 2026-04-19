@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/url"
 
-	"afastchat.com/db"
 	"afastchat.com/env"
 
 	. "maragu.dev/gomponents"
@@ -24,14 +23,29 @@ func NewRenderer(assetVersion string) *Renderer {
 	}
 }
 
+type (
+	Thread struct {
+		ID          string
+		IsStreaming bool
+		Title       string
+	}
+	Message struct {
+		Type string
+		ID   string
+		// markdown rendered content
+		MdContent string
+		ToolName  string
+	}
+)
+
 type IndexData struct {
-	Threads []db.Thread
+	Threads []Thread
 }
 
 type ThreadData struct {
-	Threads   []db.Thread
-	Thread    db.Thread
-	Messages  []db.Message
+	Threads   []Thread
+	Thread    Thread
+	Messages  []Message
 	Streaming bool
 }
 
@@ -45,7 +59,7 @@ func (x *Renderer) RenderIndex(w io.Writer, data IndexData, doScrollSidebar bool
 func (x *Renderer) RenderThread(w io.Writer, data ThreadData, doScrollSidebar bool) {
 	renderNode(w, x.page(
 		sidebar(data.Threads, data.Thread.ID, doScrollSidebar),
-		threadContents(data.Messages, data.Thread.ID, doScrollSidebar),
+		threadContents(data.Messages, data.Thread.ID, doScrollSidebar, data.Streaming),
 	))
 }
 
@@ -56,13 +70,13 @@ func renderNode(w io.Writer, node Node) {
 	}
 }
 
-func RenderThreads(w io.Writer, threads []db.Thread, activeThreadID string) {
+func RenderThreads(w io.Writer, threads []Thread, activeThreadID string) {
 	for _, it := range threads {
 		renderNode(w, threadListItem(it, it.ID == activeThreadID))
 	}
 }
 
-func RenderThreadItem(w io.Writer, thread db.Thread) {
+func RenderThreadItem(w io.Writer, thread Thread) {
 	renderNode(w, threadListItem(thread, true))
 }
 
@@ -93,7 +107,7 @@ func (x *Renderer) page(body ...Node) Node {
 	})
 }
 
-func sidebar(threads []db.Thread, activeThreadID string, doScrollSidebar bool) Node {
+func sidebar(threads []Thread, activeThreadID string, doScrollSidebar bool) Node {
 	return Aside(
 		Class("sidebar"),
 		If(activeThreadID != "",
@@ -148,7 +162,7 @@ func sidebar(threads []db.Thread, activeThreadID string, doScrollSidebar bool) N
 				Text("Recent"),
 			),
 			Div(ID("thread-items"),
-				Map(threads, func(thread db.Thread) Node {
+				Map(threads, func(thread Thread) Node {
 					return threadListItem(thread, thread.ID == activeThreadID)
 				}),
 			),
@@ -161,7 +175,7 @@ func sidebar(threads []db.Thread, activeThreadID string, doScrollSidebar bool) N
 	)
 }
 
-func threadListItem(thread db.Thread, isActive bool) Node {
+func threadListItem(thread Thread, isActive bool) Node {
 	className := "thread-item"
 	if isActive {
 		className += " active"
@@ -190,25 +204,20 @@ func threadListItem(thread db.Thread, isActive bool) Node {
 }
 
 func threadContentsEmpty() Node {
-	return threadContents(nil, "", false)
+	return threadContents(nil, "", false, false)
 }
 
-func threadContents(messages []db.Message, threadID string, doScrollSidebar bool) Node {
+func threadContents(messages []Message, threadID string, doScrollSidebar bool, isStreaming bool) Node {
 	var contents Node
 	if len(messages) == 0 {
+		input := newThreadChatInput()
+		if threadID != "" {
+			input = existingThreadChatInput(threadID, isStreaming)
+		}
+
 		contents = Group{
-			Div(
-				ID("messages"),
-				Class("main-body empty-thread"),
-				Div(
-					Class("empty-state"),
-					H1(Class("empty-state-title"), Text("How can I help?")),
-					P(Class("empty-state-subtitle"),
-						Text("Start a new conversation with afastchat."),
-					),
-				),
-			),
-			newThreadChatInput(),
+			RenderThreadMessagesNode(messages, doScrollSidebar),
+			input,
 		}
 	} else {
 		contents = Group{
@@ -221,36 +230,7 @@ func threadContents(messages []db.Message, threadID string, doScrollSidebar bool
 					const distanceFromBottom = overflow - $messages.scrollTop;
 					$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 				`),
-				Div(
-					ID("messages"),
-					Data("ref:messages", ""),
-					components.Classes{
-						"main-body": true,
-						"invisible": doScrollSidebar,
-					},
-					Data("on:scroll__debounce.10ms", `
-						const overflow = el.scrollHeight - el.clientHeight;
-						const distanceFromBottom = overflow - el.scrollTop;
-						$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
-					`),
-					If(doScrollSidebar, Data("init", `
-						el.scrollTop = el.scrollHeight;
-						el.classList.remove('invisible');
-						const overflow = el.scrollHeight - el.clientHeight;
-						const distanceFromBottom = overflow - el.scrollTop;
-						$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
-					`)),
-					Map(messages, func(message db.Message) Node {
-						switch message.Role {
-						case "user":
-							return userMessage(message.ID, message.Content)
-						case "assistant":
-							return assistantMessage(message.ID, message.Content, false)
-						default:
-							return nil
-						}
-					}),
-				),
+				RenderThreadMessagesNode(messages, doScrollSidebar),
 				Button(
 					Type("button"),
 					Style("display: none"),
@@ -263,15 +243,80 @@ func threadContents(messages []db.Message, threadID string, doScrollSidebar bool
 					iconArrowDown(),
 				),
 			),
-			existingThreadChatInput(threadID),
+			existingThreadChatInput(threadID, isStreaming),
 		}
 	}
 
 	return Main(Class("main"), contents)
 }
 
+func RenderThreadMessages(w io.Writer, messages []Message, doScrollSidebar bool) {
+	renderNode(w, RenderThreadMessagesNode(messages, doScrollSidebar))
+}
+
+func lastAssistantMessageIndex(messages []Message) int {
+	if len(messages) == 0 {
+		return -1
+	}
+
+	last := len(messages) - 1
+	if isAssistantMessageType(messages[last].Type) {
+		return last
+	}
+
+	return -1
+}
+
+func renderMessages(messages []Message) []Node {
+	lastAssistantIdx := lastAssistantMessageIndex(messages)
+	out := make([]Node, 0, len(messages))
+	for i, message := range messages {
+		out = append(out, renderMessage(message, i == lastAssistantIdx))
+	}
+	return out
+}
+
+func RenderThreadMessagesNode(messages []Message, doScrollSidebar bool) Node {
+	if len(messages) == 0 {
+		return Div(
+			ID("messages"),
+			Class("main-body empty-thread"),
+			Div(
+				Class("empty-state"),
+				H1(Class("empty-state-title"), Text("How can I help?")),
+				P(Class("empty-state-subtitle"),
+					Text("Start a new conversation with afastchat."),
+				),
+			),
+		)
+	}
+
+	return Div(
+		ID("messages"),
+		Data("ref:messages", ""),
+		components.Classes{
+			"main-body": true,
+			"invisible": doScrollSidebar,
+		},
+		Data("on:scroll__debounce.10ms", `
+			const overflow = el.scrollHeight - el.clientHeight;
+			const distanceFromBottom = overflow - el.scrollTop;
+			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+		`),
+		If(doScrollSidebar, Data("init", `
+			el.scrollTop = el.scrollHeight;
+			el.classList.remove('invisible');
+			const overflow = el.scrollHeight - el.clientHeight;
+			const distanceFromBottom = overflow - el.scrollTop;
+			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+		`)),
+		Group(renderMessages(messages)),
+	)
+}
+
 type chatInputProps struct {
-	threadID string
+	threadID    string
+	isStreaming bool
 }
 
 func chatInput(props chatInputProps) Node {
@@ -280,7 +325,7 @@ func chatInput(props chatInputProps) Node {
 		If(props.threadID != "",
 			Data("signals:thread-id", fmt.Sprintf("'%s'", props.threadID)),
 		),
-		Data("signals:is-streaming", "false"),
+		Data("signals:is-streaming", fmt.Sprintf("%t", props.isStreaming)),
 		Data("signals:message", "''"),
 		Data("computed:can-submit", "$message.trim() !== ''"),
 		Div(
@@ -323,14 +368,39 @@ func chatInput(props chatInputProps) Node {
 	)
 }
 
-func existingThreadChatInput(threadID string) Node {
+func existingThreadChatInput(threadID string, isStreaming bool) Node {
 	return chatInput(chatInputProps{
-		threadID: threadID,
+		threadID:    threadID,
+		isStreaming: isStreaming,
 	})
 }
 
 func newThreadChatInput() Node {
-	return chatInput(chatInputProps{""})
+	return chatInput(chatInputProps{})
+}
+
+func isAssistantMessageType(messageType string) bool {
+	switch messageType {
+	case "assistant_message", "assistant_reasoning", "assistant_tool_call":
+		return true
+	default:
+		return false
+	}
+}
+
+func renderMessage(message Message, isLastAssistant bool) Node {
+	switch message.Type {
+	case "user_message":
+		return userMessage(message.ID, message.MdContent)
+	case "assistant_message":
+		return assistantMessage(message.ID, message.MdContent, isLastAssistant)
+	case "assistant_reasoning":
+		return assistantReasoningMessage(message.ID, message.MdContent, isLastAssistant)
+	case "assistant_tool_call":
+		return assistantToolCallMessage(message.ID, message.ToolName, message.MdContent, isLastAssistant)
+	default:
+		return nil
+	}
 }
 
 func userMessage(messageID string, content string) Node {
@@ -341,26 +411,41 @@ func userMessage(messageID string, content string) Node {
 	)
 }
 
-func RenderAssistantMessage(w io.Writer, messageID string, contentHTML string) {
-	renderNode(w, assistantMessage(messageID, contentHTML, false))
-}
-
-func RenderAssistantMessageAsLast(w io.Writer, messageID string, contentHTML string) {
-	renderNode(w, assistantMessage(messageID, contentHTML, true))
-}
-
-func RenderUserMessage(w io.Writer, messageID string, contentHTML string) {
-	renderNode(w, userMessage(messageID, contentHTML))
-}
-
-func assistantMessage(messageID string, contentHTML string, asLast bool) Node {
+func assistantMessage(messageID string, contentHTML string, isLastAssistant bool) Node {
 	return Div(
 		ID("msg-"+messageID),
 		components.Classes{
-			"message assistant-message": true,
-			"last":                      asLast,
+			"message":                true,
+			"assistant-message":      true,
+			"assistant-message-last": isLastAssistant,
 		},
 		Raw(contentHTML),
+	)
+}
+
+func assistantReasoningMessage(messageID string, contentHTML string, isLastAssistant bool) Node {
+	return Div(
+		ID("msg-"+messageID),
+		components.Classes{
+			"message":                true,
+			"assistant-message":      true,
+			"assistant-message-last": isLastAssistant,
+		},
+		Div(Text("Reasoning")),
+		Raw(contentHTML),
+	)
+}
+
+func assistantToolCallMessage(messageID string, toolName string, content string, isLastAssistant bool) Node {
+	return Div(
+		ID("msg-"+messageID),
+		components.Classes{
+			"message":                true,
+			"assistant-message":      true,
+			"assistant-message-last": isLastAssistant,
+		},
+		Div(Text("Tool: "+toolName)),
+		Pre(Text(content)),
 	)
 }
 

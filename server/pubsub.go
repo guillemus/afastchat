@@ -6,30 +6,12 @@ import (
 	"github.com/asaskevich/EventBus"
 )
 
-type (
-	threadEvent       interface{ isThreadEvent() }
-	evtAssistantStart struct {
-		userMessageID      string
-		userMessage        string
-		assistantMessageID string
-	}
-	evtAssistantChunk struct {
-		messageID string
-		content   string
-	}
-	evtStreamFinishedStreaming struct{}
-)
-
-func (evtAssistantStart) isThreadEvent()          {}
-func (evtAssistantChunk) isThreadEvent()          {}
-func (evtStreamFinishedStreaming) isThreadEvent() {}
-
-func (x *Server) publishThreadEvent(threadID string, evt threadEvent) {
+func (x *Server) publishThreadEvent(threadID string) {
 	topic := fmt.Sprintf("threads:%s", threadID)
-	x.bus.Publish(topic, evt)
+	x.bus.Publish(topic)
 }
 
-func (x *Server) subscribeToThread(threadID string, handler func(threadEvent)) (unsub func()) {
+func (x *Server) subscribeToThread(threadID string, handler func()) (unsub func()) {
 	topic := fmt.Sprintf("threads:%s", threadID)
 	x.bus.Subscribe(topic, handler)
 

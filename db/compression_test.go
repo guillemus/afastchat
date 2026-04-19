@@ -20,7 +20,7 @@ func TestCreateMessageCompressesAndReadsBack(t *testing.T) {
 	require.NoError(t, err)
 
 	want := "hello hello hello hello hello"
-	message, err := pool.CreateMessage(ctx, thread.ID, "user", want)
+	message, err := pool.CreateMessage(ctx, thread.ID, "user_message", want)
 	require.NoError(t, err)
 	require.Equal(t, want, message.Content)
 
@@ -41,7 +41,7 @@ func TestUpdateMessageContentRecompresses(t *testing.T) {
 	thread, err := pool.CreateThread(ctx, "thread")
 	require.NoError(t, err)
 
-	message, err := pool.CreateMessage(ctx, thread.ID, "assistant", "old")
+	message, err := pool.CreateMessage(ctx, thread.ID, "assistant_message", "old")
 	require.NoError(t, err)
 
 	want := "new content new content new content"

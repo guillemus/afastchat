@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"afastchat.com/agents"
 	"afastchat.com/db"
@@ -23,7 +22,16 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderIndex(w, views.IndexData{Threads: threads}, true)
+	x.renderer.RenderIndex(w, views.IndexData{Threads: mapViewThreads(threads)}, true)
+}
+
+func (x *Server) getDisplayMessages(ctx context.Context, threadID string) ([]views.Message, error) {
+	messages, err := x.db.GetMessagesByThread(ctx, threadID)
+	if err != nil {
+		return nil, fmt.Errorf("get messages: %w", err)
+	}
+
+	return mapViewMessages(messages), nil
 }
 
 func (x *Server) getThreadPage(ctx context.Context, threadID string) (views.ThreadData, error) {
@@ -34,15 +42,9 @@ func (x *Server) getThreadPage(ctx context.Context, threadID string) (views.Thre
 		return td, err
 	}
 
-	messages, err := x.db.GetMessagesByThread(ctx, threadID)
+	messages, err := x.getDisplayMessages(ctx, threadID)
 	if err != nil {
-		return td, fmt.Errorf("get messages: %w", err)
-	}
-
-	for i := range messages {
-		if messages[i].Role == "assistant" {
-			messages[i].Content = renderMarkdown(messages[i].Content)
-		}
+		return td, err
 	}
 
 	threads, err := x.db.ListThreads(ctx)
@@ -51,8 +53,8 @@ func (x *Server) getThreadPage(ctx context.Context, threadID string) (views.Thre
 	}
 
 	return views.ThreadData{
-		Threads:   threads,
-		Thread:    thread,
+		Threads:   mapViewThreads(threads),
+		Thread:    mapViewThread(thread),
 		Messages:  messages,
 		Streaming: thread.IsStreaming,
 	}, nil
@@ -96,12 +98,6 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 		return
 	}
 
-	threads, err = x.db.ListThreads(r.Context())
-	if err != nil {
-		handleBadReq(w, "list threads", err)
-		return
-	}
-
 	query := sig.ThreadSearch
 	filtered := make([]db.Thread, 0, len(threads))
 	for _, it := range threads {
@@ -111,7 +107,7 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 	}
 
 	var threadsSb strings.Builder
-	views.RenderThreads(&threadsSb, filtered, sig.ThreadID)
+	views.RenderThreads(&threadsSb, mapViewThreads(filtered), sig.ThreadID)
 
 	sse := datastar.NewSSE(w, r)
 	sse.PatchElements(
@@ -165,11 +161,31 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, sig S
 	}
 
 	sse := datastar.NewSSE(w, r)
-	patchSignals(sse, map[string]any{"message": ""})
+	patchSignals(sse, map[string]any{"message": "", "isStreaming": true})
 
 	GoRecover(func() {
 		x.writeAgentStreamToThread(threadID, userMessage)
 	})
+}
+
+func (x *Server) persistStreamMessage(ctx context.Context, messages []db.Message, message db.Message) ([]db.Message, error) {
+	if len(messages) > 0 {
+		last := &messages[len(messages)-1]
+		if message.Type == "assistant_message" || message.Type == "assistant_reasoning" {
+			if last.Type == message.Type {
+				last.Content += message.Content
+				err := x.db.UpdateMessageContent(ctx, last.ID, last.Content)
+				return messages, err
+			}
+		}
+	}
+
+	created, err := x.db.CreateMessageWithMeta(ctx, message)
+	if err != nil {
+		return messages, err
+	}
+
+	return append(messages, created), nil
 }
 
 func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
@@ -183,38 +199,27 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 	unsub := subscribeToStops(x.bus, threadID, cancel)
 	defer unsub()
 
-	// Publish a sidebar update after the thread stops streaming.
-	defer x.publishSidebarEvent(evtThreadUpdate{})
-
-	// Set streaming state
 	if err := x.db.SetThreadStreaming(ctx, threadID, true); err != nil {
 		logger.Error("set streaming state", "err", err)
 		return
 	}
+	x.publishSidebarEvent(evtThreadUpdate{threadID: threadID})
 	defer func() {
+		ctx := context.Background()
 		if err := x.db.SetThreadStreaming(ctx, threadID, false); err != nil {
 			logger.Error("unset streaming state", "err", err)
+			return
 		}
+		x.publishThreadEvent(threadID)
+		x.publishSidebarEvent(evtThreadUpdate{threadID: threadID})
 	}()
 
-	dbUserMessage, err := x.db.CreateUserMessage(ctx, threadID, userMessage)
+	_, err := x.db.CreateUserMessage(ctx, threadID, userMessage)
 	if err != nil {
 		logger.Error("create user message", "err", err)
 		return
 	}
-
-	// create empty assistant message so that we have an id to go and update.
-	assistantMsgID, err := x.db.CreateAssistantMessage(ctx, threadID, "")
-	if err != nil {
-		logger.Error("create assistant message", "err", err)
-		return
-	}
-
-	x.publishThreadEvent(threadID, evtAssistantStart{
-		userMessageID:      dbUserMessage.ID,
-		userMessage:        userMessage,
-		assistantMessageID: assistantMsgID,
-	})
+	x.publishThreadEvent(threadID)
 
 	messages, err := x.db.GetMessagesByThread(ctx, threadID)
 	if err != nil {
@@ -225,11 +230,6 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 	logger.Info("starting agent stream")
 	agent := agents.NewAgent()
 
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	var assistantMsg strings.Builder
-
 	for tokenEvt, err := range agent.Stream(ctx, messages) {
 		if err != nil {
 			logger.Error("stream error", "err", err)
@@ -238,37 +238,40 @@ func (x *Server) writeAgentStreamToThread(threadID, userMessage string) {
 
 		switch evt := tokenEvt.(type) {
 		case agents.AssistantDelta:
-			assistantMsg.WriteString(evt.Delta)
+			messages, err = x.persistStreamMessage(ctx, messages, db.Message{
+				ThreadID: threadID,
+				Type:     "assistant_message",
+				Content:  evt.Delta,
+			})
 		case agents.ReasoningDelta:
+			messages, err = x.persistStreamMessage(ctx, messages, db.Message{
+				ThreadID: threadID,
+				Type:     "assistant_reasoning",
+				Content:  evt.Delta,
+			})
 		case agents.Toolcall:
+			messages, err = x.persistStreamMessage(ctx, messages, db.Message{
+				ThreadID:   threadID,
+				Type:       "assistant_tool_call",
+				Content:    evt.Args,
+				ToolCallID: evt.CallID,
+				ToolName:   evt.Name,
+			})
+		case agents.ToolOutput:
+			messages, err = x.persistStreamMessage(ctx, messages, db.Message{
+				ThreadID:   threadID,
+				Type:       "tool_output",
+				Content:    evt.Output,
+				ToolCallID: evt.CallID,
+				ToolName:   evt.Name,
+			})
+		}
+		if err != nil {
+			logger.Error("persist stream message", "err", err)
+			break
 		}
 
-		x.publishThreadEvent(threadID, evtAssistantChunk{
-			messageID: assistantMsgID,
-			content:   assistantMsg.String(),
-		})
-
-		select {
-		case <-ticker.C:
-			logger.Debug("updating assistant message")
-			err := x.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
-			if err != nil {
-				logger.Error("update assistant message", "err", err)
-			}
-		default:
-		}
-	}
-
-	x.publishThreadEvent(threadID, evtStreamFinishedStreaming{})
-
-	// By now, context might be cancelled already because of of a thread stop.
-	// We should use a fresh context.
-	ctx = context.Background()
-
-	logger.Debug("updating assistant message")
-	err = x.db.UpdateMessageContent(ctx, assistantMsgID, assistantMsg.String())
-	if err != nil {
-		logger.Error("final update assistant message", "err", err)
+		x.publishThreadEvent(threadID)
 	}
 }
 
@@ -286,9 +289,9 @@ func (x *Server) updateThreadTitle(ctx context.Context, threadID string, userMes
 func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, threadID string) {
 	ctx := r.Context()
 
-	threadEvtsC := make(chan threadEvent, 100)
-	threadEventHandler := func(evt threadEvent) {
-		threadEvtsC <- evt
+	threadEvtsC := make(chan struct{}, 100)
+	threadEventHandler := func() {
+		threadEvtsC <- struct{}{}
 	}
 
 	unsub := x.subscribeToThread(threadID, threadEventHandler)
@@ -318,67 +321,30 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 msgloop:
 	for {
 		select {
-		case threadEvt := <-threadEvtsC:
-			slog.Debug("received event", "evt", threadEvt)
-
-			switch evt := threadEvt.(type) {
-			case evtAssistantStart:
-
-				patchSignals(sse, map[string]any{"isStreaming": true})
-
-				thread, err := x.db.GetThread(ctx, threadID)
-				if err != nil {
-					slog.Error("error getting thread", "err", err)
-				} else {
-					var sb strings.Builder
-					views.RenderThreadItem(&sb, thread)
-					sse.PatchElements(sb.String())
-				}
-
-				sse.ExecuteScript(`(() => {
-					const el = document.querySelector('#messages .assistant-message.last')
-					if (el) {
-						el.classList.remove('last')
-					}
-				})()`)
-
-				var sb strings.Builder
-				views.RenderUserMessage(&sb, evt.userMessageID, evt.userMessage)
-				views.RenderAssistantMessageAsLast(&sb, evt.assistantMessageID, "")
-
-				sse.PatchElements(sb.String(),
-					datastar.WithSelectorID("messages"),
-					datastar.WithModeAppend(),
-				)
-
-				sse.ExecuteScript(`(() => {
-				  	const el = document.getElementById('messages')
-				  	if (el) {
-						el.scrollTop = el.scrollHeight
-					}
-				})()`)
-
-			case evtAssistantChunk:
-
-				html := renderMarkdown(evt.content)
-
-				var sb strings.Builder
-				views.RenderAssistantMessageAsLast(&sb, evt.messageID, html)
-				sse.PatchElements(sb.String())
-
-			case evtStreamFinishedStreaming:
-				patchSignals(sse, map[string]any{"isStreaming": false})
-
-				thread, err := x.db.GetThread(ctx, threadID)
-				if err != nil {
-					slog.Error("error getting thread", "err", err)
-					continue msgloop
-				}
-
-				var sb strings.Builder
-				views.RenderThreadItem(&sb, thread)
-				sse.PatchElements(sb.String())
+		case <-threadEvtsC:
+			thread, err := x.db.GetThread(ctx, threadID)
+			if err != nil {
+				slog.Error("error getting thread", "err", err)
+				continue msgloop
 			}
+
+			messages, err := x.getDisplayMessages(ctx, threadID)
+			if err != nil {
+				slog.Error("error getting messages", "err", err)
+				continue msgloop
+			}
+
+			var sb strings.Builder
+			views.RenderThreadMessages(&sb, messages, false)
+			sse.PatchElements(sb.String(), datastar.WithSelectorID("messages"))
+
+			patchSignals(sse, map[string]any{"isStreaming": thread.IsStreaming})
+			sse.ExecuteScript(`(() => {
+				const el = document.getElementById('messages')
+				if (el) {
+					el.scrollTop = el.scrollHeight
+				}
+			})()`)
 		case sidebarEvt := <-sidebarEvtsC:
 			switch sidebarEvt.(type) {
 			case evtThreadUpdate:
@@ -389,7 +355,7 @@ msgloop:
 				}
 
 				var sb strings.Builder
-				views.RenderThreadItem(&sb, thread)
+				views.RenderThreadItem(&sb, mapViewThread(thread))
 				sse.PatchElements(sb.String())
 			}
 		case <-ctx.Done():

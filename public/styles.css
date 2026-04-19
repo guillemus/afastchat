@@ -359,7 +359,7 @@
         margin-left: 0;
         margin-right: auto;
 
-        &.last {
+        &.assistant-message-last {
             min-height: calc(100vh - 13rem);
         }
 

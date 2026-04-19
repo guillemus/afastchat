@@ -16,9 +16,14 @@ type Thread struct {
 
 // Message is the public domain model for a chat message
 type Message struct {
-	ID        string
-	ThreadID  string
-	Role      string // 'user', 'assistant', 'system'
-	Content   string
-	CreatedAt time.Time
+	ID                 string
+	ThreadID           string
+	Type               string // 'user_message', 'assistant_message', 'system_message', 'assistant_reasoning', 'assistant_tool_call', 'tool_output'
+	Seq                int
+	Content            string
+	ToolCallID         string
+	ToolName           string
+	ProviderResponseID string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }

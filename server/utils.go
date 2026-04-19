@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"afastchat.com/db"
+	"afastchat.com/views"
 	"github.com/go-chi/chi/v5"
 	"github.com/starfederation/datastar-go/datastar"
 )
@@ -61,4 +63,42 @@ func patchSignals(sse *datastar.ServerSentEventGenerator, v any) {
 	}
 
 	sse.PatchSignals(bs)
+}
+
+func mapViewThread(thread db.Thread) views.Thread {
+	return views.Thread{
+		ID:          thread.ID,
+		IsStreaming: thread.IsStreaming,
+		Title:       thread.Title,
+	}
+}
+
+func mapViewThreads(threads []db.Thread) []views.Thread {
+	out := make([]views.Thread, 0, len(threads))
+	for _, thread := range threads {
+		out = append(out, mapViewThread(thread))
+	}
+	return out
+}
+
+func mapViewMessages(messages []db.Message) []views.Message {
+	out := make([]views.Message, 0, len(messages))
+	for _, message := range messages {
+		viewMessage := views.Message{
+			Type:      message.Type,
+			ID:        message.ID,
+			MdContent: message.Content,
+			ToolName:  message.ToolName,
+		}
+
+		switch message.Type {
+		case "system_message", "tool_output":
+			continue
+		case "assistant_message", "assistant_reasoning":
+			viewMessage.MdContent = renderMarkdown(message.Content)
+		}
+
+		out = append(out, viewMessage)
+	}
+	return out
 }

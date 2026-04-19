@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"html"
+	"log/slog"
 	"unsafe"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
@@ -26,6 +27,7 @@ func renderMarkdown(src string) string {
 	var buf bytes.Buffer
 	b := unsafe.Slice(unsafe.StringData(src), len(src))
 	if err := md.Convert(b, &buf); err != nil {
+		slog.Error("error rendering markdown", "err", err)
 		return html.EscapeString(src)
 	}
 	return buf.String()
