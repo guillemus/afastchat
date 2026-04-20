@@ -4,6 +4,9 @@ import (
 	"io"
 	"log/slog"
 	"net/url"
+	"strings"
+
+	"github.com/starfederation/datastar-go/datastar"
 
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/components"
@@ -46,37 +49,6 @@ type ThreadData struct {
 	Streaming bool
 }
 
-func (x *Renderer) RenderIndex(w io.Writer, data IndexData, doScrollSidebar bool) {
-	renderNode(w, x.appLayout(
-		sidebar(data.Threads, "", doScrollSidebar),
-		threadContentsEmpty(),
-	))
-}
-
-func (x *Renderer) RenderThread(w io.Writer, data ThreadData, doScrollSidebar bool) {
-	renderNode(w, x.appLayout(
-		sidebar(data.Threads, data.Thread.ID, doScrollSidebar),
-		threadContents(data.Messages, data.Thread.ID, doScrollSidebar, data.Streaming),
-	))
-}
-
-func renderNode(w io.Writer, node Node) {
-	err := node.Render(w)
-	if err != nil {
-		slog.Error("view render error", "err", err)
-	}
-}
-
-func RenderThreads(w io.Writer, threads []Thread, activeThreadID string) {
-	for _, it := range threads {
-		renderNode(w, threadListItem(it, it.ID == activeThreadID))
-	}
-}
-
-func RenderThreadItem(w io.Writer, thread Thread) {
-	renderNode(w, threadListItem(thread, true))
-}
-
 func (x *Renderer) appLayout(body ...Node) Node {
 	return HTML5(HTML5Props{
 		Title:       "afastchat",
@@ -104,6 +76,45 @@ func (x *Renderer) appLayout(body ...Node) Node {
 	})
 }
 
-func RenderThreadMessages(w io.Writer, messages []Message, doScrollSidebar bool) {
-	renderNode(w, ThreadMessages(messages, doScrollSidebar))
+func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData, doScrollSidebar bool) {
+	renderNode(w, x.appLayout(
+		sidebar(data.Threads, "", doScrollSidebar),
+		threadContentsEmpty(),
+	))
+}
+
+func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSidebar bool) {
+	renderNode(w, x.appLayout(
+		sidebar(data.Threads, data.Thread.ID, doScrollSidebar),
+		threadContents(data.Messages, data.Thread.ID, doScrollSidebar, data.Streaming),
+	))
+}
+
+func renderNode(w io.Writer, node Node) {
+	err := node.Render(w)
+	if err != nil {
+		slog.Error("view render error", "err", err)
+	}
+}
+
+func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
+	var sb strings.Builder
+	for _, it := range threads {
+		renderNode(&sb, threadListItem(it, it.ID == activeThreadID))
+	}
+
+	sse.PatchElements(sb.String(), datastar.WithSelectorID("thread-items"))
+}
+
+func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread) {
+	var sb strings.Builder
+	renderNode(&sb, threadListItem(thread, true))
+	sse.PatchElements(sb.String())
+}
+
+func PatchThreadMessages(
+	sse *datastar.ServerSentEventGenerator, messages []Message, doScrollSidebar bool) {
+	var sb strings.Builder
+	renderNode(&sb, ThreadMessages(messages, doScrollSidebar))
+	sse.PatchElements(sb.String(), datastar.WithSelectorID("messages"))
 }

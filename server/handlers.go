@@ -22,7 +22,7 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderIndex(w, views.IndexData{Threads: mapViewThreads(threads)}, true)
+	x.renderer.RenderIndexPage(w, views.IndexData{Threads: mapViewThreads(threads)}, true)
 }
 
 func (x *Server) getDisplayMessages(ctx context.Context, threadID string) ([]views.Message, error) {
@@ -68,7 +68,7 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request, threadID s
 		return
 	}
 
-	x.renderer.RenderThread(w, threadPage, true)
+	x.renderer.RenderThreadPage(w, threadPage, true)
 }
 
 func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, threadID string) {
@@ -106,14 +106,8 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request, sig
 		}
 	}
 
-	var threadsSb strings.Builder
-	views.RenderThreads(&threadsSb, mapViewThreads(filtered), sig.ThreadID)
-
 	sse := datastar.NewSSE(w, r)
-	sse.PatchElements(
-		threadsSb.String(),
-		datastar.WithSelectorID("thread-items"),
-	)
+	views.PatchThreads(sse, mapViewThreads(filtered), sig.ThreadID)
 }
 
 type SendMessageSignals struct {
@@ -314,7 +308,8 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request, thre
 		}
 
 		var sb strings.Builder
-		x.renderer.RenderThread(&sb, threadPage, false)
+
+		x.renderer.RenderThreadPage(&sb, threadPage, false)
 		sse.PatchElements(sb.String())
 	}
 
@@ -334,9 +329,7 @@ msgloop:
 				continue msgloop
 			}
 
-			var sb strings.Builder
-			views.RenderThreadMessages(&sb, messages, false)
-			sse.PatchElements(sb.String(), datastar.WithSelectorID("messages"))
+			views.PatchThreadMessages(sse, messages, false)
 
 			patchSignals(sse, map[string]any{"isStreaming": thread.IsStreaming})
 			sse.ExecuteScript(`(() => {
@@ -354,9 +347,7 @@ msgloop:
 					continue msgloop
 				}
 
-				var sb strings.Builder
-				views.RenderThreadItem(&sb, mapViewThread(thread))
-				sse.PatchElements(sb.String())
+				views.PatchThreadItem(sse, mapViewThread(thread))
 			}
 		case <-ctx.Done():
 			break msgloop
