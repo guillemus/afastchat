@@ -331,148 +331,149 @@
         flex-shrink: 0;
     }
 
-    /* Messages */
-    #messages .message {
-        display: block;
-        font-size: var(--font-size-1);
-        line-height: var(--font-lineheight-4);
-        padding: var(--size-3) var(--size-4);
-        border-radius: var(--radius-3);
-        word-break: break-word;
-        min-width: 0;
-        width: fit-content;
-        max-width: min(100%, 72ch);
-    }
-
-    #messages .user-message {
-        background: color-mix(in oklch, var(--bg-button) 18%, transparent);
-        border: 1px solid color-mix(in oklch, var(--bg-button) 30%, transparent);
-        color: var(--text-primary);
-        white-space: normal;
-        margin-left: auto;
-        margin-right: 0;
-    }
-
-    #messages .assistant-message {
-        color: var(--gray-3);
-        white-space: normal;
-        margin-left: 0;
-        margin-right: auto;
-
-        &.assistant-message-last {
-            min-height: calc(100vh - 13rem);
+    #messages {
+        /* Messages */
+        #messages .message {
+            display: block;
+            font-size: var(--font-size-1);
+            line-height: var(--font-lineheight-4);
+            padding: var(--size-3) var(--size-4);
+            border-radius: var(--radius-3);
+            word-break: break-word;
+            min-width: 0;
+            width: fit-content;
+            max-width: min(100%, 72ch);
         }
 
-        & pre {
-            background: var(--gray-11);
-            border-radius: var(--radius-2);
-            padding: var(--size-3);
-            max-width: 100%;
-            overflow-x: auto;
-            margin: var(--size-2) 0;
-        }
-
-        & code {
-            font-family: 'Fira Code', var(--font-mono);
-            font-size: var(--font-size-0);
-        }
-
-        & :not(pre) > code {
-            background: var(--gray-10);
-            padding: var(--size-1) var(--size-2);
-            border-radius: var(--radius-1);
-        }
-
-        & p {
-            margin: var(--size-2) 0;
-        }
-        & p:first-child {
-            margin-top: 0;
-        }
-        & p:last-child {
-            margin-bottom: 0;
-        }
-
-        & ul,
-        & ol {
-            padding-left: var(--size-5);
-            margin: var(--size-2) 0;
-        }
-
-        & li {
-            margin: var(--size-1) 0;
-        }
-
-        & h1,
-        & h2,
-        & h3,
-        & h4 {
-            margin: var(--size-3) 0 var(--size-2);
+        #messages .user-message {
+            background: color-mix(in oklch, var(--bg-button) 18%, transparent);
+            border: 1px solid color-mix(in oklch, var(--bg-button) 30%, transparent);
             color: var(--text-primary);
+            white-space: normal;
+            margin-left: auto;
+            margin-right: 0;
         }
 
-        & h1 {
-            font-size: var(--font-size-4);
-        }
-        & h2 {
-            font-size: var(--font-size-3);
-        }
-        & h3 {
-            font-size: var(--font-size-2);
-        }
-
-        & blockquote {
-            border-left: 3px solid var(--gray-8);
-            padding-left: var(--size-3);
-            color: var(--text-secondary);
-            margin: var(--size-2) 0;
-        }
-
-        & a {
-            color: var(--bg-button);
-            text-decoration: underline;
-        }
-
-        & table {
-            border-collapse: collapse;
-            margin: var(--size-2) 0;
-            width: 100%;
-        }
-
-        & th,
-        & td {
-            border: 1px solid var(--border-color);
-            padding: var(--size-1) var(--size-2);
-            text-align: left;
-        }
-
-        & th {
-            background: var(--gray-11);
-        }
-
-        & hr {
-            border: none;
-            border-top: 1px solid var(--border-color);
-            margin: var(--size-3) 0;
-        }
-
-        /* Syntax highlighting (Chroma) */
-        & .chroma {
-            background: var(--gray-11);
+        #messages .assistant-message {
             color: var(--gray-3);
-        }
+            white-space: normal;
+            margin-left: 0;
+            margin-right: auto;
 
-        & .chroma .k,    /* Keyword */
+            &.assistant-message-last {
+                min-height: calc(100vh - 13rem);
+            }
+
+            & pre {
+                background: var(--gray-11);
+                border-radius: var(--radius-2);
+                padding: var(--size-3);
+                max-width: 100%;
+                overflow-x: auto;
+                margin: var(--size-2) 0;
+            }
+
+            & code {
+                font-family: 'Fira Code', var(--font-mono);
+                font-size: var(--font-size-0);
+            }
+
+            & :not(pre) > code {
+                background: var(--gray-10);
+                padding: var(--size-1) var(--size-2);
+                border-radius: var(--radius-1);
+            }
+
+            & p {
+                margin: var(--size-2) 0;
+            }
+            & p:first-child {
+                margin-top: 0;
+            }
+            & p:last-child {
+                margin-bottom: 0;
+            }
+
+            & ul,
+            & ol {
+                padding-left: var(--size-5);
+                margin: var(--size-2) 0;
+            }
+
+            & li {
+                margin: var(--size-1) 0;
+            }
+
+            & h1,
+            & h2,
+            & h3,
+            & h4 {
+                margin: var(--size-3) 0 var(--size-2);
+                color: var(--text-primary);
+            }
+
+            & h1 {
+                font-size: var(--font-size-4);
+            }
+            & h2 {
+                font-size: var(--font-size-3);
+            }
+            & h3 {
+                font-size: var(--font-size-2);
+            }
+
+            & blockquote {
+                border-left: 3px solid var(--gray-8);
+                padding-left: var(--size-3);
+                color: var(--text-secondary);
+                margin: var(--size-2) 0;
+            }
+
+            & a {
+                color: var(--bg-button);
+                text-decoration: underline;
+            }
+
+            & table {
+                border-collapse: collapse;
+                margin: var(--size-2) 0;
+                width: 100%;
+            }
+
+            & th,
+            & td {
+                border: 1px solid var(--border-color);
+                padding: var(--size-1) var(--size-2);
+                text-align: left;
+            }
+
+            & th {
+                background: var(--gray-11);
+            }
+
+            & hr {
+                border: none;
+                border-top: 1px solid var(--border-color);
+                margin: var(--size-3) 0;
+            }
+
+            /* Syntax highlighting (Chroma) */
+            & .chroma {
+                background: var(--gray-11);
+                color: var(--gray-3);
+            }
+
+            & .chroma .k,    /* Keyword */
         & .chroma .kd,   /* KeywordDeclaration */
         & .chroma .kn,   /* KeywordNamespace */
         & .chroma .kc,   /* KeywordConstant */
         & .chroma .kr {
-            /* KeywordReserved */
-            color: var(--bg-button);
-            font-weight: var(--font-weight-6);
-        }
+                /* KeywordReserved */
+                color: var(--bg-button);
+                font-weight: var(--font-weight-6);
+            }
 
-        & .chroma .s,    /* LiteralString */
+            & .chroma .s,    /* LiteralString */
         & .chroma .sa,   /* LiteralStringAffix */
         & .chroma .sb,   /* LiteralStringBacktick */
         & .chroma .sc,   /* LiteralStringChar */
@@ -485,76 +486,77 @@
         & .chroma .sr,   /* LiteralStringRegex */
         & .chroma .s1,   /* LiteralStringSingle */
         & .chroma .ss {
-            /* LiteralStringSymbol */
-            color: #7ee787;
-        }
+                /* LiteralStringSymbol */
+                color: #7ee787;
+            }
 
-        & .chroma .nf,   /* NameFunction */
+            & .chroma .nf,   /* NameFunction */
         & .chroma .fm {
-            /* NameFunctionMagic */
-            color: var(--gray-1);
-        }
+                /* NameFunctionMagic */
+                color: var(--gray-1);
+            }
 
-        & .chroma .c,    /* Comment */
+            & .chroma .c,    /* Comment */
         & .chroma .ch,   /* CommentHashbang */
         & .chroma .cm,   /* CommentMultiline */
         & .chroma .c1,   /* CommentSingle */
         & .chroma .cs,   /* CommentSpecial */
         & .chroma .cp,   /* CommentPreproc */
         & .chroma .cpf {
-            /* CommentPreprocFile */
-            color: var(--gray-7);
-            font-style: italic;
-        }
+                /* CommentPreprocFile */
+                color: var(--gray-7);
+                font-style: italic;
+            }
 
-        & .chroma .nc,   /* NameClass */
+            & .chroma .nc,   /* NameClass */
         & .chroma .kt,   /* KeywordType */
         & .chroma .nn {
-            /* NameNamespace */
-            color: #ff7b72;
-        }
+                /* NameNamespace */
+                color: #ff7b72;
+            }
 
-        & .chroma .mi,   /* LiteralNumberInteger */
+            & .chroma .mi,   /* LiteralNumberInteger */
         & .chroma .mf,   /* LiteralNumberFloat */
         & .chroma .mh,   /* LiteralNumberHex */
         & .chroma .mo,   /* LiteralNumberOct */
         & .chroma .mb,   /* LiteralNumberBin */
         & .chroma .il,   /* LiteralNumberIntegerLong */
         & .chroma .m {
-            /* LiteralNumber */
-            color: #79c0ff;
-        }
+                /* LiteralNumber */
+                color: #79c0ff;
+            }
 
-        & .chroma .nt,   /* NameTag */
+            & .chroma .nt,   /* NameTag */
         & .chroma .na {
-            /* NameAttribute */
-            color: #d2a8ff;
-        }
+                /* NameAttribute */
+                color: #d2a8ff;
+            }
 
-        & .chroma .nb,   /* NameBuiltin */
+            & .chroma .nb,   /* NameBuiltin */
         & .chroma .bp {
-            /* NameBuiltinPseudo */
-            color: var(--gray-5);
-        }
+                /* NameBuiltinPseudo */
+                color: var(--gray-5);
+            }
 
-        & .chroma .nv,   /* NameVariable */
+            & .chroma .nv,   /* NameVariable */
         & .chroma .vc,   /* NameVariableClass */
         & .chroma .vg,   /* NameVariableGlobal */
         & .chroma .vi,   /* NameVariableInstance */
         & .chroma .vm {
-            /* NameVariableMagic */
-            color: var(--gray-4);
-        }
+                /* NameVariableMagic */
+                color: var(--gray-4);
+            }
 
-        & .chroma .o,    /* Operator */
+            & .chroma .o,    /* Operator */
         & .chroma .ow {
-            /* OperatorWord */
-            color: var(--gray-5);
-        }
+                /* OperatorWord */
+                color: var(--gray-5);
+            }
 
-        & .chroma .p {
-            /* Punctuation */
-            color: var(--gray-5);
+            & .chroma .p {
+                /* Punctuation */
+                color: var(--gray-5);
+            }
         }
     }
 
