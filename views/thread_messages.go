@@ -1,25 +1,78 @@
 package views
 
 import (
+	"github.com/starfederation/datastar-go/datastar"
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/components"
 	. "maragu.dev/gomponents/html"
 )
 
-func threadContentsEmpty() Node {
-	return threadContents(nil, "", false, false)
+type (
+	MessageGroup interface {
+		isMessageGroup()
+		Node() Node
+	}
+	UserMessage struct {
+		ID        string
+		MdContent string
+	}
+	AssistantMessageParts struct {
+		ID          string
+		LargeHeight bool
+		Parts       []AssistantPart
+	}
+)
+
+func (UserMessage) isMessageGroup()           {}
+func (AssistantMessageParts) isMessageGroup() {}
+
+type (
+	AssistantPart interface {
+		isAssistantPart()
+		Node() Node
+	}
+	AssistantTextPart struct {
+		ID        string
+		MdContent string
+	}
+	ToolCallPart struct {
+		Text string
+	}
+	ReasoningPart struct {
+		Text string
+	}
+)
+
+func (AssistantTextPart) isAssistantPart() {}
+func (ToolCallPart) isAssistantPart()      {}
+func (ReasoningPart) isAssistantPart()     {}
+
+type MessageThread struct {
+	Messages        []MessageGroup
+	ThreadID        string
+	DoScrollSidebar bool
+	IsStreaming     bool
 }
 
-func threadContents(messages []Message, threadID string, doScrollSidebar bool, isStreaming bool) Node {
+func NewEmptyMessageThread() Node {
+	return MessageThread{
+		Messages:        []MessageGroup{},
+		ThreadID:        "",
+		DoScrollSidebar: false,
+		IsStreaming:     false,
+	}.Node()
+}
+
+func (x MessageThread) Node() Node {
 	var contents Node
-	if len(messages) == 0 {
+	if len(x.Messages) == 0 {
 		input := newThreadChatInput()
-		if threadID != "" {
-			input = existingThreadChatInput(threadID, isStreaming)
+		if x.ThreadID != "" {
+			input = existingThreadChatInput(x.ThreadID, x.IsStreaming)
 		}
 
 		contents = Group{
-			ThreadMessages(messages, doScrollSidebar),
+			x.MessageList(),
 			input,
 		}
 	} else {
@@ -33,7 +86,7 @@ func threadContents(messages []Message, threadID string, doScrollSidebar bool, i
 					const distanceFromBottom = overflow - $messages.scrollTop;
 					$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 				`),
-				ThreadMessages(messages, doScrollSidebar),
+				x.MessageList(),
 				Button(
 					Type("button"),
 					Style("display: none"),
@@ -46,15 +99,20 @@ func threadContents(messages []Message, threadID string, doScrollSidebar bool, i
 					iconArrowDown(),
 				),
 			),
-			existingThreadChatInput(threadID, isStreaming),
+			existingThreadChatInput(x.ThreadID, x.IsStreaming),
 		}
 	}
 
 	return Main(Class("main"), contents)
 }
 
-func ThreadMessages(messages []Message, doScrollSidebar bool) Node {
-	if len(messages) == 0 {
+func PatchThreadMessageList(
+	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollSidebar bool) {
+	ssePatch(sse, MessageThread{Messages: messages, DoScrollSidebar: scrollSidebar}.MessageList())
+}
+
+func (x MessageThread) MessageList() Node {
+	if len(x.Messages) == 0 {
 		return Div(
 			ID("messages"),
 			Class("main-body empty-thread"),
@@ -73,83 +131,82 @@ func ThreadMessages(messages []Message, doScrollSidebar bool) Node {
 		Data("ref:messages", ""),
 		Classes{
 			"main-body": true,
-			"invisible": doScrollSidebar,
+			"invisible": x.DoScrollSidebar,
 		},
 		Data("on:scroll__debounce.10ms", `
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
 			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 		`),
-		If(doScrollSidebar, Data("init", `
+		If(x.DoScrollSidebar, Data("init", `
 			el.scrollTop = el.scrollHeight;
 			el.classList.remove('invisible');
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
 			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 		`)),
-		Map(messages, func(m Message) Node {
-			return renderMessage(m, false)
+		Map(x.Messages, func(m MessageGroup) Node {
+			return m.Node()
 		}),
 	)
 }
 
-func renderMessage(message Message, isLastAssistant bool) Node {
-	switch message.Type {
-	case "user_message":
-		return userMessage(message.ID, message.MdContent)
-	case "assistant_message":
-		return assistantMessage(message.ID, message.MdContent, isLastAssistant)
-	case "assistant_reasoning":
-		return assistantReasoningMessage(message.ID, message.MdContent, isLastAssistant)
-	case "assistant_tool_call":
-		return assistantToolCallMessage(message.ID, message.ToolName, message.MdContent, isLastAssistant)
-	default:
-		return nil
-	}
-}
-
-func userMessage(messageID string, content string) Node {
+func (x UserMessage) Node() Node {
 	return Div(
-		ID("msg-"+messageID),
+		ID("msg-"+x.ID),
 		Class("message user-message"),
-		Text(content),
+		Raw(x.MdContent),
 	)
 }
 
-func assistantMessage(messageID string, contentHTML string, isLastAssistant bool) Node {
+func (x AssistantMessageParts) Node() Node {
+	return x.assistantMessage()
+}
+
+func (x AssistantMessageParts) assistantMessage() Node {
 	return Div(
-		ID("msg-"+messageID),
+		ID("msg-"+x.ID),
 		Classes{
-			"message":                true,
-			"assistant-message":      true,
-			"assistant-message-last": isLastAssistant,
+			"message assistant-message": true,
+			"large-height":              x.LargeHeight,
 		},
-		Raw(contentHTML),
+		Map(x.Parts, func(part AssistantPart) Node {
+			return part.Node()
+		}),
 	)
 }
 
-func assistantReasoningMessage(messageID string, contentHTML string, isLastAssistant bool) Node {
+func (x AssistantTextPart) Node() Node {
 	return Div(
-		ID("msg-"+messageID),
-		Classes{
-			"message":                true,
-			"assistant-message":      true,
-			"assistant-message-last": isLastAssistant,
-		},
-		Div(Text("Reasoning")),
-		Raw(contentHTML),
+		Class("assistant-part assistant-text-part"),
+		Raw(x.MdContent),
 	)
 }
 
-func assistantToolCallMessage(messageID string, toolName string, content string, isLastAssistant bool) Node {
-	return Div(
-		ID("msg-"+messageID),
-		Classes{
-			"message":                true,
-			"assistant-message":      true,
-			"assistant-message-last": isLastAssistant,
-		},
-		Div(Text("Tool: "+toolName)),
-		Pre(Text(content)),
+func (x ToolCallPart) Node() Node {
+	return Details(
+		Class("assistant-part tool-call-part"),
+		Summary(
+			Class("tool-call-part-summary"),
+			Text("Tool call"),
+		),
+		Pre(
+			Class("tool-call-part-body"),
+			Text(x.Text),
+		),
+	)
+}
+
+func (x ReasoningPart) Node() Node {
+	return Details(
+		Class("assistant-part reasoning-part"),
+		Summary(
+			Class("reasoning-part-summary"),
+			Text("Reasoning"),
+		),
+		Div(
+			Class("reasoning-part-body"),
+			Raw(x.Text),
+		),
 	)
 }

@@ -88,11 +88,11 @@
     }
 
     .thread-shell {
-        position: relative;
-        flex: 1;
-        min-height: 0;
         display: flex;
         flex-direction: column;
+        flex: 1;
+        position: relative;
+        min-height: 0;
     }
 }
 
@@ -147,7 +147,7 @@
         text-decoration: none;
         transition: filter 0.15s;
 
-        & svg {
+        svg {
             width: 14px;
             height: 14px;
             flex-shrink: 0;
@@ -162,7 +162,7 @@
         margin: 0 var(--size-3) var(--size-2);
         position: relative;
 
-        & svg {
+        svg {
             position: absolute;
             left: var(--size-2);
             top: 50%;
@@ -173,7 +173,7 @@
             pointer-events: none;
         }
 
-        & input {
+        input {
             width: 100%;
             padding: var(--size-1) var(--size-2) var(--size-1)
                 calc(var(--size-2) + 13px + var(--size-2));
@@ -273,7 +273,7 @@
         flex-shrink: 0;
         color: var(--bg-button);
 
-        & svg {
+        svg {
             width: 14px;
             height: 14px;
             animation: thread-item-spinner-rotate 0.8s linear infinite;
@@ -293,7 +293,7 @@
         border-radius: var(--radius-1);
         flex-shrink: 0;
 
-        & svg {
+        svg {
             width: 14px;
             height: 14px;
         }
@@ -332,8 +332,7 @@
     }
 
     #messages {
-        /* Messages */
-        #messages .message {
+        .message {
             display: block;
             font-size: var(--font-size-1);
             line-height: var(--font-lineheight-4);
@@ -345,7 +344,7 @@
             max-width: min(100%, 72ch);
         }
 
-        #messages .user-message {
+        .user-message {
             background: color-mix(in oklch, var(--bg-button) 18%, transparent);
             border: 1px solid color-mix(in oklch, var(--bg-button) 30%, transparent);
             color: var(--text-primary);
@@ -354,17 +353,66 @@
             margin-right: 0;
         }
 
-        #messages .assistant-message {
+        .assistant-message {
             color: var(--gray-3);
             white-space: normal;
             margin-left: 0;
             margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--size-3);
 
-            &.assistant-message-last {
+            &.large-height {
                 min-height: calc(100vh - 13rem);
             }
 
-            & pre {
+            .assistant-part {
+                min-width: 0;
+            }
+
+            .assistant-text-part {
+                display: block;
+            }
+
+            .reasoning-part,
+            .tool-call-part {
+                width: 100%;
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-2);
+                background: var(--gray-11);
+                overflow: hidden;
+
+                summary {
+                    cursor: pointer;
+                    list-style: none;
+                    padding: var(--size-2) var(--size-3);
+                    font-size: var(--font-size-0);
+                    font-weight: var(--font-weight-6);
+                    color: var(--text-secondary);
+                }
+
+                summary::-webkit-details-marker {
+                    display: none;
+                }
+            }
+
+            .reasoning-part-body {
+                padding: 0 var(--size-3) var(--size-3);
+                font-size: var(--font-size-0);
+                line-height: var(--font-lineheight-3);
+                color: var(--text-secondary);
+            }
+
+            .tool-call-part-summary {
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .tool-call-part-body {
+                margin: 0;
+                border-radius: 0;
+            }
+
+            pre {
                 background: var(--gray-11);
                 border-radius: var(--radius-2);
                 padding: var(--size-3);
@@ -373,187 +421,187 @@
                 margin: var(--size-2) 0;
             }
 
-            & code {
+            code {
                 font-family: 'Fira Code', var(--font-mono);
                 font-size: var(--font-size-0);
             }
 
-            & :not(pre) > code {
+            :not(pre) > code {
                 background: var(--gray-10);
                 padding: var(--size-1) var(--size-2);
                 border-radius: var(--radius-1);
             }
 
-            & p {
+            p {
                 margin: var(--size-2) 0;
             }
-            & p:first-child {
+            p:first-child {
                 margin-top: 0;
             }
-            & p:last-child {
+            p:last-child {
                 margin-bottom: 0;
             }
 
-            & ul,
-            & ol {
+            ul,
+            ol {
                 padding-left: var(--size-5);
                 margin: var(--size-2) 0;
             }
 
-            & li {
+            li {
                 margin: var(--size-1) 0;
             }
 
-            & h1,
-            & h2,
-            & h3,
-            & h4 {
+            h1,
+            h2,
+            h3,
+            h4 {
                 margin: var(--size-3) 0 var(--size-2);
                 color: var(--text-primary);
             }
 
-            & h1 {
+            h1 {
                 font-size: var(--font-size-4);
             }
-            & h2 {
+            h2 {
                 font-size: var(--font-size-3);
             }
-            & h3 {
+            h3 {
                 font-size: var(--font-size-2);
             }
 
-            & blockquote {
+            blockquote {
                 border-left: 3px solid var(--gray-8);
                 padding-left: var(--size-3);
                 color: var(--text-secondary);
                 margin: var(--size-2) 0;
             }
 
-            & a {
+            a {
                 color: var(--bg-button);
                 text-decoration: underline;
             }
 
-            & table {
+            table {
                 border-collapse: collapse;
                 margin: var(--size-2) 0;
                 width: 100%;
             }
 
-            & th,
-            & td {
+            th,
+            td {
                 border: 1px solid var(--border-color);
                 padding: var(--size-1) var(--size-2);
                 text-align: left;
             }
 
-            & th {
+            th {
                 background: var(--gray-11);
             }
 
-            & hr {
+            hr {
                 border: none;
                 border-top: 1px solid var(--border-color);
                 margin: var(--size-3) 0;
             }
 
             /* Syntax highlighting (Chroma) */
-            & .chroma {
+            .chroma {
                 background: var(--gray-11);
                 color: var(--gray-3);
             }
 
-            & .chroma .k,    /* Keyword */
-        & .chroma .kd,   /* KeywordDeclaration */
-        & .chroma .kn,   /* KeywordNamespace */
-        & .chroma .kc,   /* KeywordConstant */
-        & .chroma .kr {
+            .chroma .k,    /* Keyword */
+            .chroma .kd,   /* KeywordDeclaration */
+            .chroma .kn,   /* KeywordNamespace */
+            .chroma .kc,   /* KeywordConstant */
+            .chroma .kr {
                 /* KeywordReserved */
                 color: var(--bg-button);
                 font-weight: var(--font-weight-6);
             }
 
-            & .chroma .s,    /* LiteralString */
-        & .chroma .sa,   /* LiteralStringAffix */
-        & .chroma .sb,   /* LiteralStringBacktick */
-        & .chroma .sc,   /* LiteralStringChar */
-        & .chroma .sd,   /* LiteralStringDoc */
-        & .chroma .s2,   /* LiteralStringDouble */
-        & .chroma .se,   /* LiteralStringEscape */
-        & .chroma .sh,   /* LiteralStringHeredoc */
-        & .chroma .si,   /* LiteralStringInterpol */
-        & .chroma .sx,   /* LiteralStringOther */
-        & .chroma .sr,   /* LiteralStringRegex */
-        & .chroma .s1,   /* LiteralStringSingle */
-        & .chroma .ss {
+            .chroma .s,    /* LiteralString */
+            .chroma .sa,   /* LiteralStringAffix */
+            .chroma .sb,   /* LiteralStringBacktick */
+            .chroma .sc,   /* LiteralStringChar */
+            .chroma .sd,   /* LiteralStringDoc */
+            .chroma .s2,   /* LiteralStringDouble */
+            .chroma .se,   /* LiteralStringEscape */
+            .chroma .sh,   /* LiteralStringHeredoc */
+            .chroma .si,   /* LiteralStringInterpol */
+            .chroma .sx,   /* LiteralStringOther */
+            .chroma .sr,   /* LiteralStringRegex */
+            .chroma .s1,   /* LiteralStringSingle */
+            .chroma .ss {
                 /* LiteralStringSymbol */
                 color: #7ee787;
             }
 
-            & .chroma .nf,   /* NameFunction */
-        & .chroma .fm {
+            .chroma .nf,   /* NameFunction */
+            .chroma .fm {
                 /* NameFunctionMagic */
                 color: var(--gray-1);
             }
 
-            & .chroma .c,    /* Comment */
-        & .chroma .ch,   /* CommentHashbang */
-        & .chroma .cm,   /* CommentMultiline */
-        & .chroma .c1,   /* CommentSingle */
-        & .chroma .cs,   /* CommentSpecial */
-        & .chroma .cp,   /* CommentPreproc */
-        & .chroma .cpf {
+            .chroma .c,    /* Comment */
+            .chroma .ch,   /* CommentHashbang */
+            .chroma .cm,   /* CommentMultiline */
+            .chroma .c1,   /* CommentSingle */
+            .chroma .cs,   /* CommentSpecial */
+            .chroma .cp,   /* CommentPreproc */
+            .chroma .cpf {
                 /* CommentPreprocFile */
                 color: var(--gray-7);
                 font-style: italic;
             }
 
-            & .chroma .nc,   /* NameClass */
-        & .chroma .kt,   /* KeywordType */
-        & .chroma .nn {
+            .chroma .nc,   /* NameClass */
+            .chroma .kt,   /* KeywordType */
+            .chroma .nn {
                 /* NameNamespace */
                 color: #ff7b72;
             }
 
-            & .chroma .mi,   /* LiteralNumberInteger */
-        & .chroma .mf,   /* LiteralNumberFloat */
-        & .chroma .mh,   /* LiteralNumberHex */
-        & .chroma .mo,   /* LiteralNumberOct */
-        & .chroma .mb,   /* LiteralNumberBin */
-        & .chroma .il,   /* LiteralNumberIntegerLong */
-        & .chroma .m {
+            .chroma .mi,   /* LiteralNumberInteger */
+            .chroma .mf,   /* LiteralNumberFloat */
+            .chroma .mh,   /* LiteralNumberHex */
+            .chroma .mo,   /* LiteralNumberOct */
+            .chroma .mb,   /* LiteralNumberBin */
+            .chroma .il,   /* LiteralNumberIntegerLong */
+            .chroma .m {
                 /* LiteralNumber */
                 color: #79c0ff;
             }
 
-            & .chroma .nt,   /* NameTag */
-        & .chroma .na {
+            .chroma .nt,   /* NameTag */
+            .chroma .na {
                 /* NameAttribute */
                 color: #d2a8ff;
             }
 
-            & .chroma .nb,   /* NameBuiltin */
-        & .chroma .bp {
+            .chroma .nb,   /* NameBuiltin */
+            .chroma .bp {
                 /* NameBuiltinPseudo */
                 color: var(--gray-5);
             }
 
-            & .chroma .nv,   /* NameVariable */
-        & .chroma .vc,   /* NameVariableClass */
-        & .chroma .vg,   /* NameVariableGlobal */
-        & .chroma .vi,   /* NameVariableInstance */
-        & .chroma .vm {
+            .chroma .nv,   /* NameVariable */
+            .chroma .vc,   /* NameVariableClass */
+            .chroma .vg,   /* NameVariableGlobal */
+            .chroma .vi,   /* NameVariableInstance */
+            .chroma .vm {
                 /* NameVariableMagic */
                 color: var(--gray-4);
             }
 
-            & .chroma .o,    /* Operator */
-        & .chroma .ow {
+            .chroma .o,    /* Operator */
+           .chroma .ow {
                 /* OperatorWord */
                 color: var(--gray-5);
             }
 
-            & .chroma .p {
+            .chroma .p {
                 /* Punctuation */
                 color: var(--gray-5);
             }
@@ -661,7 +709,7 @@
                 color 0.2s var(--ease-3),
                 filter 0.15s var(--ease-3);
 
-            & svg {
+            svg {
                 width: 16px;
                 height: 16px;
             }
@@ -712,7 +760,7 @@
                 0 0 0 3px color-mix(in oklch, var(--bg-button) 28%, transparent);
         }
 
-        & svg {
+        svg {
             inline-size: 22px;
             block-size: 22px;
         }

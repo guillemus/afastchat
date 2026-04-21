@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 
+	"github.com/starfederation/datastar-go/datastar"
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
@@ -10,6 +11,17 @@ import (
 type chatInputProps struct {
 	threadID    string
 	isStreaming bool
+}
+
+func PatchIsStreaming(sse *datastar.ServerSentEventGenerator, isStreaming bool) {
+	patchSignals(sse, map[string]any{"isStreaming": isStreaming})
+}
+
+func ClearMessageInput(sse *datastar.ServerSentEventGenerator) {
+	patchSignals(sse, map[string]any{
+		"message":     "",
+		"isStreaming": true,
+	})
 }
 
 func chatInput(props chatInputProps) Node {

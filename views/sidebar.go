@@ -8,11 +8,17 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func sidebar(threads []Thread, activeThreadID string, doScrollSidebar bool) Node {
+type Sidebar struct {
+	Threads         []Thread
+	ActiveThreadID  string
+	DoScrollSidebar bool
+}
+
+func (x Sidebar) Node() Node {
 	return Aside(
 		Class("sidebar"),
-		If(activeThreadID != "",
-			Data("init", fmt.Sprintf("@get('/threads/%s/events')", activeThreadID)),
+		If(x.ActiveThreadID != "",
+			Data("init", fmt.Sprintf("@get('/threads/%s/events')", x.ActiveThreadID)),
 		),
 
 		Div(Class("sidebar-header"),
@@ -39,9 +45,9 @@ func sidebar(threads []Thread, activeThreadID string, doScrollSidebar bool) Node
 		Div(
 			Classes{
 				"thread-list": true,
-				"invisible":   doScrollSidebar,
+				"invisible":   x.DoScrollSidebar,
 			},
-			If(doScrollSidebar, Group{
+			If(x.DoScrollSidebar, Group{
 				Data("init", `
 					const value = getSessionVal('thread_list_scroll');
 					if (value) {
@@ -62,17 +68,21 @@ func sidebar(threads []Thread, activeThreadID string, doScrollSidebar bool) Node
 				Class("thread-section-label"),
 				Text("Recent"),
 			),
-			Div(ID("thread-items"),
-				Map(threads, func(thread Thread) Node {
-					return threadListItem(thread, thread.ID == activeThreadID)
-				}),
-			),
+			ThreadList(x.Threads, x.ActiveThreadID),
 		),
 		Div(
 			Class("sidebar-footer"),
 			Div(Class("avatar"), Text("G")),
 			Span(Class("sidebar-footer-name"), Text("Guillem")),
 		),
+	)
+}
+
+func ThreadList(threads []Thread, activeThreadID string) Node {
+	return Div(ID("thread-items"),
+		Map(threads, func(thread Thread) Node {
+			return threadListItem(thread, thread.ID == activeThreadID)
+		}),
 	)
 }
 

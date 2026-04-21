@@ -127,7 +127,7 @@ func (x *Pool) SetThreadStreaming(ctx context.Context, id string, isStreaming bo
 	})
 }
 
-func (x *Pool) CreateMessage(ctx context.Context, threadID, typ, content string) (Message, error) {
+func (x *Pool) CreateMessage(ctx context.Context, threadID string, typ MessageType, content string) (Message, error) {
 	return x.CreateMessageWithMeta(ctx, Message{
 		ThreadID: threadID,
 		Type:     typ,

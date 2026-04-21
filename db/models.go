@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// Thread is the public domain model for a conversation thread
 type Thread struct {
 	ID          string
 	Title       string
@@ -14,11 +13,21 @@ type Thread struct {
 	UpdatedAt   time.Time
 }
 
-// Message is the public domain model for a chat message
+type MessageType string
+
+const (
+	UserMessage        MessageType = "user_message"
+	AssistantMessage   MessageType = "assistant_message"
+	SystemMessage      MessageType = "system_message"
+	AssistantReasoning MessageType = "assistant_reasoning"
+	AssistantToolCall  MessageType = "assistant_tool_call"
+	ToolOutput         MessageType = "tool_output"
+)
+
 type Message struct {
 	ID                 string
 	ThreadID           string
-	Type               string // 'user_message', 'assistant_message', 'system_message', 'assistant_reasoning', 'assistant_tool_call', 'tool_output'
+	Type               MessageType
 	Seq                int
 	Content            string
 	ToolCallID         string

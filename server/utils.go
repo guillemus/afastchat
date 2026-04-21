@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -56,15 +55,6 @@ func handlePathVal(
 	}
 }
 
-func patchSignals(sse *datastar.ServerSentEventGenerator, v any) {
-	bs, err := json.Marshal(v)
-	if err != nil {
-		slog.Error("failed to marshal", "value", v)
-	}
-
-	sse.PatchSignals(bs)
-}
-
 func mapViewThread(thread db.Thread) views.Thread {
 	return views.Thread{
 		ID:          thread.ID,
@@ -81,24 +71,68 @@ func mapViewThreads(threads []db.Thread) []views.Thread {
 	return out
 }
 
-func mapViewMessages(messages []db.Message) []views.Message {
-	out := make([]views.Message, 0, len(messages))
-	for _, message := range messages {
-		viewMessage := views.Message{
-			Type:      message.Type,
-			ID:        message.ID,
-			MdContent: message.Content,
-			ToolName:  message.ToolName,
-		}
+func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGroup {
+	out := make([]views.MessageGroup, 0, len(messages))
+	var assistant *views.AssistantMessageParts
 
-		switch message.Type {
-		case "system_message", "tool_output":
+	for _, it := range messages {
+		switch it.Type {
+		case db.SystemMessage, db.ToolOutput:
 			continue
-		case "assistant_message", "assistant_reasoning":
-			viewMessage.MdContent = renderMarkdown(message.Content)
+		case db.UserMessage:
+			if assistant != nil {
+				out = append(out, *assistant)
+				assistant = nil
+			}
+			out = append(out, views.UserMessage{
+				ID:        it.ID,
+				MdContent: renderMarkdown(it.Content),
+			})
+		case db.AssistantMessage:
+			if assistant == nil {
+				assistant = &views.AssistantMessageParts{
+					ID: it.ID,
+				}
+			}
+			assistant.Parts = append(assistant.Parts, views.AssistantTextPart{
+				ID:        it.ID,
+				MdContent: renderMarkdown(it.Content),
+			})
+		case db.AssistantReasoning:
+			if assistant == nil {
+				assistant = &views.AssistantMessageParts{
+					ID: it.ID,
+				}
+			}
+			assistant.Parts = append(assistant.Parts, views.ReasoningPart{
+				Text: renderMarkdown(it.Content),
+			})
+		case db.AssistantToolCall:
+			if assistant == nil {
+				assistant = &views.AssistantMessageParts{
+					ID: it.ID,
+				}
+			}
+			assistant.Parts = append(assistant.Parts, views.ToolCallPart{
+				Text: it.Content,
+			})
 		}
-
-		out = append(out, viewMessage)
 	}
+
+	if assistant != nil {
+		out = append(out, *assistant)
+		assistant = nil
+	}
+
+	if largeHeight {
+		for i := len(out) - 1; i >= 0; i-- {
+			if msg, ok := out[i].(views.AssistantMessageParts); ok {
+				msg.LargeHeight = true
+				out[i] = msg
+				break
+			}
+		}
+	}
+
 	return out
 }

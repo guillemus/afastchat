@@ -23,20 +23,11 @@ func NewRenderer(assetVersion string) *Renderer {
 	}
 }
 
-type (
-	Thread struct {
-		ID          string
-		IsStreaming bool
-		Title       string
-	}
-	Message struct {
-		Type string
-		ID   string
-		// markdown rendered content
-		MdContent string
-		ToolName  string
-	}
-)
+type Thread struct {
+	ID          string
+	IsStreaming bool
+	Title       string
+}
 
 type IndexData struct {
 	Threads []Thread
@@ -45,7 +36,7 @@ type IndexData struct {
 type ThreadData struct {
 	Threads   []Thread
 	Thread    Thread
-	Messages  []Message
+	Messages  []MessageGroup
 	Streaming bool
 }
 
@@ -66,7 +57,7 @@ func (x *Renderer) appLayout(body ...Node) Node {
 			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 			Script(
 				Type("module"),
-				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js"),
+				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"),
 			),
 		},
 		Body: []Node{
@@ -78,43 +69,46 @@ func (x *Renderer) appLayout(body ...Node) Node {
 
 func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		sidebar(data.Threads, "", doScrollSidebar),
-		threadContentsEmpty(),
+		Sidebar{data.Threads, "", doScrollSidebar}.Node(),
+		NewEmptyMessageThread(),
 	))
 }
 
 func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		sidebar(data.Threads, data.Thread.ID, doScrollSidebar),
-		threadContents(data.Messages, data.Thread.ID, doScrollSidebar, data.Streaming),
+		Sidebar{data.Threads, data.Thread.ID, doScrollSidebar}.Node(),
+		MessageThread{
+			Messages:        data.Messages,
+			ThreadID:        data.Thread.ID,
+			DoScrollSidebar: doScrollSidebar,
+			IsStreaming:     data.Streaming,
+		}.Node(),
 	))
 }
 
 func renderNode(w io.Writer, node Node) {
-	err := node.Render(w)
-	if err != nil {
+	if err := node.Render(w); err != nil {
 		slog.Error("view render error", "err", err)
 	}
 }
 
-func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
+func ssePatch(sse *datastar.ServerSentEventGenerator, node Node) {
 	var sb strings.Builder
-	for _, it := range threads {
-		renderNode(&sb, threadListItem(it, it.ID == activeThreadID))
+	if err := node.Render(&sb); err != nil {
+		slog.Error("view render error", "err", err)
+		return
 	}
 
-	sse.PatchElements(sb.String(), datastar.WithSelectorID("thread-items"))
+	if err := sse.PatchElements(sb.String()); err != nil {
+		slog.Error("sse.PatchElements error", "err", err)
+		return
+	}
+}
+
+func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
+	ssePatch(sse, ThreadList(threads, activeThreadID))
 }
 
 func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread) {
-	var sb strings.Builder
-	renderNode(&sb, threadListItem(thread, true))
-	sse.PatchElements(sb.String())
-}
-
-func PatchThreadMessages(
-	sse *datastar.ServerSentEventGenerator, messages []Message, doScrollSidebar bool) {
-	var sb strings.Builder
-	renderNode(&sb, ThreadMessages(messages, doScrollSidebar))
-	sse.PatchElements(sb.String(), datastar.WithSelectorID("messages"))
+	ssePatch(sse, threadListItem(thread, true))
 }

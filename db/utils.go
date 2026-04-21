@@ -41,7 +41,7 @@ func scanMessage(stmt *sqlite.Stmt) (Message, error) {
 	return Message{
 		ID:                 stmt.GetText("id"),
 		ThreadID:           stmt.GetText("thread_id"),
-		Type:               stmt.GetText("type"),
+		Type:               MessageType(stmt.GetText("type")),
 		Seq:                int(stmt.GetInt64("seq")),
 		Content:            content,
 		ToolCallID:         stmt.GetText("tool_call_id"),

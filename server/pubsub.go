@@ -6,12 +6,20 @@ import (
 	"github.com/asaskevich/EventBus"
 )
 
-func (x *Server) publishThreadEvent(threadID string) {
-	topic := fmt.Sprintf("threads:%s", threadID)
-	x.bus.Publish(topic)
+type ThreadEvent struct {
+	UserMessageCreated bool
 }
 
-func (x *Server) subscribeToThread(threadID string, handler func()) (unsub func()) {
+func (x *Server) publishThreadEvent(threadID string, evt ThreadEvent) {
+	topic := fmt.Sprintf("threads:%s", threadID)
+	x.bus.Publish(topic, evt)
+}
+
+func (x *Server) publishThreadDidUpdateEventEvent(threadID string) {
+	x.publishThreadEvent(threadID, ThreadEvent{UserMessageCreated: false})
+}
+
+func (x *Server) subscribeToThread(threadID string, handler func(evt ThreadEvent)) (unsub func()) {
 	topic := fmt.Sprintf("threads:%s", threadID)
 	x.bus.Subscribe(topic, handler)
 
@@ -20,14 +28,9 @@ func (x *Server) subscribeToThread(threadID string, handler func()) (unsub func(
 	}
 }
 
-type (
-	sidebarEvent    interface{ isSidebarEvent() }
-	evtThreadUpdate struct {
-		threadID string
-	}
-)
-
-func (evtThreadUpdate) isSidebarEvent() {}
+type sidebarEvent struct {
+	threadID string
+}
 
 func (x *Server) subscribeToSidebar(handler func(sidebarEvent)) (unsub func()) {
 	topic := "sidebar"
