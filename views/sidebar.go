@@ -28,7 +28,7 @@ func (x Sidebar) Node() Node {
 				Span(Class("logo-accent"), Text(".com")),
 			),
 		),
-		A(Href("/"), Class("new-chat-btn"),
+		A(Href("/app"), Class("new-chat-btn"),
 			iconPlus(),
 			Text("New Chat"),
 		),

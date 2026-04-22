@@ -15,6 +15,14 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
+func (x *Server) handleLanding(w http.ResponseWriter, r *http.Request) {
+	x.renderer.RenderLandingPage(w)
+}
+
+func (x *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+	x.renderer.RenderLoginPage(w)
+}
+
 func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	threads, err := x.db.ListThreads(r.Context())
 	if err != nil {
@@ -82,7 +90,7 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request, thr
 
 	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
 	sse.ExecuteScript(fmt.Sprintf(
-		`if (window.location.pathname === '/threads/%s') window.location.replace('/')`,
+		`if (window.location.pathname === '/threads/%s') window.location.replace('/app')`,
 		threadID,
 	))
 }

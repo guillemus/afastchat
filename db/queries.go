@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"zombiezen.com/go/sqlite"
@@ -280,4 +281,156 @@ func (x *Pool) CreateAssistantMessage(ctx context.Context, threadID, msg string)
 func (x *Pool) CreateSystemMessage(ctx context.Context, threadID, msg string) (string, error) {
 	m, err := x.CreateMessage(ctx, threadID, "system_message", msg)
 	return m.ID, err
+}
+
+func (x *Pool) GetUser(ctx context.Context, id string) (User, error) {
+	var user User
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		err := sqlitex.Execute(conn, `
+			SELECT id, email, password_hash, created_at, updated_at
+			FROM users
+			WHERE id = :id
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":id": id},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				user = scanUser(stmt)
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
+		}
+		if user.ID == "" {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return user, err
+}
+
+func (x *Pool) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	var user User
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		err := sqlitex.Execute(conn, `
+			SELECT id, email, password_hash, created_at, updated_at
+			FROM users
+			WHERE lower(email) = lower(:email)
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":email": email},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				user = scanUser(stmt)
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
+		}
+		if user.ID == "" {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return user, err
+}
+
+func (x *Pool) CreateUser(ctx context.Context, email, passwordHash string) (User, error) {
+	id := uuid.New().String()
+	var user User
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		err := sqlitex.Execute(conn, `
+			INSERT INTO users (id, email, password_hash)
+			VALUES (:id, :email, :password_hash)
+			RETURNING id, email, password_hash, created_at, updated_at
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{
+				":id":            id,
+				":email":         email,
+				":password_hash": passwordHash,
+			},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				user = scanUser(stmt)
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("insert: %w", err)
+		}
+		return nil
+	})
+	return user, err
+}
+
+func (x *Pool) CreateSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) (Session, error) {
+	id := uuid.New().String()
+	var session Session
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		err := sqlitex.Execute(conn, `
+			INSERT INTO sessions (id, user_id, token_hash, expires_at)
+			VALUES (:id, :user_id, :token_hash, :expires_at)
+			RETURNING id, user_id, token_hash, expires_at, created_at
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{
+				":id":         id,
+				":user_id":    userID,
+				":token_hash": tokenHash,
+				":expires_at": expiresAt.UTC().Format("2006-01-02 15:04:05"),
+			},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				session = scanSession(stmt)
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("insert: %w", err)
+		}
+		return nil
+	})
+	return session, err
+}
+
+func (x *Pool) GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
+	var session Session
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		err := sqlitex.Execute(conn, `
+			SELECT id, user_id, token_hash, expires_at, created_at
+			FROM sessions
+			WHERE token_hash = :token_hash
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":token_hash": tokenHash},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				session = scanSession(stmt)
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
+		}
+		if session.ID == "" {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return session, err
+}
+
+func (x *Pool) DeleteSession(ctx context.Context, id string) error {
+	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		return sqlitex.ExecuteTransient(conn, `
+			DELETE FROM sessions
+			WHERE id = :id
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":id": id},
+		})
+	})
+}
+
+func (x *Pool) DeleteExpiredSessions(ctx context.Context, now time.Time) error {
+	return x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		return sqlitex.ExecuteTransient(conn, `
+			DELETE FROM sessions
+			WHERE expires_at <= :now
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":now": now.UTC().Format("2006-01-02 15:04:05")},
+		})
+	})
 }

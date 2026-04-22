@@ -40,7 +40,7 @@ type ThreadData struct {
 	Streaming bool
 }
 
-func (x *Renderer) appLayout(body ...Node) Node {
+func (x *Renderer) layout(bodyClass string, body ...Node) Node {
 	return HTML5(HTML5Props{
 		Title:       "afastchat",
 		Description: "",
@@ -62,9 +62,17 @@ func (x *Renderer) appLayout(body ...Node) Node {
 		},
 		Body: []Node{
 			DebugSignals(),
-			Div(Class("app"), Group(body)),
+			Div(Class(bodyClass), Group(body)),
 		},
 	})
+}
+
+func (x *Renderer) appLayout(body ...Node) Node {
+	return x.layout("app", body...)
+}
+
+func (x *Renderer) guestLayout(body ...Node) Node {
+	return x.layout("guest-app", body...)
 }
 
 func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData, doScrollSidebar bool) {
@@ -84,6 +92,14 @@ func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSideba
 			IsStreaming:     data.Streaming,
 		}.Node(),
 	))
+}
+
+func (x *Renderer) RenderLandingPage(w io.Writer) {
+	renderNode(w, x.guestLayout(LandingPage()))
+}
+
+func (x *Renderer) RenderLoginPage(w io.Writer) {
+	renderNode(w, x.guestLayout(LoginPage()))
 }
 
 func renderNode(w io.Writer, node Node) {

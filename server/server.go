@@ -44,7 +44,9 @@ func StartServer() {
 		)).
 		Get("/public/*", afastchat.GetPublicHandler().ServeHTTP)
 
-	s.router.Get("/", s.handleIndex)
+	s.router.Get("/", s.handleLanding)
+	s.router.Get("/login", s.handleLoginPage)
+	s.router.Get("/app", s.handleIndex)
 	s.router.Get("/threads/{id}", handlePathVal(s.handleThread, "id"))
 	s.router.Get("/threads/{id}/events", handlePathVal(s.handleThreadEvents, "id"))
 	s.router.Post("/threads/{id}/archive", handlePathVal(s.handleArchiveThread, "id"))

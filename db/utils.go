@@ -59,3 +59,23 @@ func nullableTime(isNull bool, val string) *time.Time {
 	t := parseTime(val)
 	return &t
 }
+
+func scanUser(stmt *sqlite.Stmt) User {
+	return User{
+		ID:           stmt.GetText("id"),
+		Email:        stmt.GetText("email"),
+		PasswordHash: stmt.GetText("password_hash"),
+		CreatedAt:    parseTime(stmt.GetText("created_at")),
+		UpdatedAt:    parseTime(stmt.GetText("updated_at")),
+	}
+}
+
+func scanSession(stmt *sqlite.Stmt) Session {
+	return Session{
+		ID:        stmt.GetText("id"),
+		UserID:    stmt.GetText("user_id"),
+		TokenHash: stmt.GetText("token_hash"),
+		ExpiresAt: parseTime(stmt.GetText("expires_at")),
+		CreatedAt: parseTime(stmt.GetText("created_at")),
+	}
+}
