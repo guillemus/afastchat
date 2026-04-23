@@ -11,10 +11,10 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-func Setup() {
+func Setup(env env.Env) {
 	w := os.Stderr
 
-	if env.Env.Dev {
+	if env.Dev {
 		opts := &tint.Options{
 			// Level: slog.LevelDebug,
 			Level:     slog.LevelInfo,

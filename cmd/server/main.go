@@ -1,11 +1,13 @@
 package main
 
 import (
+	"afastchat.com/env"
 	"afastchat.com/logger"
 	"afastchat.com/server"
 )
 
 func main() {
-	logger.Setup()
-	server.StartServer()
+	env := env.ParseEnv()
+	logger.Setup(env)
+	server.StartServer(env)
 }

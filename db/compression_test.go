@@ -15,18 +15,19 @@ func TestCreateMessageCompressesAndReadsBack(t *testing.T) {
 
 	pool := newTestPool(t)
 	ctx := context.Background()
+	userID := createTestUser(t, pool)
 
-	thread, err := pool.CreateThread(ctx, "thread")
+	thread, err := pool.CreateThread(ctx, userID, "thread")
 	require.NoError(t, err)
 
 	want := "hello hello hello hello hello"
-	message, err := pool.CreateMessage(ctx, thread.ID, "user_message", want)
+	message, err := pool.CreateMessage(ctx, userID, thread.ID, "user_message", want)
 	require.NoError(t, err)
 	require.Equal(t, want, message.Content)
 
 	assertStoredContentIsCompressedBlob(t, pool, message.ID, want)
 
-	messages, err := pool.GetMessagesByThread(ctx, thread.ID)
+	messages, err := pool.GetMessagesByThread(ctx, userID, thread.ID)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 	require.Equal(t, want, messages[0].Content)
@@ -37,18 +38,19 @@ func TestUpdateMessageContentRecompresses(t *testing.T) {
 
 	pool := newTestPool(t)
 	ctx := context.Background()
+	userID := createTestUser(t, pool)
 
-	thread, err := pool.CreateThread(ctx, "thread")
+	thread, err := pool.CreateThread(ctx, userID, "thread")
 	require.NoError(t, err)
 
-	message, err := pool.CreateMessage(ctx, thread.ID, "assistant_message", "old")
+	message, err := pool.CreateMessage(ctx, userID, thread.ID, "assistant_message", "old")
 	require.NoError(t, err)
 
 	want := "new content new content new content"
 	err = pool.UpdateMessageContent(ctx, message.ID, want)
 	require.NoError(t, err)
 
-	messages, err := pool.GetMessagesByThread(ctx, thread.ID)
+	messages, err := pool.GetMessagesByThread(ctx, userID, thread.ID)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 	require.Equal(t, want, messages[0].Content)
@@ -72,6 +74,14 @@ func newTestPool(t *testing.T) *Pool {
 	require.NoError(t, err)
 
 	return pool
+}
+
+func createTestUser(t *testing.T, pool *Pool) string {
+	t.Helper()
+
+	user, err := pool.CreateUser(context.Background(), t.Name()+"@example.com", "hash")
+	require.NoError(t, err)
+	return user.ID
 }
 
 func assertStoredContentIsCompressedBlob(t *testing.T, pool *Pool, messageID, wantPlain string) {

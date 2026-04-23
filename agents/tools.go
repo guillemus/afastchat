@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"afastchat.com/env"
 	"afastchat.com/exa"
 	"github.com/openai/openai-go/v3/responses"
 )
@@ -26,10 +25,8 @@ type webSearchArgs struct {
 	Query string `json:"query"`
 }
 
-var exaClient = exa.NewClient(env.Env.ExaAPIKey)
-
-func webSearch(ctx context.Context, args webSearchArgs) (string, error) {
-	resp, err := exaClient.Search(ctx, &exa.SearchRequest{
+func (x *Agent) webSearch(ctx context.Context, args webSearchArgs) (string, error) {
+	resp, err := x.exaClient.Search(ctx, &exa.SearchRequest{
 		Query:      args.Query,
 		Type:       "auto",
 		NumResults: 5,

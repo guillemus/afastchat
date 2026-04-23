@@ -24,6 +24,7 @@ func parseTime(v string) time.Time {
 func scanThread(stmt *sqlite.Stmt) Thread {
 	return Thread{
 		ID:          stmt.GetText("id"),
+		UserID:      stmt.GetText("user_id"),
 		Title:       stmt.GetText("title"),
 		ArchivedAt:  nullableTime(stmt.IsNull("archived_at"), stmt.GetText("archived_at")),
 		IsStreaming: stmt.GetInt64("is_streaming") != 0,
@@ -67,15 +68,5 @@ func scanUser(stmt *sqlite.Stmt) User {
 		PasswordHash: stmt.GetText("password_hash"),
 		CreatedAt:    parseTime(stmt.GetText("created_at")),
 		UpdatedAt:    parseTime(stmt.GetText("updated_at")),
-	}
-}
-
-func scanSession(stmt *sqlite.Stmt) Session {
-	return Session{
-		ID:        stmt.GetText("id"),
-		UserID:    stmt.GetText("user_id"),
-		TokenHash: stmt.GetText("token_hash"),
-		ExpiresAt: parseTime(stmt.GetText("expires_at")),
-		CreatedAt: parseTime(stmt.GetText("created_at")),
 	}
 }

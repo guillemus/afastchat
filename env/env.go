@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Config struct {
+type Env struct {
 	DBPath           string
 	OpenAIAPIKey     string
 	OpenRouterAPIKey string
@@ -18,14 +18,12 @@ type Config struct {
 	Dev              bool
 }
 
-var Env = parseEnv()
-
-func parseEnv() *Config {
+func ParseEnv() Env {
 	if err := godotenv.Load(); err != nil {
 		panic(fmt.Sprintf("load .env file: %v", err))
 	}
 
-	cfg := &Config{
+	env := Env{
 		DBPath:           getEnvOr("DB_PATH", "./tmp/app.db"),
 		OpenAIAPIKey:     os.Getenv("OPENAI_API_KEY"),
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
@@ -35,7 +33,7 @@ func parseEnv() *Config {
 		Dev:              os.Getenv("DEV") == "true",
 	}
 
-	return cfg
+	return env
 }
 
 func getEnvOr(key, defaultVal string) string {

@@ -12,6 +12,7 @@ type Sidebar struct {
 	Threads         []Thread
 	ActiveThreadID  string
 	DoScrollSidebar bool
+	UserEmail       string
 }
 
 func (x Sidebar) Node() Node {
@@ -72,10 +73,22 @@ func (x Sidebar) Node() Node {
 		),
 		Div(
 			Class("sidebar-footer"),
-			Div(Class("avatar"), Text("G")),
-			Span(Class("sidebar-footer-name"), Text("Guillem")),
+			Div(Class("avatar"), Text(userInitial(x.UserEmail))),
+			Span(Class("sidebar-footer-name"), Text(x.UserEmail)),
+			Form(
+				Method("post"),
+				Action("/logout"),
+				Button(Type("submit"), Class("sidebar-logout-btn"), Text("Log out")),
+			),
 		),
 	)
+}
+
+func userInitial(email string) string {
+	if email == "" {
+		return "?"
+	}
+	return string([]rune(email)[0])
 }
 
 func ThreadList(threads []Thread, activeThreadID string) Node {

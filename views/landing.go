@@ -27,8 +27,8 @@ func LandingPage() Node {
 				),
 				Div(
 					Class("landing-actions"),
-					A(Href("/login"), Class("btn-primary"), Text("Log in")),
-					A(Href("/app"), Class("btn-secondary"), Text("Open app")),
+					A(Href("/signup"), Class("btn-primary"), Text("Sign up")),
+					A(Href("/login"), Class("btn-secondary"), Text("Log in")),
 				),
 			),
 		),

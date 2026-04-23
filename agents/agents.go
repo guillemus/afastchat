@@ -21,20 +21,18 @@ import (
 )
 
 type Agent struct {
-	model  shared.ResponsesModel
-	client openai.Client
-
-	exaClient exa.Client
+	model        shared.ResponsesModel
+	openaiClient openai.Client
+	exaClient    *exa.Client
 }
 
 var errStopStreaming = errors.New("stop streaming")
 
-var openaiClient = openai.NewClient(option.WithAPIKey(env.Env.OpenAIAPIKey))
-
-func NewAgent() *Agent {
+func NewAgent(env env.Env) *Agent {
 	return &Agent{
-		client: openaiClient,
-		model:  openai.ChatModelGPT5_4Nano,
+		exaClient:    exa.NewClient(env.ExaAPIKey),
+		openaiClient: openai.NewClient(option.WithAPIKey(env.OpenAIAPIKey)),
+		model:        openai.ChatModelGPT5_4Nano,
 	}
 }
 
@@ -192,7 +190,7 @@ func (x *Agent) streamResponse(
 		params.PreviousResponseID = param.NewOpt(previousResponseID)
 	}
 
-	stream := x.client.Responses.NewStreaming(ctx, params)
+	stream := x.openaiClient.Responses.NewStreaming(ctx, params)
 	defer func() {
 		if err := stream.Close(); err != nil {
 			slog.Error("failed to close response stream", "err", err)
@@ -309,7 +307,7 @@ func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, erro
 			return "", err
 		}
 
-		return webSearch(ctx, args)
+		return x.webSearch(ctx, args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
@@ -328,8 +326,8 @@ func (x *CalledTools) functionCall(itemID string) *ToolcallBuf {
 	return call
 }
 
-func GenerateTitleFromUserMessage(ctx context.Context, userMessage string) string {
-	resp, err := openaiClient.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+func (x *Agent) GenerateTitleFromUserMessage(ctx context.Context, userMessage string) string {
+	resp, err := x.openaiClient.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model: openai.ChatModelGPT5_4Nano,
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("Generate a concise title (max 6 words) for a chat thread based on the user's first message. Return only the title, no quotes or punctuation."),

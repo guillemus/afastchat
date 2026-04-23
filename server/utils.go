@@ -26,7 +26,10 @@ func handleBadReq(w http.ResponseWriter, msg string, err error) {
 	http.Error(w, "bad request", http.StatusBadRequest)
 }
 
-func handleSignals[T any](fn func(w http.ResponseWriter, r *http.Request, v T)) http.HandlerFunc {
+func handleSignals[T any](
+	s *Server,
+	fn func(w http.ResponseWriter, r *http.Request, user db.User, v T),
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var t T
 		if err := datastar.ReadSignals(r, &t); err != nil {
@@ -34,14 +37,32 @@ func handleSignals[T any](fn func(w http.ResponseWriter, r *http.Request, v T)) 
 			return
 		}
 
+		user, ok := s.requireUser(w, r)
+		if !ok {
+			return
+		}
+
 		slog.Debug("read signals", "signals", t)
 
-		fn(w, r, t)
+		fn(w, r, user, t)
 	}
 }
 
-func handlePathVal(
-	fn func(w http.ResponseWriter, r *http.Request, val string),
+func (x *Server) withUser(
+	fn func(w http.ResponseWriter, r *http.Request, user db.User),
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := x.requireUser(w, r)
+		if !ok {
+			return
+		}
+
+		fn(w, r, user)
+	}
+}
+
+func (x *Server) handlePathVal(
+	fn func(w http.ResponseWriter, r *http.Request, user db.User, val string),
 	pathValName string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +72,12 @@ func handlePathVal(
 			return
 		}
 
-		fn(w, r, val)
+		user, ok := x.requireUser(w, r)
+		if !ok {
+			return
+		}
+
+		fn(w, r, user, val)
 	}
 }
 

@@ -6,8 +6,8 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func DebugSignals() Node {
-	if !env.Env.Dev {
+func DebugSignals(env env.Env) Node {
+	if !env.Dev {
 		return nil
 	}
 

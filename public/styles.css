@@ -320,6 +320,28 @@
     .sidebar-footer-name {
         font-size: var(--font-size-0);
         color: var(--text-secondary);
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sidebar-logout-btn {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        border-radius: var(--radius-2);
+        padding: 0 var(--size-2);
+        min-height: 32px;
+        font-family: inherit;
+        font-size: var(--font-size-00);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
     }
 
     .avatar {
@@ -908,6 +930,15 @@
                 box-shadow: 0 0 0 3px color-mix(in oklch, var(--bg-button) 20%, transparent);
             }
         }
+    }
+
+    .auth-error {
+        color: var(--red-3);
+        background: color-mix(in oklch, var(--red-9) 35%, transparent);
+        border: 1px solid color-mix(in oklch, var(--red-7) 30%, transparent);
+        border-radius: var(--radius-2);
+        padding: var(--size-2) var(--size-3);
+        font-size: var(--font-size-0);
     }
 
     .auth-submit {

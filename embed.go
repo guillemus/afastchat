@@ -12,13 +12,13 @@ import (
 //go:embed public/*
 var publicFS embed.FS
 
-func GetPublicHandler() http.Handler {
+func GetPublicHandler(env env.Env) http.Handler {
 	embeddedPublic, err := fs.Sub(publicFS, "public")
 	if err != nil {
 		log.Fatalf("sub public fs: %v", err)
 	}
 	publicAssets := http.FileServerFS(embeddedPublic)
-	if env.Env.Dev {
+	if env.Dev {
 		publicAssets = http.FileServer(http.Dir("public"))
 	}
 

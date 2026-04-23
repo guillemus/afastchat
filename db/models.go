@@ -6,6 +6,7 @@ import (
 
 type Thread struct {
 	ID          string
+	UserID      string
 	Title       string
 	ArchivedAt  *time.Time // nil if not archived
 	IsStreaming bool
@@ -43,12 +44,4 @@ type User struct {
 	PasswordHash string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-}
-
-type Session struct {
-	ID        string
-	UserID    string
-	TokenHash string
-	ExpiresAt time.Time
-	CreatedAt time.Time
 }

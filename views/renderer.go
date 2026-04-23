@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"afastchat.com/env"
 	"github.com/starfederation/datastar-go/datastar"
 
 	. "maragu.dev/gomponents"
@@ -14,12 +15,14 @@ import (
 )
 
 type Renderer struct {
+	env          env.Env
 	assetVersion string
 }
 
-func NewRenderer(assetVersion string) *Renderer {
+func NewRenderer(env env.Env) *Renderer {
 	return &Renderer{
-		assetVersion: url.QueryEscape(assetVersion),
+		env:          env,
+		assetVersion: url.QueryEscape(env.AssetVersion),
 	}
 }
 
@@ -30,7 +33,8 @@ type Thread struct {
 }
 
 type IndexData struct {
-	Threads []Thread
+	Threads   []Thread
+	UserEmail string
 }
 
 type ThreadData struct {
@@ -38,6 +42,7 @@ type ThreadData struct {
 	Thread    Thread
 	Messages  []MessageGroup
 	Streaming bool
+	UserEmail string
 }
 
 func (x *Renderer) layout(bodyClass string, body ...Node) Node {
@@ -61,7 +66,7 @@ func (x *Renderer) layout(bodyClass string, body ...Node) Node {
 			),
 		},
 		Body: []Node{
-			DebugSignals(),
+			DebugSignals(x.env),
 			Div(Class(bodyClass), Group(body)),
 		},
 	})
@@ -77,14 +82,14 @@ func (x *Renderer) guestLayout(body ...Node) Node {
 
 func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, "", doScrollSidebar}.Node(),
+		Sidebar{data.Threads, "", doScrollSidebar, data.UserEmail}.Node(),
 		NewEmptyMessageThread(),
 	))
 }
 
 func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, data.Thread.ID, doScrollSidebar}.Node(),
+		Sidebar{data.Threads, data.Thread.ID, doScrollSidebar, data.UserEmail}.Node(),
 		MessageThread{
 			Messages:        data.Messages,
 			ThreadID:        data.Thread.ID,
@@ -98,8 +103,12 @@ func (x *Renderer) RenderLandingPage(w io.Writer) {
 	renderNode(w, x.guestLayout(LandingPage()))
 }
 
-func (x *Renderer) RenderLoginPage(w io.Writer) {
-	renderNode(w, x.guestLayout(LoginPage()))
+func (x *Renderer) RenderLoginPage(w io.Writer, data LoginPageData) {
+	renderNode(w, x.guestLayout(LoginPage(data)))
+}
+
+func (x *Renderer) RenderSignupPage(w io.Writer, data SignupPageData) {
+	renderNode(w, x.guestLayout(SignupPage(data)))
 }
 
 func renderNode(w io.Writer, node Node) {

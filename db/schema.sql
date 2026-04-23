@@ -1,11 +1,14 @@
 CREATE TABLE threads (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL DEFAULT '',
     archived_at DATETIME,
     is_streaming INTEGER NOT NULL DEFAULT 0 CHECK (is_streaming IN (0, 1)),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_threads_user_id ON threads(user_id);
 
 CREATE TABLE messages (
     id TEXT PRIMARY KEY,
@@ -45,13 +48,9 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX users_email_lower_idx ON users (lower(email));
 
 CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    token TEXT PRIMARY KEY,
+    data BLOB NOT NULL,
+    expiry REAL NOT NULL
 );
 
-CREATE UNIQUE INDEX sessions_token_hash_idx ON sessions(token_hash);
-CREATE INDEX sessions_user_id_idx ON sessions(user_id);
-CREATE INDEX sessions_expires_at_idx ON sessions(expires_at);
+CREATE INDEX sessions_expiry_idx ON sessions(expiry);

@@ -5,7 +5,12 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func LoginPage() Node {
+type LoginPageData struct {
+	Email string
+	Error string
+}
+
+func LoginPage(data LoginPageData) Node {
 	return Main(
 		Class("guest-main"),
 		Div(
@@ -16,7 +21,10 @@ func LoginPage() Node {
 				H1(Class("auth-title"), Text("Log in")),
 				P(
 					Class("auth-copy"),
-					Text("Traditional email and password login. Session cookie next."),
+					Text("Use your email and password to open afastchat."),
+				),
+				If(data.Error != "",
+					P(Class("auth-error"), Text(data.Error)),
 				),
 				Form(
 					Class("auth-form"),
@@ -28,6 +36,7 @@ func LoginPage() Node {
 						ID("email"),
 						Name("email"),
 						Placeholder("you@example.com"),
+						Value(data.Email),
 						Required(),
 						AutoFocus(),
 					),
@@ -43,7 +52,8 @@ func LoginPage() Node {
 				),
 				P(
 					Class("auth-footer"),
-					A(Href("/"), Text("Back to landing")),
+					Text("Need an account? "),
+					A(Href("/signup"), Text("Sign up")),
 				),
 			),
 		),
