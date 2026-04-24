@@ -1,14 +1,14 @@
 migrate-dev:
 	source .env && atlas schema apply \
 	  --to "file://db/schema.sql" \
-	  --url "${DATABASE_URL}&search_path=public" \
-	  --dev-url "docker://postgres/16/dev?search_path=public"
+	  --url "sqlite://${DB_PATH:-./tmp/app.db}" \
+	  --dev-url "sqlite://dev?mode=memory"
 
 migrate-prod:
 	source .env && atlas schema apply \
 	  --to "file://db/schema.sql" \
-	  --url "${PRODUCTION_DATABASE_URL}&search_path=public" \
-	  --dev-url "docker://postgres/16/dev?search_path=public"
+	  --url "sqlite://${PRODUCTION_DB_PATH}" \
+	  --dev-url "sqlite://dev?mode=memory"
 
 build-linux:
 	mkdir -p dist

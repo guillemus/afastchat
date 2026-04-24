@@ -45,7 +45,7 @@ type ThreadData struct {
 	UserEmail string
 }
 
-func (x *Renderer) layout(bodyClass string, body ...Node) Node {
+func (x *Renderer) layout(body Node) Node {
 	return HTML5(HTML5Props{
 		Title:       "afastchat",
 		Description: "",
@@ -60,24 +60,43 @@ func (x *Renderer) layout(bodyClass string, body ...Node) Node {
 			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
 			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
-			Script(
-				Type("module"),
-				Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"),
-			),
+			Script(Type("module"), Src("/public/datastar.js")),
+			styler.Node(),
 		},
 		Body: []Node{
 			DebugSignals(x.env),
-			Div(Class(bodyClass), Group(body)),
+			body,
 		},
 	})
 }
 
+var _ = styler.Style(`
+	.app {
+		display: flex;
+		width: 100%;
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
+	}
+`)
+
 func (x *Renderer) appLayout(body ...Node) Node {
-	return x.layout("app", body...)
+	return x.layout(Div(Class("app"),
+		Group(body),
+	))
 }
 
+var _ = styler.Style(`
+	.guest-app {
+		min-height: 100vh;
+		min-height: 100dvh;
+	}
+`)
+
 func (x *Renderer) guestLayout(body ...Node) Node {
-	return x.layout("guest-app", body...)
+	return x.layout(Div(Class("guest-app"),
+		Group(body),
+	))
 }
 
 func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData, doScrollSidebar bool) {
@@ -131,9 +150,9 @@ func ssePatch(sse *datastar.ServerSentEventGenerator, node Node) {
 }
 
 func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
-	ssePatch(sse, ThreadList(threads, activeThreadID))
+	ssePatch(sse, ThreadItems(threads, activeThreadID))
 }
 
 func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread) {
-	ssePatch(sse, threadListItem(thread, true))
+	ssePatch(sse, ThreadListItem(thread, true))
 }

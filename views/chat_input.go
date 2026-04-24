@@ -8,20 +8,101 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
+var _ = styler.Style(`
+	.chat-input {
+		flex-shrink: 0;
+		padding: var(--size-2) var(--size-6) var(--size-5);
+		width: 100%;
+		max-width: 768px;
+		margin: 0 auto;
+		
+		@keyframes chat-input-pulse-border {
+			0%,
+			100% {
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-button) 10%, transparent);
+			}
+			50% {
+				box-shadow: 0 0 0 4px color-mix(in oklch, var(--bg-button) 30%, transparent);
+			}
+		}
+
+		.chat-input-box {
+			display: flex;
+			align-items: center;
+			background: var(--bg-input);
+			border: 1px solid var(--border-color);
+			border-radius: var(--radius-3);
+			padding: var(--size-3);
+
+			&.is-sending {
+				border-color: color-mix(in oklch, var(--bg-button) 60%, transparent);
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-button) 20%, transparent);
+				animation: chat-input-pulse-border 1.5s ease-in-out infinite;
+			}
+
+			textarea {
+				width: 100%;
+				background: none;
+				border: none;
+				color: var(--text-primary);
+				font-family: inherit;
+				font-size: var(--font-size-1);
+				resize: none;
+				outline: none;
+				field-sizing: content;
+				min-height: 24px;
+				max-height: 180px;
+				scrollbar-width: thin;
+				scrollbar-color: var(--gray-9) transparent;
+
+				&::placeholder {
+					color: var(--text-muted);
+				}
+			}
+		}
+
+		.chat-input-actions {
+			display: flex;
+			justify-content: left;
+		}
+
+		.chat-input-submit-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			background: var(--bg-button);
+			color: white;
+			border: none;
+			border-radius: var(--radius-2);
+			cursor: pointer;
+			transition:
+				background-color 0.2s var(--ease-3),
+				color 0.2s var(--ease-3),
+				filter 0.15s var(--ease-3);
+
+			svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			&:hover:not(:disabled) {
+				filter: brightness(1.1);
+			}
+
+			&:disabled {
+				background: var(--gray-10);
+				color: var(--text-muted);
+				cursor: not-allowed;
+			}
+		}
+	}
+`)
+
 type chatInputProps struct {
 	threadID    string
 	isStreaming bool
-}
-
-func PatchIsStreaming(sse *datastar.ServerSentEventGenerator, isStreaming bool) {
-	patchSignals(sse, map[string]any{"isStreaming": isStreaming})
-}
-
-func ClearMessageInput(sse *datastar.ServerSentEventGenerator) {
-	patchSignals(sse, map[string]any{
-		"message":     "",
-		"isStreaming": true,
-	})
 }
 
 func chatInput(props chatInputProps) Node {
@@ -82,4 +163,15 @@ func existingThreadChatInput(threadID string, isStreaming bool) Node {
 
 func newThreadChatInput() Node {
 	return chatInput(chatInputProps{})
+}
+
+func PatchIsStreaming(sse *datastar.ServerSentEventGenerator, isStreaming bool) {
+	patchSignals(sse, map[string]any{"isStreaming": isStreaming})
+}
+
+func ClearMessageInput(sse *datastar.ServerSentEventGenerator) {
+	patchSignals(sse, map[string]any{
+		"message":     "",
+		"isStreaming": true,
+	})
 }
