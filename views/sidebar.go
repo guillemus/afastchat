@@ -293,6 +293,12 @@ func ThreadListItemTitle(title string) Node {
 }
 
 var _ = styler.Style(`
+	@keyframes thread-streaming-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
 	.thread-streaming-indicator {
 		display: flex;
 		align-items: center;
@@ -302,17 +308,11 @@ var _ = styler.Style(`
 		flex-shrink: 0;
 		color: var(--bg-button);
 
-
-		@keyframes do-rotate {
-			to {
-				transform: rotate(360deg);
-			}
-		}
-
 		svg {
 			width: 14px;
 			height: 14px;
-			animation: do-rotate 0.8s linear infinite;
+			transform-origin: center;
+			animation: thread-streaming-spin 0.8s linear infinite;
 		}
 	}
 `)

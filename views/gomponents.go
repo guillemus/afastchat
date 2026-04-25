@@ -25,14 +25,17 @@ func (x *Styler) Node() Node {
 
 var _ = styler.Style(`
 	.debug-signals {
-		background: black;
+		background: var(--gray-12);
 		position: absolute;
 		top: 0;
 		right: 0;
 		width: 320px;
+		padding: var(--size-2);
 		overflow: hidden;
+		z-index: 10;
 
 		.signals-text {
+			background: var(--gray-12);
 			margin: 0;
 			white-space: pre;
 			overflow: hidden;
