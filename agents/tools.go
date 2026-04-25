@@ -6,20 +6,24 @@ import (
 	"fmt"
 
 	"afastchat.com/exa"
-	"github.com/openai/openai-go/v3/responses"
 )
 
-var websearchToolDef = responses.ToolParamOfFunction("web_search", map[string]any{
-	"type": "object",
-	"properties": map[string]any{
-		"query": map[string]any{
-			"type":        "string",
-			"description": "Search query.",
+var webSearchTool = Tool{
+	Name:        "web_search",
+	Description: "Search the web for relevant results.",
+	Parameters: map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"query": map[string]any{
+				"type":        "string",
+				"description": "Search query.",
+			},
 		},
+		"required":             []string{"query"},
+		"additionalProperties": false,
 	},
-	"required":             []string{"query"},
-	"additionalProperties": false,
-}, true)
+	Strict: true,
+}
 
 type webSearchArgs struct {
 	Query string `json:"query"`
