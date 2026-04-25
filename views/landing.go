@@ -9,121 +9,160 @@ var _ = styler.Style(`
 	.landing-page {
 		min-height: 100vh;
 		min-height: 100dvh;
-		display: grid;
-		place-items: center;
-		padding: var(--size-fluid-5);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: var(--size-6);
+		background: var(--bg-primary);
 
 		.landing-shell {
-			width: min(100%, 48rem);
-		}
-
-		.landing-hero {
+			width: min(100%, 768px);
 			display: flex;
 			flex-direction: column;
-			gap: var(--size-5);
-			padding: var(--size-fluid-7);
-			text-align: center;
-			background: color-mix(in oklch, var(--bg-sidebar) 75%, var(--bg-primary));
-			border: 1px solid var(--border-color);
-			border-radius: var(--radius-4);
-			box-shadow: var(--shadow-4);
+			align-items: center;
+			gap: var(--size-8);
 		}
 
-		.landing-eyebrow {
+		.landing-brand {
 			color: var(--text-secondary);
 			font-size: var(--font-size-0);
-			text-transform: uppercase;
-			letter-spacing: 0.08em;
+			letter-spacing: 0.1em;
+			text-transform: lowercase;
 		}
 
 		.landing-title {
 			color: var(--text-primary);
+			font-size: clamp(2rem, 5vw, 2.75rem);
+			font-weight: var(--font-weight-5);
 			letter-spacing: -0.04em;
-			line-height: 1;
-			font-size: clamp(3rem, 10vw, 5.5rem);
+			line-height: 1.1;
+			text-align: center;
 		}
 
-		.logo-accent {
-			color: var(--bg-button);
-			font-weight: var(--font-weight-4);
+		.landing-input-wrap {
+			width: 100%;
+			max-width: 768px;
 		}
 
-		.landing-copy {
-			color: var(--text-secondary);
+		.landing-input {
+			display: flex;
+			align-items: center;
+			background: var(--bg-input);
+			border: 1px solid var(--border-color);
+			border-radius: var(--radius-3);
+			padding: var(--size-3);
+			color: var(--text-muted);
 			font-size: var(--font-size-1);
-			line-height: var(--font-lineheight-3);
+			cursor: pointer;
+			text-decoration: none;
+			transition: border-color 0.2s var(--ease-3);
+
+			&:hover {
+				border-color: color-mix(in oklch, var(--bg-button) 50%, var(--border-color));
+			}
+
+			svg {
+				width: 20px;
+				height: 20px;
+				margin-left: auto;
+				color: var(--text-muted);
+				flex-shrink: 0;
+			}
+		}
+
+		.landing-pills {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			gap: var(--size-3);
+			width: 100%;
+		}
+
+		.landing-pill {
+			display: inline-flex;
+			align-items: center;
+			padding: var(--size-2) var(--size-4);
+			background: transparent;
+			border: 1px solid var(--border-color);
+			border-radius: var(--radius-4);
+			color: var(--text-secondary);
+			font-size: var(--font-size-0);
+			text-decoration: none;
+			transition:
+				border-color 0.15s var(--ease-3),
+				color 0.15s var(--ease-3),
+				background-color 0.15s var(--ease-3);
+			cursor: pointer;
+
+			&:hover {
+				background: var(--bg-hover);
+				border-color: var(--text-muted);
+				color: var(--text-primary);
+			}
 		}
 
 		.landing-actions {
 			display: flex;
 			align-items: center;
-			justify-content: center;
-			gap: var(--size-3);
-			flex-wrap: wrap;
+			gap: var(--size-5);
+			margin-top: var(--size-2);
 		}
 
-		.btn-primary,
-		.btn-secondary {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			min-height: 44px;
-			padding: 0 var(--size-5);
-			border-radius: var(--radius-3);
-			border: 1px solid transparent;
-			font-family: inherit;
+		.landing-action {
+			color: var(--text-secondary);
 			font-size: var(--font-size-0);
-			font-weight: var(--font-weight-6);
 			text-decoration: none;
-			cursor: pointer;
-			transition:
-				filter 0.15s var(--ease-3),
-				border-color 0.15s var(--ease-3),
-				background-color 0.15s var(--ease-3);
+			transition: color 0.15s var(--ease-3);
 
 			&:hover {
-				filter: brightness(1.08);
+				color: var(--text-primary);
+				text-decoration: underline;
+				text-underline-offset: 3px;
 			}
-		}
-
-		.btn-primary {
-			background: var(--bg-button);
-			color: white;
-		}
-
-		.btn-secondary {
-			background: transparent;
-			color: var(--text-primary);
-			border-color: var(--border-color);
 		}
 	}
 `)
 
 func LandingPage() Node {
+	pills := []string{
+		"Explain a Go concurrency pattern",
+		"Debug an error in my code",
+		"Write a SQL migration",
+		"Brainstorm system design ideas",
+	}
+
 	return Main(
 		Class("landing-page"),
 		Div(
 			Class("landing-shell"),
 			Div(
-				Class("landing-hero"),
-				P(
-					Class("landing-eyebrow"),
-					Text("Fast local chat for your agents and threads"),
+				Class("landing-brand"),
+				Text("afastchat"),
+			),
+			H1(
+				Class("landing-title"),
+				Text("What can I help with?"),
+			),
+			Div(
+				Class("landing-input-wrap"),
+				A(
+					Href("/signup"),
+					Class("landing-input"),
+					Text("Message afastchat"),
+					iconArrowUp(),
 				),
-				H1(
-					Class("landing-title"),
-					Text("afastchat"),
-					Span(Class("logo-accent"), Text(".com")),
-				),
-				P(
-					Class("landing-copy"),
-					Text("Chat UI for long-running threads, streaming replies, and tool output."),
-				),
-				Div(
-					Class("landing-actions"),
-					A(Href("/signup"), Class("btn-primary"), Text("Sign up")),
-					A(Href("/login"), Class("btn-secondary"), Text("Log in")),
-				),
+			),
+			Div(
+				Class("landing-pills"),
+				Map(pills, func(label string) Node {
+					return A(Href("/signup"), Class("landing-pill"), Text(label))
+				}),
+			),
+			Div(
+				Class("landing-actions"),
+				A(Href("/login"), Class("landing-action"), Text("Log in")),
+				A(Href("/signup"), Class("landing-action"), Text("Sign up")),
 			),
 		),
 	)

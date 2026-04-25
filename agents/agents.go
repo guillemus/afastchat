@@ -197,7 +197,7 @@ func (x *Agent) streamResponse(
 		}
 	}()
 
-	state := &CalledTools{
+	calledTools := &CalledTools{
 		Tools: map[string]*ToolcallBuf{},
 	}
 	var responseID string
@@ -225,7 +225,7 @@ func (x *Agent) streamResponse(
 			}
 
 			item := ev.Item.AsFunctionCall()
-			call := state.functionCall(item.ID)
+			call := calledTools.functionCall(item.ID)
 			call.ItemID = item.ID
 			call.CallID = item.CallID
 			call.Name = item.Name
@@ -234,12 +234,12 @@ func (x *Agent) streamResponse(
 			}
 
 		case responses.ResponseFunctionCallArgumentsDeltaEvent:
-			call := state.functionCall(ev.ItemID)
+			call := calledTools.functionCall(ev.ItemID)
 			call.ItemID = ev.ItemID
 			call.Args.WriteString(ev.Delta)
 
 		case responses.ResponseFunctionCallArgumentsDoneEvent:
-			call := state.functionCall(ev.ItemID)
+			call := calledTools.functionCall(ev.ItemID)
 			call.ItemID = ev.ItemID
 			if call.Name == "" {
 				call.Name = ev.Name
@@ -254,7 +254,7 @@ func (x *Agent) streamResponse(
 			}
 
 			item := ev.Item.AsFunctionCall()
-			call := state.functionCall(item.ID)
+			call := calledTools.functionCall(item.ID)
 			call.ItemID = item.ID
 			call.CallID = item.CallID
 			call.Name = item.Name
@@ -268,7 +268,7 @@ func (x *Agent) streamResponse(
 			}
 
 		case responses.ResponseCompletedEvent:
-			return state, responseID, nil
+			return calledTools, responseID, nil
 
 		case responses.ResponseErrorEvent:
 			return nil, responseID, fmt.Errorf("response error: %s", ev.Message)
@@ -296,7 +296,7 @@ func (x *Agent) streamResponse(
 		return nil, responseID, fmt.Errorf("response stream failed: %w", err)
 	}
 
-	return state, responseID, nil
+	return calledTools, responseID, nil
 }
 
 func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, error) {

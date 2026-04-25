@@ -1,13 +1,7 @@
-migrate-dev:
-	source .env && atlas schema apply \
+migrate:
+	atlas schema apply \
 	  --to "file://db/schema.sql" \
-	  --url "sqlite://${DB_PATH:-./tmp/app.db}" \
-	  --dev-url "sqlite://dev?mode=memory"
-
-migrate-prod:
-	source .env && atlas schema apply \
-	  --to "file://db/schema.sql" \
-	  --url "sqlite://${PRODUCTION_DB_PATH}" \
+	  --url "sqlite://tmp/app.db" \
 	  --dev-url "sqlite://dev?mode=memory"
 
 build-linux:
