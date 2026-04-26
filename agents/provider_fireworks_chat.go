@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"strconv"
@@ -41,7 +42,12 @@ func (x *FireworksChatProvider) Stream(ctx context.Context, req ProviderRequest)
 			FrequencyPenalty:  param.NewOpt(0.0),
 		}
 
-		stream := x.client.Chat.Completions.NewStreaming(ctx, params, option.WithJSONSet("top_k", 40))
+		stream := x.client.Chat.Completions.NewStreaming(
+			ctx,
+			params,
+			option.WithJSONSet("top_k", 40),
+			option.WithJSONSet("reasoning_effort", "medium"),
+		)
 		defer stream.Close()
 
 		calledTools := newCalledTools()
@@ -49,6 +55,12 @@ func (x *FireworksChatProvider) Stream(ctx context.Context, req ProviderRequest)
 		for stream.Next() {
 			chunk := stream.Current()
 			for _, choice := range chunk.Choices {
+				if reasoningContent := fireworksReasoningContent(choice.Delta.RawJSON()); reasoningContent != "" {
+					if !yield(ReasoningDelta{reasoningContent}, nil) {
+						return
+					}
+				}
+
 				if choice.Delta.Content != "" {
 					if !yield(AssistantDelta{choice.Delta.Content}, nil) {
 						return
@@ -84,6 +96,16 @@ func (x *FireworksChatProvider) Stream(ctx context.Context, req ProviderRequest)
 			}
 		}
 	}
+}
+
+func fireworksReasoningContent(raw string) string {
+	var delta struct {
+		ReasoningContent string `json:"reasoning_content"`
+	}
+	if err := json.Unmarshal([]byte(raw), &delta); err != nil {
+		return ""
+	}
+	return delta.ReasoningContent
 }
 
 func toChatMessages(messages []Message, instructions string) []openai.ChatCompletionMessageParamUnion {

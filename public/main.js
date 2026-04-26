@@ -1,7 +1,3 @@
-/**
- * @param {string} key
- * @param {string} value
- */
 function setSessionVal(key, value) {
     try {
         sessionStorage.setItem(key, JSON.stringify({ value }))
@@ -13,10 +9,6 @@ function setSessionVal(key, value) {
 
 window.setSessionVal = setSessionVal
 
-/**
- * @param {string} key
- * @returns {string | null}
- */
 function getSessionVal(key) {
     const raw = sessionStorage.getItem(key)
 

@@ -131,6 +131,7 @@ func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGro
 				}
 			}
 			assistant.Parts = append(assistant.Parts, views.ReasoningPart{
+				ID:   it.ID,
 				Text: renderMarkdown(it.Content),
 			})
 		case db.AssistantToolCall:
@@ -140,6 +141,7 @@ func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGro
 				}
 			}
 			assistant.Parts = append(assistant.Parts, views.ToolCallPart{
+				ID:   it.ID,
 				Text: it.Content,
 			})
 		}

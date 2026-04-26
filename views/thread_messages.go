@@ -36,9 +36,11 @@ type (
 		MdContent string
 	}
 	ToolCallPart struct {
+		ID   string
 		Text string
 	}
 	ReasoningPart struct {
+		ID   string
 		Text string
 	}
 )
@@ -261,6 +263,7 @@ func (x MessageThread) MessageList() Node {
 var _ = styler.Style(`
 	.message {
 		display: block;
+		flex: 0 0 auto;
 		font-size: var(--font-size-1);
 		line-height: var(--font-lineheight-4);
 		padding: var(--size-3) var(--size-4);
@@ -326,6 +329,7 @@ func (x AssistantMessageParts) assistantMessage() Node {
 var _ = styler.Style(`
 	.assistant-part {
 		min-width: 0;
+		flex: 0 0 auto;
 	}
 
 	.assistant-text-part {
@@ -336,6 +340,7 @@ var _ = styler.Style(`
 
 func (x AssistantTextPart) Node() Node {
 	return Div(
+		ID("part-"+x.ID),
 		Class("assistant-part assistant-text-part"),
 		MarkdownContent(x.MdContent),
 	)
@@ -378,7 +383,9 @@ var _ = styler.Style(`
 
 func (x ToolCallPart) Node() Node {
 	return Details(
+		ID("part-"+x.ID),
 		Class("assistant-part tool-call-part"),
+		Data("preserve-attr", "open"),
 		Summary(
 			Class("tool-call-part-summary"),
 			Text("Tool call"),
@@ -401,7 +408,9 @@ var _ = styler.Style(`
 
 func (x ReasoningPart) Node() Node {
 	return Details(
+		ID("part-"+x.ID),
 		Class("assistant-part reasoning-part"),
+		Data("preserve-attr", "open"),
 		Summary(
 			Class("reasoning-part-summary"),
 			Text("Reasoning"),
