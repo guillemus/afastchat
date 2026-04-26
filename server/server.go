@@ -40,7 +40,7 @@ func StartServer(env env.Env) {
 	sessionManager := scs.New()
 	sessionManager.Store = db.NewSCSStore(conn)
 	sessionManager.Lifetime = 30 * 24 * time.Hour
-	sessionManager.IdleTimeout = 8 * time.Hour
+	sessionManager.IdleTimeout = 7 * 24 * time.Hour
 	sessionManager.Cookie.Name = "afastchat_session"
 	sessionManager.Cookie.HttpOnly = true
 	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
