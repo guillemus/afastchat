@@ -8,7 +8,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.chat-input {
 		flex-shrink: 0;
 		padding: var(--size-2) var(--size-6) var(--size-5);

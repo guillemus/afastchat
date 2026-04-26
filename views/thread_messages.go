@@ -65,7 +65,7 @@ func NewEmptyMessageThread() Node {
 	}.Node()
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.message-thread {
 		flex: 1;
 		display: flex;
@@ -170,7 +170,7 @@ func PatchThreadMessageList(
 	ssePatch(sse, MessageThread{Messages: messages, DoScrollSidebar: scrollSidebar}.MessageList())
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.main-body {
 		flex: 1;
 		min-height: 0;
@@ -260,7 +260,7 @@ func (x MessageThread) MessageList() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.message {
 		display: block;
 		flex: 0 0 auto;
@@ -291,7 +291,7 @@ func (x UserMessage) Node() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.assistant-message {
 		width: 100%;
 		max-width: 100%;
@@ -326,7 +326,7 @@ func (x AssistantMessageParts) assistantMessage() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.assistant-part {
 		min-width: 0;
 		flex: 0 0 auto;
@@ -346,7 +346,7 @@ func (x AssistantTextPart) Node() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.reasoning-part,
 	.tool-call-part {
 		width: 100%;
@@ -370,7 +370,7 @@ var _ = styler.Style(`
 	}
 `)
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.tool-call-part-summary {
 		border-bottom: 1px solid var(--border-color);
 	}
@@ -397,7 +397,7 @@ func (x ToolCallPart) Node() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.reasoning-part-body {
 		padding: 0 var(--size-3) var(--size-3);
 		font-size: var(--font-size-0);

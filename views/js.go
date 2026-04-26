@@ -6,7 +6,7 @@ import (
 )
 
 // We do it inline so that the functions are available ASAP.
-var customJS = Script(Raw(`
+var JS = Script(Raw(`
 	function setSessionVal(key, value) {
 		try {
 			sessionStorage.setItem(key, JSON.stringify({ value }))

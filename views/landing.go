@@ -5,7 +5,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.landing-page {
 		min-height: 100vh;
 		min-height: 100dvh;

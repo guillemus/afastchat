@@ -8,22 +8,22 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type Styler struct {
+type Styles struct {
 	styleString strings.Builder
 }
 
-var styler Styler
+var styles Styles
 
-func (x *Styler) Style(css string) uint8 {
+func (x *Styles) Style(css string) uint8 {
 	x.styleString.WriteString(css)
 	return 0
 }
 
-func (x *Styler) Node() Node {
+func (x *Styles) Node() Node {
 	return StyleEl(Raw(x.styleString.String()))
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.debug-signals {
 		background: var(--gray-12);
 		position: absolute;

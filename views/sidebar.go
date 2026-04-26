@@ -14,7 +14,7 @@ type Sidebar struct {
 	UserEmail      string
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.sidebar {
 		width: 260px;
 		min-width: 260px;
@@ -44,7 +44,7 @@ func (x Sidebar) Node() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.sidebar-header {
 		display: flex;
 		align-items: center;
@@ -57,7 +57,7 @@ func SidebarHeader() Node {
 	return Div(Class("sidebar-header"), AppLogo())
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.app-logo {
 		font-size: var(--font-size-1);
 		font-weight: var(--font-weight-7);
@@ -79,7 +79,7 @@ func AppLogo() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.new-chat-button {
 		display: flex;
 		align-items: center;
@@ -114,7 +114,7 @@ func NewChatButton() Node {
 	return A(Href("/app"), Class("new-chat-button"), iconPlus(), Text("New Chat"))
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.thread-search {
 		margin: 0 var(--size-3) var(--size-2);
 		position: relative;
@@ -170,7 +170,7 @@ func ThreadSearch() Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.thread-list {
 		flex: 1;
 		overflow-y: auto;
@@ -206,7 +206,7 @@ func ThreadListScrollRestoreScript() Node {
 	}`))
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.thread-section-label {
 		font-size: 10px;
 		font-weight: var(--font-weight-6);
@@ -230,7 +230,7 @@ func ThreadItems(threads []Thread, activeThreadID string) Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.thread-list-item {
 		display: flex;
 		align-items: center;
@@ -278,7 +278,7 @@ func ThreadListItem(thread Thread, isActive bool) Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.thread-list-item-title {
 		white-space: nowrap;
 		overflow: hidden;
@@ -292,7 +292,7 @@ func ThreadListItemTitle(title string) Node {
 	return Span(Class("thread-list-item-title"), Text(title))
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	@keyframes thread-streaming-spin {
 		to {
 			transform: rotate(360deg);
@@ -321,7 +321,7 @@ func ThreadStreamingIndicator() Node {
 	return Span(Class("thread-streaming-indicator"), iconSpinner())
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.thread-archive-button {
 		display: flex;
 		opacity: 0;
@@ -360,7 +360,7 @@ func ThreadArchiveButton(threadID string) Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.sidebar-footer {
 		padding: var(--size-3);
 		border-top: 1px solid var(--border-color);
@@ -379,7 +379,7 @@ func SidebarFooter(email string) Node {
 	)
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.user-avatar {
 		width: 26px;
 		height: 26px;
@@ -406,7 +406,7 @@ func userInitial(email string) string {
 	return string([]rune(email)[0])
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.sidebar-user-email {
 		font-size: var(--font-size-0);
 		color: var(--text-secondary);
@@ -418,7 +418,7 @@ var _ = styler.Style(`
 	}
 `)
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.logout-button {
 		background: transparent;
 		border: 1px solid var(--border-color);

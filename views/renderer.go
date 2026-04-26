@@ -66,8 +66,8 @@ func (x *Renderer) layout(body Node) Node {
 					"eagerness": "moderate"
 				}]
 			}`)),
-			styler.Node(),
-			customJS,
+			styles.Node(),
+			JS,
 		},
 		Body: []Node{
 			DebugSignals(x.env),
@@ -76,7 +76,7 @@ func (x *Renderer) layout(body Node) Node {
 	})
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.app {
 		display: flex;
 		width: 100%;
@@ -92,7 +92,7 @@ func (x *Renderer) appLayout(body ...Node) Node {
 	))
 }
 
-var _ = styler.Style(`
+var _ = styles.Style(`
 	.guest-app {
 		min-height: 100vh;
 		min-height: 100dvh;
