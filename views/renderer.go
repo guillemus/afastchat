@@ -59,9 +59,15 @@ func (x *Renderer) layout(body Node) Node {
 			),
 			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
-			Script(Type("module"), Src("/public/main.js?v="+x.assetVersion)),
 			Script(Type("module"), Src("/public/datastar.js")),
+			Script(Type("speculationrules"), Raw(`{
+				"prefetch": [{
+					"where": { "href_matches": "/*" },
+					"eagerness": "moderate"
+				}]
+			}`)),
 			styler.Node(),
+			customJS,
 		},
 		Body: []Node{
 			DebugSignals(x.env),
@@ -99,16 +105,16 @@ func (x *Renderer) guestLayout(body ...Node) Node {
 	))
 }
 
-func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData, doScrollSidebar bool) {
+func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, "", doScrollSidebar, data.UserEmail}.Node(),
+		Sidebar{data.Threads, "", data.UserEmail}.Node(),
 		NewEmptyMessageThread(),
 	))
 }
 
 func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, data.Thread.ID, doScrollSidebar, data.UserEmail}.Node(),
+		Sidebar{data.Threads, data.Thread.ID, data.UserEmail}.Node(),
 		MessageThread{
 			Messages:        data.Messages,
 			ThreadID:        data.Thread.ID,

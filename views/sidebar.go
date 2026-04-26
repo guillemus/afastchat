@@ -9,10 +9,9 @@ import (
 )
 
 type Sidebar struct {
-	Threads         []Thread
-	ActiveThreadID  string
-	DoScrollSidebar bool
-	UserEmail       string
+	Threads        []Thread
+	ActiveThreadID string
+	UserEmail      string
 }
 
 var _ = styler.Style(`
@@ -39,8 +38,9 @@ func (x Sidebar) Node() Node {
 		SidebarHeader(),
 		NewChatButton(),
 		ThreadSearch(),
-		ThreadList(x.Threads, x.ActiveThreadID, x.DoScrollSidebar),
+		ThreadList(x.Threads, x.ActiveThreadID),
 		SidebarFooter(x.UserEmail),
+		ThreadListScrollRestoreScript(),
 	)
 }
 
@@ -181,29 +181,29 @@ var _ = styler.Style(`
 	}
 `)
 
-func ThreadList(threads []Thread, activeThreadID string, doScrollSidebar bool) Node {
+func ThreadList(threads []Thread, activeThreadID string) Node {
 	return Div(
-		Classes{
-			"thread-list": true,
-			"invisible":   doScrollSidebar,
-		},
-		If(doScrollSidebar, Group{
-			Data("init", `
-				const value = getSessionVal('thread_list_scroll');
-				if (value) {
-					el.scrollTop = Number.parseInt(value, 10) || 0;
-				}
-
-				el.classList.remove('invisible');
-			`),
-		}),
+		Class("thread-list"),
 		Data("on:scroll__debounce.10ms", `
-			let val = String(Math.round(el.scrollTop));
-			setSessionVal('thread_list_scroll', val);
+			setSessionVal('thread_list_scroll', String(Math.round(el.scrollTop)));
 		`),
 		ThreadSectionLabel("Recent"),
 		ThreadItems(threads, activeThreadID),
 	)
+}
+
+func ThreadListScrollRestoreScript() Node {
+	// Keep this after all sidebar layout-affecting nodes, especially SidebarFooter.
+	// ScrollTop is clamped to the current max scroll; restoring before the footer is parsed
+	// uses a too-tall thread list, then the footer shrinks it and leaves scroll above bottom.
+	return Script(Raw(`{
+		let el = document.querySelector('.thread-list')
+		let value = getSessionVal('thread_list_scroll');
+		if (value) {
+			let scrollTop = Number.parseInt(value, 10) || 0;
+			el.scrollTop = scrollTop;
+		}
+	}`))
 }
 
 var _ = styler.Style(`

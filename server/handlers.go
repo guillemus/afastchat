@@ -40,7 +40,7 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request, user db.Use
 	x.renderer.RenderIndexPage(w, views.IndexData{
 		Threads:   mapViewThreads(threads),
 		UserEmail: user.Email,
-	}, true)
+	})
 }
 
 func (x *Server) getDisplayMessages(
