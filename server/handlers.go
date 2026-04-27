@@ -76,7 +76,7 @@ func (x *Server) getThreadPage(
 
 	return views.ThreadData{
 		Threads:   mapViewThreads(threads),
-		Thread:    mapViewThread(thread),
+		Thread:    viewThreadFromDbThread(thread),
 		Messages:  messages,
 		Streaming: thread.IsStreaming,
 		UserEmail: user.Email,
@@ -386,7 +386,7 @@ msgloop:
 				continue msgloop
 			}
 
-			views.PatchThreadItem(sse, mapViewThread(thread))
+			views.PatchThreadItem(sse, viewThreadFromDbThread(thread))
 		case <-ctx.Done():
 			break msgloop
 		}

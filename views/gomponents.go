@@ -68,7 +68,7 @@ func DebugSignals(env env.Env) Node {
 	return Div(
 		Class("debug-signals"),
 		Data("signals:debug-signals-collapsed", "false"),
-		Data("init", `$debugSignalsCollapsed = getSessionVal('debug_signals_collapsed') === 'true'`),
+		Data("init", `$debugSignalsCollapsed = getSessionVal('debug_signals_collapsed') !== 'false'`),
 		Div(
 			Class("debug-signals-header"),
 			Small(Text("signals:")),

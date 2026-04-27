@@ -1,6 +1,8 @@
 package views
 
 import (
+	"log/slog"
+
 	"github.com/starfederation/datastar-go/datastar"
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/components"
@@ -162,12 +164,35 @@ func (x MessageThread) Node() Node {
 		}
 	}
 
-	return Main(Class("message-thread"), contents)
+	return Main(
+		Class("message-thread"),
+		contents,
+		If(x.DoScrollSidebar && len(x.Messages) > 0, MessageScrollRestoreScript()),
+	)
+}
+
+func MessageScrollRestoreScript() Node {
+	// Keep this after all message-thread layout-affecting nodes, especially chat input.
+	// ScrollTop is clamped to the current max scroll; restoring before input is parsed
+	// uses a too-tall message list, then input shrinks it and leaves scroll above bottom.
+	return Script(Raw(`{
+		let el = document.querySelector('#messages');
+		el.scrollTop = el.scrollHeight;
+	}`))
 }
 
 func PatchThreadMessageList(
-	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollSidebar bool) {
-	ssePatch(sse, MessageThread{Messages: messages, DoScrollSidebar: scrollSidebar}.MessageList())
+	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
+	ssePatch(sse, MessageThread{Messages: messages}.MessageList())
+	if scrollMessages {
+		err := sse.ExecuteScript(`
+			let el = document.querySelector('#messages');
+			el.scrollTop = el.scrollHeight;
+		`)
+		if err != nil {
+			slog.Error("sse.ExecuteScript error", "err", err)
+		}
+	}
 }
 
 var _ = styles.Style(`
@@ -238,22 +263,13 @@ func (x MessageThread) MessageList() Node {
 	return Div(
 		ID("messages"),
 		Data("ref:messages", ""),
-		Classes{
-			"main-body": true,
-			"invisible": x.DoScrollSidebar,
-		},
+		Class("main-body"),
 		Data("on:scroll__debounce.10ms", `
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
 			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 		`),
-		If(x.DoScrollSidebar, Data("init", `
-			el.scrollTop = el.scrollHeight;
-			el.classList.remove('invisible');
-			const overflow = el.scrollHeight - el.clientHeight;
-			const distanceFromBottom = overflow - el.scrollTop;
-			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
-		`)),
+
 		Map(x.Messages, func(m MessageGroup) Node {
 			return m.Node()
 		}),

@@ -81,7 +81,7 @@ func (x *Server) handlePathVal(
 	}
 }
 
-func mapViewThread(thread db.Thread) views.Thread {
+func viewThreadFromDbThread(thread db.Thread) views.Thread {
 	return views.Thread{
 		ID:          thread.ID,
 		IsStreaming: thread.IsStreaming,
@@ -92,7 +92,7 @@ func mapViewThread(thread db.Thread) views.Thread {
 func mapViewThreads(threads []db.Thread) []views.Thread {
 	out := make([]views.Thread, 0, len(threads))
 	for _, thread := range threads {
-		out = append(out, mapViewThread(thread))
+		out = append(out, viewThreadFromDbThread(thread))
 	}
 	return out
 }
