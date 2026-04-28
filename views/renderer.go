@@ -55,7 +55,7 @@ func (x *Renderer) layout(body Node) Node {
 			Link(Rel("preload"), Href("/public/fonts/jetbrains-mono-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
 			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
-			Script(Type("module"), Src("/public/datastar.js")),
+			Raw(`<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"></script>`),
 			Script(Type("speculationrules"), Raw(`{
 				"prefetch": [{
 					"where": { "href_matches": "/*" },
