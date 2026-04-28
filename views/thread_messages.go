@@ -290,12 +290,19 @@ var _ = styles.Style(`
 		max-width: min(100%, 72ch);
 	}
 	.user-message {
-		background: color-mix(in oklch, var(--bg-button) 18%, transparent);
-		border: 1px solid color-mix(in oklch, var(--bg-button) 30%, transparent);
+		max-width: min(100%, 56ch);
+		padding: var(--size-2) var(--size-3);
+		border-radius: var(--radius-2);
+		background: color-mix(in oklch, var(--gray-10) 72%, transparent);
+		border: 1px solid var(--border-color);
 		color: var(--text-primary);
 		white-space: normal;
 		margin-left: auto;
 		margin-right: 0;
+
+		.markdown-content p {
+			margin: 0;
+		}
 	}
 `)
 

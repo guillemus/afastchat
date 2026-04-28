@@ -93,7 +93,7 @@ var _ = styles.Style(`
 		border-radius: var(--radius-2);
 		cursor: pointer;
 		font-family: inherit;
-		font-size: var(--font-size-0);
+		font-size: var(--font-size-1);
 		font-weight: var(--font-weight-5);
 		text-decoration: none;
 		transition: filter 0.15s;
@@ -185,7 +185,7 @@ func ThreadList(threads []Thread, activeThreadID string) Node {
 	return Div(
 		Class("thread-list"),
 		Data("on:scroll__debounce.10ms", `
-			setSessionVal('thread_list_scroll', String(Math.round(el.scrollTop)));
+			setSessionVal('thread_list_scroll', String(el.scrollTop));
 		`),
 		ThreadSectionLabel("Recent"),
 		ThreadItems(threads, activeThreadID),
@@ -200,8 +200,7 @@ func ThreadListScrollRestoreScript() Node {
 		let el = document.querySelector('.thread-list')
 		let value = getSessionVal('thread_list_scroll');
 		if (value) {
-			let scrollTop = Number.parseInt(value, 10) || 0;
-			el.scrollTop = scrollTop;
+			el.scrollTop = Number.parseFloat(value) || 0;
 		}
 	}`))
 }
@@ -244,18 +243,15 @@ var _ = styles.Style(`
 		transition:
 			background 0.12s,
 			color 0.12s;
-		border-left: 2px solid transparent;
 
 		&:hover {
 			background: var(--bg-hover);
 			color: var(--text-primary);
-			border-left-color: color-mix(in oklch, var(--bg-button) 50%, transparent);
 		}
 
 		&.active {
-			background: color-mix(in oklch, var(--bg-button) 12%, transparent);
+			background: color-mix(in oklch, var(--gray-8) 18%, transparent);
 			color: var(--text-primary);
-			border-left-color: var(--bg-button);
 		}
 
 		&:hover .thread-archive-button {
@@ -367,6 +363,10 @@ var _ = styles.Style(`
 		display: flex;
 		align-items: center;
 		gap: var(--size-2);
+
+		form {
+			margin-left: auto;
+		}
 	}
 `)
 
@@ -414,7 +414,7 @@ var _ = styles.Style(`
 		padding: 0 var(--size-2);
 		min-height: 32px;
 		font-family: inherit;
-		font-size: var(--font-size-00);
+		font-size: var(--font-size-0);
 		cursor: pointer;
 
 		&:hover {
