@@ -51,12 +51,8 @@ func (x *Renderer) layout(body Node) Node {
 		Description: "",
 		Language:    "en",
 		Head: []Node{
-			Link(Rel("preconnect"), Href("https://fonts.googleapis.com")),
-			Link(Rel("preconnect"), Href("https://fonts.gstatic.com"), Attr("crossorigin")),
-			Link(
-				Rel("stylesheet"),
-				Href("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap"),
-			),
+			Link(Rel("preload"), Href("/public/fonts/figtree-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
+			Link(Rel("preload"), Href("/public/fonts/jetbrains-mono-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
 			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
 			Script(Type("module"), Src("/public/datastar.js")),

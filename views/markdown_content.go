@@ -17,7 +17,7 @@ var _ = styles.Style(`
 		}
 
 		code {
-			font-family: 'Fira Code', var(--font-mono);
+			font-family: var(--font-code);
 			font-size: var(--font-size-0);
 		}
 

@@ -23,8 +23,8 @@ type Agent struct {
 }
 
 func NewAgent(env env.Env) *Agent {
-	// provider := NewFireworksChatProvider(env.FireworksAPIKey, "accounts/fireworks/models/kimi-k2p6")
-	provider := NewOpenAIResponsesProvider(env.OpenAIAPIKey, openai.ChatModelGPT5_4Nano)
+	provider := NewFireworksChatProvider(env.FireworksAPIKey, "accounts/fireworks/models/kimi-k2p6")
+	// provider := NewOpenAIResponsesProvider(env.OpenAIAPIKey, openai.ChatModelGPT5_4Nano)
 
 	fastClient := openai.NewClient(option.WithAPIKey(env.OpenAIAPIKey))
 
