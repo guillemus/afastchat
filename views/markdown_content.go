@@ -37,8 +37,7 @@ var _ = styles.Style(`
 			margin-bottom: 0;
 		}
 
-		ul,
-		ol {
+		ul, ol {
 			padding-left: var(--size-5);
 			margin: var(--size-2) 0;
 		}
@@ -47,10 +46,7 @@ var _ = styles.Style(`
 			margin: var(--size-1) 0;
 		}
 
-		h1,
-		h2,
-		h3,
-		h4 {
+		h1, h2, h3, h4 {
 			margin: var(--size-3) 0 var(--size-2);
 			color: var(--text-primary);
 		}

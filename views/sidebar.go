@@ -374,7 +374,6 @@ func SidebarFooter(email string) Node {
 	return Div(
 		Class("sidebar-footer"),
 		UserAvatar(email),
-		Span(Class("sidebar-user-email"), Text(email)),
 		Form(Method("post"), Action("/logout"), LogoutButton()),
 	)
 }
@@ -405,18 +404,6 @@ func userInitial(email string) string {
 	}
 	return string([]rune(email)[0])
 }
-
-var _ = styles.Style(`
-	.sidebar-user-email {
-		font-size: var(--font-size-0);
-		color: var(--text-secondary);
-		min-width: 0;
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-`)
 
 var _ = styles.Style(`
 	.logout-button {
