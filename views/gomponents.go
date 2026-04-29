@@ -53,7 +53,6 @@ var _ = styles.Style(`
 
 		.signals-text {
 			background: var(--gray-12);
-			margin: 0;
 			white-space: pre;
 			overflow: hidden;
 		}

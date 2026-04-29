@@ -232,7 +232,6 @@ var _ = styles.Style(`
 	}
 
 	.empty-state-title {
-		font-size: clamp(2rem, 3vw, 2.75rem);
 		line-height: 1.1;
 		color: var(--text-primary);
 		letter-spacing: -0.04em;
@@ -240,7 +239,6 @@ var _ = styles.Style(`
 
 	.empty-state-subtitle {
 		max-width: 42ch;
-		font-size: var(--font-size-1);
 		line-height: var(--font-lineheight-3);
 	}
 `)
@@ -278,9 +276,7 @@ func (x MessageThread) MessageList() Node {
 
 var _ = styles.Style(`
 	.message {
-		display: block;
 		flex: 0 0 auto;
-		font-size: var(--font-size-1);
 		line-height: var(--font-lineheight-4);
 		padding: var(--size-3) var(--size-4);
 		border-radius: var(--radius-3);
@@ -298,7 +294,6 @@ var _ = styles.Style(`
 		color: var(--text-primary);
 		white-space: normal;
 		margin-left: auto;
-		margin-right: 0;
 
 		.markdown-content p {
 			margin: 0;
@@ -320,7 +315,6 @@ var _ = styles.Style(`
 		max-width: 100%;
 		color: var(--gray-3);
 		white-space: normal;
-		margin-left: 0;
 		margin-right: auto;
 		display: flex;
 		flex-direction: column;
@@ -356,7 +350,6 @@ var _ = styles.Style(`
 	}
 
 	.assistant-text-part {
-		display: block;
 		width: 100%;
 	}
 `)
@@ -382,7 +375,6 @@ var _ = styles.Style(`
 			cursor: pointer;
 			list-style: none;
 			padding: var(--size-2) var(--size-3);
-			font-size: var(--font-size-0);
 			font-weight: var(--font-weight-6);
 			color: var(--text-secondary);
 		}
@@ -399,7 +391,6 @@ var _ = styles.Style(`
 	}
 
 	.tool-call-part-body {
-		margin: 0;
 		border-radius: 0;
 	}
 `)
@@ -423,7 +414,6 @@ func (x ToolCallPart) Node() Node {
 var _ = styles.Style(`
 	.reasoning-part-body {
 		padding: 0 var(--size-3) var(--size-3);
-		font-size: var(--font-size-0);
 		line-height: var(--font-lineheight-3);
 		color: var(--text-secondary);
 	}

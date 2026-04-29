@@ -47,7 +47,7 @@ type ThreadData struct {
 
 func (x *Renderer) layout(body Node) Node {
 	return HTML5(HTML5Props{
-		Title:       "afastchat",
+		// Title:       "afastchat",
 		Description: "",
 		Language:    "en",
 		Head: []Node{

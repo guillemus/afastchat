@@ -19,6 +19,7 @@ var _ = styles.Style(`
 		width: 260px;
 		min-width: 260px;
 		max-width: 260px;
+		font-size: var(--font-sidebar-size);
 		flex-shrink: 0;
 		min-height: 100vh;
 		background: var(--bg-sidebar);
@@ -59,14 +60,11 @@ func SidebarHeader() Node {
 
 var _ = styles.Style(`
 	.app-logo {
-		font-size: var(--font-size-1);
-		font-weight: var(--font-weight-7);
-		color: var(--text-primary);
+		font-weight: var(--font-weight-4);
 		letter-spacing: -0.02em;
 
 		.accent {
 			color: var(--bg-button);
-			font-weight: var(--font-weight-4);
 		}
 	}
 `)
@@ -91,10 +89,7 @@ var _ = styles.Style(`
 		color: white;
 		border: none;
 		border-radius: var(--radius-2);
-		cursor: pointer;
-		font-family: inherit;
-		font-size: var(--font-size-1);
-		font-weight: var(--font-weight-5);
+		font-weight: var(--font-weight-4);
 		text-decoration: none;
 		transition: filter 0.15s;
 
@@ -139,7 +134,7 @@ var _ = styles.Style(`
 			border-radius: var(--radius-2);
 			color: var(--text-secondary);
 			font-family: inherit;
-			font-size: var(--font-size-0);
+			font-size: inherit;
 			outline: none;
 			transition:
 				border-color 0.15s,
@@ -207,8 +202,7 @@ func ThreadListScrollRestoreScript() Node {
 
 var _ = styles.Style(`
 	.thread-section-label {
-		font-size: 10px;
-		font-weight: var(--font-weight-6);
+		font-weight: var(--font-weight-4);
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--text-muted);
@@ -234,12 +228,9 @@ var _ = styles.Style(`
 		display: flex;
 		align-items: center;
 		padding: var(--size-1) var(--size-2);
-		font-size: var(--font-size-0);
 		color: var(--text-secondary);
 		border-radius: var(--radius-2);
-		cursor: pointer;
 		text-decoration: none;
-		position: relative;
 		transition:
 			background 0.12s,
 			color 0.12s;
@@ -387,8 +378,7 @@ var _ = styles.Style(`
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 11px;
-		font-weight: var(--font-weight-7);
+		font-weight: var(--font-weight-4);
 		color: white;
 		flex-shrink: 0;
 	}
@@ -414,7 +404,7 @@ var _ = styles.Style(`
 		padding: 0 var(--size-2);
 		min-height: 32px;
 		font-family: inherit;
-		font-size: var(--font-size-0);
+		font-size: inherit;
 		cursor: pointer;
 
 		&:hover {

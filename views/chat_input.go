@@ -46,7 +46,7 @@ var _ = styles.Style(`
 				border: none;
 				color: var(--text-primary);
 				font-family: inherit;
-				font-size: var(--font-size-1);
+				font-size: inherit;
 				resize: none;
 				outline: none;
 				field-sizing: content;

@@ -66,6 +66,8 @@
     --text-secondary: var(--gray-5);
     --text-muted: var(--gray-7);
     --border-color: var(--gray-10);
+    --font-app-size: 0.9375rem;
+    --font-sidebar-size: 0.875rem;
 }
 
 html,
@@ -75,6 +77,7 @@ body {
 
 body {
     font-family: var(--font-text);
+    font-size: var(--font-app-size);
     background: var(--bg-primary);
     color: var(--text-primary);
     overflow: hidden;

@@ -18,7 +18,7 @@ var _ = styles.Style(`
 
 		code {
 			font-family: var(--font-code);
-			font-size: var(--font-size-0);
+			font-size: inherit;
 		}
 
 		:not(pre) > code {
@@ -52,13 +52,13 @@ var _ = styles.Style(`
 		}
 
 		h1 {
-			font-size: var(--font-size-4);
+			font-size: inherit;
 		}
 		h2 {
-			font-size: var(--font-size-3);
+			font-size: inherit;
 		}
 		h3 {
-			font-size: var(--font-size-2);
+			font-size: inherit;
 		}
 
 		blockquote {

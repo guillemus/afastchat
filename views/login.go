@@ -32,20 +32,17 @@ var _ = styles.Style(`
 
 		.landing-eyebrow {
 			color: var(--text-secondary);
-			font-size: var(--font-size-0);
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 		}
 
 		.auth-title {
-			color: var(--text-primary);
 			letter-spacing: -0.04em;
 			line-height: 1;
 		}
 
 		.auth-copy {
 			color: var(--text-secondary);
-			font-size: var(--font-size-1);
 			line-height: var(--font-lineheight-3);
 		}
 
@@ -56,7 +53,6 @@ var _ = styles.Style(`
 
 			label {
 				color: var(--text-secondary);
-				font-size: var(--font-size-0);
 			}
 
 			input {
@@ -68,7 +64,7 @@ var _ = styles.Style(`
 				border-radius: var(--radius-2);
 				padding: 0 var(--size-3);
 				font-family: inherit;
-				font-size: var(--font-size-0);
+				font-size: inherit;
 				outline: none;
 
 				&::placeholder {
@@ -88,7 +84,6 @@ var _ = styles.Style(`
 			border: 1px solid color-mix(in oklch, var(--red-7) 30%, transparent);
 			border-radius: var(--radius-2);
 			padding: var(--size-2) var(--size-3);
-			font-size: var(--font-size-0);
 		}
 
 		.btn-primary {
@@ -100,7 +95,7 @@ var _ = styles.Style(`
 			border-radius: var(--radius-3);
 			border: 1px solid transparent;
 			font-family: inherit;
-			font-size: var(--font-size-0);
+			font-size: inherit;
 			font-weight: var(--font-weight-6);
 			text-decoration: none;
 			cursor: pointer;
@@ -120,7 +115,6 @@ var _ = styles.Style(`
 
 		.auth-footer {
 			color: var(--text-secondary);
-			font-size: var(--font-size-0);
 			text-align: center;
 
 			a {
