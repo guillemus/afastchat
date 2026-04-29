@@ -13,7 +13,7 @@ import (
 
 const (
 	tooManyAttemptsMessage = "Too many attempts. Try again later."
-	contentSecurityPolicy  = "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'"
+	contentSecurityPolicy  = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; base-uri *; form-action *; frame-ancestors *; img-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; font-src * data: blob:; connect-src * data: blob:; media-src * data: blob:; worker-src * data: blob:"
 )
 
 func newAuthRateLimiter() *httprate.RateLimiter {
