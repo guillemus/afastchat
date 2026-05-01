@@ -8,6 +8,7 @@ import (
 
 type ThreadEvent struct {
 	UserMessageCreated bool
+	SidebarChanged     bool
 }
 
 func (x *Server) publishThreadEvent(threadID string, evt ThreadEvent) {
@@ -26,24 +27,6 @@ func (x *Server) subscribeToThread(threadID string, handler func(evt ThreadEvent
 	return func() {
 		x.bus.Unsubscribe(topic, handler)
 	}
-}
-
-type sidebarEvent struct {
-	threadID string
-}
-
-func (x *Server) subscribeToSidebar(handler func(sidebarEvent)) (unsub func()) {
-	topic := "sidebar"
-	x.bus.Subscribe(topic, handler)
-
-	return func() {
-		x.bus.Unsubscribe(topic, handler)
-	}
-}
-
-func (x *Server) publishSidebarEvent(evt sidebarEvent) {
-	topic := "sidebar"
-	x.bus.Publish(topic, evt)
 }
 
 // We keep a separate topic so that flow between request to stop streaming and stream is separate from stream -> /events flow.

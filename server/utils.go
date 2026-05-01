@@ -41,6 +41,28 @@ func mapViewThreads(threads []db.Thread) []views.Thread {
 	return out
 }
 
+func mapViewSidebarTree(tree db.SidebarTree) views.SidebarTree {
+	return views.SidebarTree{
+		Folders: mapViewSidebarFolders(tree.Folders),
+		Threads: mapViewThreads(tree.Threads),
+	}
+}
+
+func mapViewSidebarFolders(folders []db.SidebarFolder) []views.SidebarFolder {
+	out := make([]views.SidebarFolder, 0, len(folders))
+	for _, folder := range folders {
+		out = append(out, views.SidebarFolder{
+			ID:                folder.Folder.ID,
+			Name:              folder.Folder.Name,
+			Folders:           mapViewSidebarFolders(folder.Folders),
+			Threads:           mapViewThreads(folder.Threads),
+			DeleteFolderCount: folder.DeleteFolderCount,
+			DeleteThreadCount: folder.DeleteThreadCount,
+		})
+	}
+	return out
+}
+
 func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGroup {
 	out := make([]views.MessageGroup, 0, len(messages))
 	var assistant *views.AssistantMessageParts

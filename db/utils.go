@@ -20,17 +20,22 @@ func parseTime(v string) time.Time {
 	return parsed
 }
 
-func nullableString(v string) any {
-	if v == "" {
-		return nil
+func scanFolder(stmt *sqlite.Stmt) Folder {
+	return Folder{
+		ID:        stmt.GetText("id"),
+		UserID:    stmt.GetText("user_id"),
+		ParentID:  nullableText(stmt.IsNull("parent_id"), stmt.GetText("parent_id")),
+		Name:      stmt.GetText("name"),
+		CreatedAt: parseTime(stmt.GetText("created_at")),
+		UpdatedAt: parseTime(stmt.GetText("updated_at")),
 	}
-	return v
 }
 
 func scanThread(stmt *sqlite.Stmt) Thread {
 	return Thread{
 		ID:          stmt.GetText("id"),
 		UserID:      stmt.GetText("user_id"),
+		FolderID:    nullableText(stmt.IsNull("folder_id"), stmt.GetText("folder_id")),
 		Title:       stmt.GetText("title"),
 		ArchivedAt:  nullableTime(stmt.IsNull("archived_at"), stmt.GetText("archived_at")),
 		IsStreaming: stmt.GetInt64("is_streaming") != 0,
@@ -52,6 +57,20 @@ func scanMessage(stmt *sqlite.Stmt) (Message, error) {
 		CreatedAt:          parseTime(stmt.GetText("created_at")),
 		UpdatedAt:          parseTime(stmt.GetText("updated_at")),
 	}, nil
+}
+
+func nullableString(v string) any {
+	if v == "" {
+		return nil
+	}
+	return v
+}
+
+func nullableText(isNull bool, val string) *string {
+	if isNull || val == "" {
+		return nil
+	}
+	return &val
 }
 
 func nullableTime(isNull bool, val string) *time.Time {

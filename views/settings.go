@@ -105,7 +105,7 @@ var _ = styles.Style(`
 `)
 
 type SettingsData struct {
-	Threads            []Thread
+	SidebarTree        SidebarTree
 	UserEmail          string
 	HasLifetimeLicense bool
 	BalanceCents       polar.Cents

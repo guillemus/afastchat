@@ -19,24 +19,24 @@ import (
 func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	tree, err := x.db.GetSidebarTree(ctx, user.ID, "")
 	if err != nil {
-		handleBadReq(w, "list threads", err)
+		handleBadReq(w, "get sidebar", err)
 		return
 	}
 
 	x.renderer.RenderIndexPage(w, views.IndexData{
-		Threads:   mapViewThreads(threads),
-		UserEmail: user.Email,
+		SidebarTree: mapViewSidebarTree(tree),
+		UserEmail:   user.Email,
 	})
 }
 
 func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	tree, err := x.db.GetSidebarTree(ctx, user.ID, "")
 	if err != nil {
-		handleBadReq(w, "list threads", err)
+		handleBadReq(w, "get sidebar", err)
 		return
 	}
 
@@ -52,7 +52,7 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x.renderer.RenderSettingsPage(w, views.SettingsData{
-		Threads:            mapViewThreads(threads),
+		SidebarTree:        mapViewSidebarTree(tree),
 		UserEmail:          user.Email,
 		HasLifetimeLicense: hasLifetimeLicense,
 		BalanceCents:       balance,
@@ -83,17 +83,17 @@ func (x *Server) getThreadPage(
 		return td, err
 	}
 
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	tree, err := x.db.GetSidebarTree(ctx, user.ID, "")
 	if err != nil {
-		return td, fmt.Errorf("list threads: %w", err)
+		return td, fmt.Errorf("get sidebar: %w", err)
 	}
 
 	return views.ThreadData{
-		Threads:   mapViewThreads(threads),
-		Thread:    viewThreadFromDbThread(thread),
-		Messages:  messages,
-		Streaming: thread.IsStreaming,
-		UserEmail: user.Email,
+		SidebarTree: mapViewSidebarTree(tree),
+		Thread:      viewThreadFromDbThread(thread),
+		Messages:    messages,
+		Streaming:   thread.IsStreaming,
+		UserEmail:   user.Email,
 	}, nil
 }
 
@@ -121,15 +121,140 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse := datastar.NewSSE(w, r)
-
-	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
-
-	// TODO: we should probably send the threadID from the path, so that we can just
-	// check serverside whether to redirect instead of doing it clientside.
+	x.patchSidebarTree(sse, ctx, user.ID, threadID)
 	sse.ExecuteScript(fmt.Sprintf(
 		`if (window.location.pathname === '/threads/%s') window.location.replace('/')`,
 		threadID,
 	))
+}
+
+type SaveFolderSig struct {
+	FolderName        string `json:"folderName"`
+	EditingFolderID   string `json:"editingFolderId"`
+	EditingFolderMode string `json:"editingFolderMode"`
+	ThreadID          string `json:"threadId"`
+}
+
+type MoveThreadSig struct {
+	DragThreadID   string `json:"dragThreadId"`
+	TargetFolderID string `json:"targetFolderId"`
+	ThreadID       string `json:"threadId"`
+}
+
+type MoveFolderSig struct {
+	DragFolderID   string `json:"dragFolderId"`
+	TargetFolderID string `json:"targetFolderId"`
+	ThreadID       string `json:"threadId"`
+}
+
+func (x *Server) handleSaveFolder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	var sig SaveFolderSig
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read folder signals", "err", err)
+		toastShowError(w, r, "Unable to save folder", "Refresh the page, then try again.")
+		return
+	}
+
+	if sig.EditingFolderMode == "rename" {
+		if err := x.db.RenameFolder(ctx, user.ID, sig.EditingFolderID, sig.FolderName); err != nil {
+			slog.Error("rename folder", "err", err)
+			toastShowError(w, r, "Unable to rename folder", "Try a different name.")
+			return
+		}
+	} else {
+		if _, err := x.db.CreateFolder(ctx, user.ID, nil, sig.FolderName); err != nil {
+			slog.Error("create folder", "err", err)
+			toastShowError(w, r, "Unable to create folder", "Try a different name.")
+			return
+		}
+	}
+
+	sse := datastar.NewSSE(w, r)
+	x.patchSidebarTree(sse, ctx, user.ID, sig.ThreadID)
+}
+
+func (x *Server) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	folderID := chi.URLParam(r, "id")
+	var sig struct {
+		ThreadID string `json:"threadId"`
+	}
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read folder delete signals", "err", err)
+		toastShowError(w, r, "Unable to delete folder", "Refresh the page, then try again.")
+		return
+	}
+	if err := x.db.DeleteFolderRecursive(ctx, user.ID, folderID); err != nil {
+		slog.Error("delete folder", "err", err)
+		toastShowError(w, r, "Unable to delete folder", "Try again.")
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	x.patchSidebarTree(sse, ctx, user.ID, sig.ThreadID)
+}
+
+func (x *Server) handleMoveThread(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	var sig MoveThreadSig
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read move thread signals", "err", err)
+		toastShowError(w, r, "Unable to move chat", "Refresh the page, then try again.")
+		return
+	}
+	var folderID *string
+	if sig.TargetFolderID != "" {
+		folderID = &sig.TargetFolderID
+	}
+	if err := x.db.MoveThreadToFolder(ctx, user.ID, sig.DragThreadID, folderID); err != nil {
+		slog.Error("move thread", "err", err)
+		toastShowError(w, r, "Unable to move chat", "Try again.")
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	x.patchSidebarTree(sse, ctx, user.ID, sig.ThreadID)
+}
+
+func (x *Server) handleMoveFolder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	var sig MoveFolderSig
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read move folder signals", "err", err)
+		toastShowError(w, r, "Unable to move folder", "Refresh the page, then try again.")
+		return
+	}
+	if sig.DragFolderID == "" || sig.DragFolderID == sig.TargetFolderID {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	var parentID *string
+	if sig.TargetFolderID != "" {
+		parentID = &sig.TargetFolderID
+	}
+	if err := x.db.MoveFolder(ctx, user.ID, sig.DragFolderID, parentID); err != nil {
+		slog.Error("move folder", "err", err)
+		toastShowError(w, r, "Unable to move folder", "Try again.")
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	x.patchSidebarTree(sse, ctx, user.ID, sig.ThreadID)
+}
+
+func (x *Server) patchSidebarTree(sse *datastar.ServerSentEventGenerator, ctx context.Context, userID, activeThreadID string) {
+	tree, err := x.db.GetSidebarTree(ctx, userID, "")
+	if err != nil {
+		slog.Error("get sidebar", "err", err)
+		views.PatchErrorToast(sse, "Unable to update sidebar", "Refresh the page to see latest chats.")
+		return
+	}
+	views.PatchSidebarTree(sse, mapViewSidebarTree(tree), activeThreadID)
 }
 
 func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
@@ -144,23 +269,15 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 		toastShowError(w, r, "Unable to search chats", "Refresh the page, then try searching again.")
 		return
 	}
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	tree, err := x.db.GetSidebarTree(ctx, user.ID, sig.ThreadSearch)
 	if err != nil {
-		slog.Error("list threads for search", "err", err)
+		slog.Error("get sidebar for search", "err", err)
 		toastShowError(w, r, "Unable to search chats", "We couldn't search your chats. Try again.")
 		return
 	}
 
-	query := sig.ThreadSearch
-	filtered := make([]db.Thread, 0, len(threads))
-	for _, it := range threads {
-		if strings.Contains(strings.ToLower(it.Title), query) {
-			filtered = append(filtered, it)
-		}
-	}
-
 	sse := datastar.NewSSE(w, r)
-	views.PatchThreads(sse, mapViewThreads(filtered), sig.ThreadID)
+	views.PatchSidebarTree(sse, mapViewSidebarTree(tree), sig.ThreadID)
 }
 
 func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +388,7 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 		return
 	}
 
-	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+	x.publishThreadEvent(threadID, ThreadEvent{SidebarChanged: true})
 	defer func() {
 		ctx := context.Background()
 		if err := x.db.SetThreadStreaming(ctx, userID, threadID, false); err != nil {
@@ -279,7 +396,7 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 			return
 		}
 		x.publishThreadDidUpdateEventEvent(threadID)
-		x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+		x.publishThreadEvent(threadID, ThreadEvent{SidebarChanged: true})
 	}()
 
 	_, err := x.db.CreateUserMessage(ctx, userID, threadID, userMessage)
@@ -393,7 +510,7 @@ func (x *Server) updateThreadTitle(ctx context.Context, userID, threadID string,
 		slog.Error("update thread title", "err", err)
 	}
 
-	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+	x.publishThreadEvent(threadID, ThreadEvent{SidebarChanged: true})
 }
 
 func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
@@ -407,14 +524,6 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unsub := x.subscribeToThread(threadID, threadEventHandler)
-	defer unsub()
-
-	sidebarEvtsC := make(chan sidebarEvent, 100)
-	sidebarHandler := func(evt sidebarEvent) {
-		sidebarEvtsC <- evt
-	}
-
-	unsub = x.subscribeToSidebar(sidebarHandler)
 	defer unsub()
 
 	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli()))
@@ -438,6 +547,13 @@ msgloop:
 		case evt := <-threadEvtsC:
 			slog.Debug("received thread event")
 
+			if evt.SidebarChanged {
+				x.patchSidebarTree(sse, ctx, user.ID, threadID)
+				if !evt.UserMessageCreated {
+					continue msgloop
+				}
+			}
+
 			thread, err := x.db.GetThread(ctx, threadID, user.ID)
 			if err != nil {
 				slog.Error("error getting thread", "err", err)
@@ -457,20 +573,6 @@ msgloop:
 				views.PatchThreadMessageList(sse, messages, false)
 				views.PatchIsStreaming(sse, thread.IsStreaming)
 			}
-
-		case evt := <-sidebarEvtsC:
-			slog.Debug("received sidebar thread update")
-
-			thread, err := x.db.GetThread(ctx, evt.threadID, user.ID)
-			if errors.Is(err, db.ErrNotFound) {
-				continue msgloop
-			}
-			if err != nil {
-				slog.Error("error getting thread", "err", err)
-				continue msgloop
-			}
-
-			views.PatchThreadItem(sse, viewThreadFromDbThread(thread))
 		case <-ctx.Done():
 			break msgloop
 		}
