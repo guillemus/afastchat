@@ -28,7 +28,7 @@ var _ = styles.Style(`
 
 		.chat-input-box {
 			display: flex;
-			align-items: center;
+			align-items: flex-start;
 			background: var(--bg-input);
 			border: 1px solid var(--border-color);
 			border-radius: var(--radius-3);

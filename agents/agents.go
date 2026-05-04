@@ -63,7 +63,7 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 	return func(yield func(StreamEvent, error) bool) {
 		req := ProviderRequest{
 			Messages:     MapDBMessages(messages),
-			Tools:        []Tool{webSearchTool},
+			Tools:        []Tool{webSearchTool, webReadTool, webSearchRecentTool},
 			Instructions: "You are a helpful assistant. Before each tool call, briefly tell the user what you are about to do in one short sentence.",
 		}
 
@@ -138,6 +138,20 @@ func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, erro
 		}
 
 		return x.webSearch(ctx, args)
+	case "web_read":
+		var args webReadArgs
+		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+			return "", err
+		}
+
+		return x.webRead(ctx, args)
+	case "web_search_recent":
+		var args webSearchRecentArgs
+		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+			return "", err
+		}
+
+		return x.webSearchRecent(ctx, args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
