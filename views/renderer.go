@@ -80,6 +80,10 @@ var _ = styles.Style(`
 		height: 100dvh;
 		overflow: hidden;
 	}
+	.guest-app {
+		min-height: 100vh;
+		min-height: 100dvh;
+	}
 `)
 
 func (x *Renderer) appLayout(body ...Node) Node {
@@ -87,13 +91,6 @@ func (x *Renderer) appLayout(body ...Node) Node {
 		Group(body),
 	))
 }
-
-var _ = styles.Style(`
-	.guest-app {
-		min-height: 100vh;
-		min-height: 100dvh;
-	}
-`)
 
 func (x *Renderer) guestLayout(body ...Node) Node {
 	return x.layout(Div(Class("guest-app"),

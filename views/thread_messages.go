@@ -122,6 +122,129 @@ var _ = styles.Style(`
 			block-size: 22px;
 		}
 	}
+	.main-body {
+		flex: 1;
+		min-height: 0;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		padding: var(--size-5) var(--size-6);
+		gap: var(--size-3);
+		overflow-y: auto;
+		overflow-x: hidden;
+		scrollbar-gutter: stable;
+		overflow-anchor: auto;
+		overscroll-behavior: contain;
+		width: 100%;
+		max-width: 960px;
+		margin: 0 auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--gray-9) transparent;
+	}
+	.empty-thread {
+		justify-content: flex-end;
+		padding-top: var(--size-8);
+	}
+	.empty-state {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: var(--size-3);
+		text-align: center;
+		color: var(--text-secondary);
+	}
+
+	.empty-state-title {
+		line-height: 1.1;
+		color: var(--text-primary);
+		letter-spacing: -0.04em;
+	}
+
+	.empty-state-subtitle {
+		max-width: 42ch;
+		line-height: var(--font-lineheight-3);
+	}
+	.message {
+		flex: 0 0 auto;
+		line-height: var(--font-lineheight-4);
+		padding: var(--size-3) var(--size-4);
+		border-radius: var(--radius-3);
+		word-break: break-word;
+		min-width: 0;
+		width: fit-content;
+		max-width: min(100%, 72ch);
+	}
+	.user-message {
+		max-width: min(100%, 56ch);
+		padding: var(--size-2) var(--size-3);
+		border-radius: var(--radius-2);
+		background: color-mix(in oklch, var(--gray-10) 72%, transparent);
+		border: 1px solid var(--border-color);
+		color: var(--text-primary);
+		white-space: normal;
+		margin-left: auto;
+
+		.markdown-content p {
+			margin: 0;
+		}
+	}
+	.assistant-message {
+		width: 100%;
+		max-width: 100%;
+		color: var(--gray-3);
+		white-space: normal;
+		margin-right: auto;
+		display: flex;
+		flex-direction: column;
+		gap: var(--size-3);
+
+		&.large-height {
+			min-height: calc(100vh - 13rem);
+		}
+	}
+	.assistant-part {
+		min-width: 0;
+		flex: 0 0 auto;
+	}
+
+	.assistant-text-part {
+		width: 100%;
+	}
+	.reasoning-part,
+	.tool-call-part {
+		width: 100%;
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius-2);
+		background: var(--gray-11);
+		overflow: hidden;
+
+		summary {
+			cursor: pointer;
+			list-style: none;
+			padding: var(--size-2) var(--size-3);
+			font-weight: var(--font-weight-6);
+			color: var(--text-secondary);
+		}
+
+		summary::-webkit-details-marker {
+			display: none;
+		}
+	}
+	.tool-call-part-summary {
+		border-bottom: 1px solid var(--border-color);
+	}
+
+	.tool-call-part-body {
+		border-radius: 0;
+	}
+	.reasoning-part-body {
+		padding: 0 var(--size-3) var(--size-3);
+		line-height: var(--font-lineheight-3);
+		color: var(--text-secondary);
+	}
 `)
 
 func (x MessageThread) Node() Node {
@@ -195,54 +318,6 @@ func PatchThreadMessageList(
 	}
 }
 
-var _ = styles.Style(`
-	.main-body {
-		flex: 1;
-		min-height: 0;
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		padding: var(--size-5) var(--size-6);
-		gap: var(--size-3);
-		overflow-y: auto;
-		overflow-x: hidden;
-		scrollbar-gutter: stable;
-		overflow-anchor: auto;
-		overscroll-behavior: contain;
-		width: 100%;
-		max-width: 960px;
-		margin: 0 auto;
-		scrollbar-width: thin;
-		scrollbar-color: var(--gray-9) transparent;
-	}
-	.empty-thread {
-		justify-content: flex-end;
-		padding-top: var(--size-8);
-	}
-	.empty-state {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		gap: var(--size-3);
-		text-align: center;
-		color: var(--text-secondary);
-	}
-
-	.empty-state-title {
-		line-height: 1.1;
-		color: var(--text-primary);
-		letter-spacing: -0.04em;
-	}
-
-	.empty-state-subtitle {
-		max-width: 42ch;
-		line-height: var(--font-lineheight-3);
-	}
-`)
-
 func (x MessageThread) MessageList() Node {
 	if len(x.Messages) == 0 {
 		return Div(
@@ -274,33 +349,6 @@ func (x MessageThread) MessageList() Node {
 	)
 }
 
-var _ = styles.Style(`
-	.message {
-		flex: 0 0 auto;
-		line-height: var(--font-lineheight-4);
-		padding: var(--size-3) var(--size-4);
-		border-radius: var(--radius-3);
-		word-break: break-word;
-		min-width: 0;
-		width: fit-content;
-		max-width: min(100%, 72ch);
-	}
-	.user-message {
-		max-width: min(100%, 56ch);
-		padding: var(--size-2) var(--size-3);
-		border-radius: var(--radius-2);
-		background: color-mix(in oklch, var(--gray-10) 72%, transparent);
-		border: 1px solid var(--border-color);
-		color: var(--text-primary);
-		white-space: normal;
-		margin-left: auto;
-
-		.markdown-content p {
-			margin: 0;
-		}
-	}
-`)
-
 func (x UserMessage) Node() Node {
 	return Div(
 		ID("msg-"+x.ID),
@@ -308,23 +356,6 @@ func (x UserMessage) Node() Node {
 		MarkdownContent(x.MdContent),
 	)
 }
-
-var _ = styles.Style(`
-	.assistant-message {
-		width: 100%;
-		max-width: 100%;
-		color: var(--gray-3);
-		white-space: normal;
-		margin-right: auto;
-		display: flex;
-		flex-direction: column;
-		gap: var(--size-3);
-
-		&.large-height {
-			min-height: calc(100vh - 13rem);
-		}
-	}
-`)
 
 func (x AssistantMessageParts) Node() Node {
 	return x.assistantMessage()
@@ -343,17 +374,6 @@ func (x AssistantMessageParts) assistantMessage() Node {
 	)
 }
 
-var _ = styles.Style(`
-	.assistant-part {
-		min-width: 0;
-		flex: 0 0 auto;
-	}
-
-	.assistant-text-part {
-		width: 100%;
-	}
-`)
-
 func (x AssistantTextPart) Node() Node {
 	return Div(
 		ID("part-"+x.ID),
@@ -361,39 +381,6 @@ func (x AssistantTextPart) Node() Node {
 		MarkdownContent(x.MdContent),
 	)
 }
-
-var _ = styles.Style(`
-	.reasoning-part,
-	.tool-call-part {
-		width: 100%;
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-2);
-		background: var(--gray-11);
-		overflow: hidden;
-
-		summary {
-			cursor: pointer;
-			list-style: none;
-			padding: var(--size-2) var(--size-3);
-			font-weight: var(--font-weight-6);
-			color: var(--text-secondary);
-		}
-
-		summary::-webkit-details-marker {
-			display: none;
-		}
-	}
-`)
-
-var _ = styles.Style(`
-	.tool-call-part-summary {
-		border-bottom: 1px solid var(--border-color);
-	}
-
-	.tool-call-part-body {
-		border-radius: 0;
-	}
-`)
 
 func (x ToolCallPart) Node() Node {
 	return Details(
@@ -410,14 +397,6 @@ func (x ToolCallPart) Node() Node {
 		),
 	)
 }
-
-var _ = styles.Style(`
-	.reasoning-part-body {
-		padding: 0 var(--size-3) var(--size-3);
-		line-height: var(--font-lineheight-3);
-		color: var(--text-secondary);
-	}
-`)
 
 func (x ReasoningPart) Node() Node {
 	return Details(

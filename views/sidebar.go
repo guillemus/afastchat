@@ -28,37 +28,12 @@ var _ = styles.Style(`
 		border-right: 1px solid var(--border-color);
 		overflow: hidden;
 	}
-`)
-
-func (x Sidebar) Node() Node {
-	return Aside(
-		Class("sidebar"),
-		If(x.ActiveThreadID != "",
-			Data("init", fmt.Sprintf("@get('/threads/%s/events')", x.ActiveThreadID)),
-		),
-		SidebarHeader(),
-		NewChatButton(),
-		ThreadSearch(),
-		ThreadList(x.Threads, x.ActiveThreadID),
-		SidebarFooter(x.UserEmail),
-		ThreadListScrollRestoreScript(),
-	)
-}
-
-var _ = styles.Style(`
 	.sidebar-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: var(--size-4) var(--size-3) var(--size-3);
 	}
-`)
-
-func SidebarHeader() Node {
-	return Div(Class("sidebar-header"), AppLogo())
-}
-
-var _ = styles.Style(`
 	.app-logo {
 		font-weight: var(--font-weight-4);
 		letter-spacing: -0.02em;
@@ -67,17 +42,6 @@ var _ = styles.Style(`
 			color: var(--bg-button);
 		}
 	}
-`)
-
-func AppLogo() Node {
-	return Span(
-		Class("app-logo"),
-		Text("afastchat"),
-		Span(Class("accent"), Text(".com")),
-	)
-}
-
-var _ = styles.Style(`
 	.new-chat-button {
 		display: flex;
 		align-items: center;
@@ -103,13 +67,6 @@ var _ = styles.Style(`
 			filter: brightness(1.1);
 		}
 	}
-`)
-
-func NewChatButton() Node {
-	return A(Href("/app"), Class("new-chat-button"), iconPlus(), Text("New Chat"))
-}
-
-var _ = styles.Style(`
 	.thread-search {
 		margin: 0 var(--size-3) var(--size-2);
 		position: relative;
@@ -150,22 +107,6 @@ var _ = styles.Style(`
 			}
 		}
 	}
-`)
-
-func ThreadSearch() Node {
-	return Div(Class("thread-search"),
-		iconSearch(),
-		Input(
-			Type("text"),
-			Name("thread-search"),
-			Placeholder("Search threads..."),
-			Data("bind:thread-search", ""),
-			Data("on:input__debounce.150ms", "@get('/threads/search')"),
-		),
-	)
-}
-
-var _ = styles.Style(`
 	.thread-list {
 		flex: 1;
 		overflow-y: auto;
@@ -174,33 +115,6 @@ var _ = styles.Style(`
 		scrollbar-width: thin;
 		scrollbar-color: var(--gray-9) transparent;
 	}
-`)
-
-func ThreadList(threads []Thread, activeThreadID string) Node {
-	return Div(
-		Class("thread-list"),
-		Data("on:scroll__debounce.10ms", `
-			setSessionVal('thread_list_scroll', String(el.scrollTop));
-		`),
-		ThreadSectionLabel("Recent"),
-		ThreadItems(threads, activeThreadID),
-	)
-}
-
-func ThreadListScrollRestoreScript() Node {
-	// Keep this after all sidebar layout-affecting nodes, especially SidebarFooter.
-	// ScrollTop is clamped to the current max scroll; restoring before the footer is parsed
-	// uses a too-tall thread list, then the footer shrinks it and leaves scroll above bottom.
-	return Script(Raw(`{
-		let el = document.querySelector('.thread-list')
-		let value = getSessionVal('thread_list_scroll');
-		if (value) {
-			el.scrollTop = Number.parseFloat(value) || 0;
-		}
-	}`))
-}
-
-var _ = styles.Style(`
 	.thread-section-label {
 		font-weight: var(--font-weight-4);
 		letter-spacing: 0.08em;
@@ -209,21 +123,6 @@ var _ = styles.Style(`
 		padding: var(--size-1) var(--size-2) var(--size-1);
 		margin-bottom: var(--size-1);
 	}
-`)
-
-func ThreadSectionLabel(label string) Node {
-	return Div(ID("thread-section-recent"), Class("thread-section-label"), Text(label))
-}
-
-func ThreadItems(threads []Thread, activeThreadID string) Node {
-	return Div(ID("thread-items"),
-		Map(threads, func(thread Thread) Node {
-			return ThreadListItem(thread, thread.ID == activeThreadID)
-		}),
-	)
-}
-
-var _ = styles.Style(`
 	.thread-list-item {
 		display: flex;
 		align-items: center;
@@ -249,23 +148,6 @@ var _ = styles.Style(`
 			opacity: 1;
 		}
 	}
-`)
-
-func ThreadListItem(thread Thread, isActive bool) Node {
-	return A(
-		ID("thread-"+thread.ID),
-		Classes{
-			"thread-list-item": true,
-			"active":           isActive,
-		},
-		Href(fmt.Sprintf("/threads/%s", thread.ID)),
-		ThreadListItemTitle(thread.Title),
-		If(thread.IsStreaming, ThreadStreamingIndicator()),
-		ThreadArchiveButton(thread.ID),
-	)
-}
-
-var _ = styles.Style(`
 	.thread-list-item-title {
 		white-space: nowrap;
 		overflow: hidden;
@@ -273,13 +155,6 @@ var _ = styles.Style(`
 		min-width: 0;
 		flex: 1;
 	}
-`)
-
-func ThreadListItemTitle(title string) Node {
-	return Span(Class("thread-list-item-title"), Text(title))
-}
-
-var _ = styles.Style(`
 	@keyframes thread-streaming-spin {
 		to {
 			transform: rotate(360deg);
@@ -302,13 +177,6 @@ var _ = styles.Style(`
 			animation: thread-streaming-spin 0.8s linear infinite;
 		}
 	}
-`)
-
-func ThreadStreamingIndicator() Node {
-	return Span(Class("thread-streaming-indicator"), iconSpinner())
-}
-
-var _ = styles.Style(`
 	.thread-archive-button {
 		display: flex;
 		opacity: 0;
@@ -332,22 +200,6 @@ var _ = styles.Style(`
 			background: var(--bg-hover);
 		}
 	}
-`)
-
-func ThreadArchiveButton(threadID string) Node {
-	return Button(
-		Type("button"),
-		Class("thread-archive-button"),
-		Data("on:click", fmt.Sprintf(`
-			evt.preventDefault();
-			evt.stopPropagation();
-			@post('/threads/%s/archive');
-		`, threadID)),
-		iconArchive(),
-	)
-}
-
-var _ = styles.Style(`
 	.sidebar-footer {
 		padding: var(--size-3);
 		border-top: 1px solid var(--border-color);
@@ -359,17 +211,6 @@ var _ = styles.Style(`
 			margin-left: auto;
 		}
 	}
-`)
-
-func SidebarFooter(email string) Node {
-	return Div(
-		Class("sidebar-footer"),
-		UserAvatar(email),
-		Form(Method("post"), Action("/logout"), LogoutButton()),
-	)
-}
-
-var _ = styles.Style(`
 	.user-avatar {
 		width: 26px;
 		height: 26px;
@@ -382,20 +223,6 @@ var _ = styles.Style(`
 		color: white;
 		flex-shrink: 0;
 	}
-`)
-
-func UserAvatar(email string) Node {
-	return Div(Class("user-avatar"), Text(userInitial(email)))
-}
-
-func userInitial(email string) string {
-	if email == "" {
-		return "?"
-	}
-	return string([]rune(email)[0])
-}
-
-var _ = styles.Style(`
 	.logout-button {
 		background: transparent;
 		border: 1px solid var(--border-color);
@@ -413,6 +240,140 @@ var _ = styles.Style(`
 		}
 	}
 `)
+
+func (x Sidebar) Node() Node {
+	return Aside(
+		Class("sidebar"),
+		If(x.ActiveThreadID != "",
+			Data("init", fmt.Sprintf("@get('/threads/%s/events')", x.ActiveThreadID)),
+		),
+		SidebarHeader(),
+		NewChatButton(),
+		ThreadSearch(),
+		ThreadList(x.Threads, x.ActiveThreadID),
+		SidebarFooter(x.UserEmail),
+		ThreadListScrollRestoreScript(),
+	)
+}
+
+func SidebarHeader() Node {
+	return Div(Class("sidebar-header"), AppLogo())
+}
+
+func AppLogo() Node {
+	return Span(
+		Class("app-logo"),
+		Text("afastchat"),
+		Span(Class("accent"), Text(".com")),
+	)
+}
+
+func NewChatButton() Node {
+	return A(Href("/app"), Class("new-chat-button"), iconPlus(), Text("New Chat"))
+}
+
+func ThreadSearch() Node {
+	return Div(Class("thread-search"),
+		iconSearch(),
+		Input(
+			Type("text"),
+			Name("thread-search"),
+			Placeholder("Search threads..."),
+			Data("bind:thread-search", ""),
+			Data("on:input__debounce.150ms", "@get('/threads/search')"),
+		),
+	)
+}
+
+func ThreadList(threads []Thread, activeThreadID string) Node {
+	return Div(
+		Class("thread-list"),
+		Data("on:scroll__debounce.10ms", `
+			setSessionVal('thread_list_scroll', String(el.scrollTop));
+		`),
+		ThreadSectionLabel("Recent"),
+		ThreadItems(threads, activeThreadID),
+	)
+}
+
+func ThreadListScrollRestoreScript() Node {
+	// Keep this after all sidebar layout-affecting nodes, especially SidebarFooter.
+	// ScrollTop is clamped to the current max scroll; restoring before the footer is parsed
+	// uses a too-tall thread list, then the footer shrinks it and leaves scroll above bottom.
+	return Script(Raw(`{
+		let el = document.querySelector('.thread-list')
+		let value = getSessionVal('thread_list_scroll');
+		if (value) {
+			el.scrollTop = Number.parseFloat(value) || 0;
+		}
+	}`))
+}
+
+func ThreadSectionLabel(label string) Node {
+	return Div(ID("thread-section-recent"), Class("thread-section-label"), Text(label))
+}
+
+func ThreadItems(threads []Thread, activeThreadID string) Node {
+	return Div(ID("thread-items"),
+		Map(threads, func(thread Thread) Node {
+			return ThreadListItem(thread, thread.ID == activeThreadID)
+		}),
+	)
+}
+
+func ThreadListItem(thread Thread, isActive bool) Node {
+	return A(
+		ID("thread-"+thread.ID),
+		Classes{
+			"thread-list-item": true,
+			"active":           isActive,
+		},
+		Href(fmt.Sprintf("/threads/%s", thread.ID)),
+		ThreadListItemTitle(thread.Title),
+		If(thread.IsStreaming, ThreadStreamingIndicator()),
+		ThreadArchiveButton(thread.ID),
+	)
+}
+
+func ThreadListItemTitle(title string) Node {
+	return Span(Class("thread-list-item-title"), Text(title))
+}
+
+func ThreadStreamingIndicator() Node {
+	return Span(Class("thread-streaming-indicator"), iconSpinner())
+}
+
+func ThreadArchiveButton(threadID string) Node {
+	return Button(
+		Type("button"),
+		Class("thread-archive-button"),
+		Data("on:click", fmt.Sprintf(`
+			evt.preventDefault();
+			evt.stopPropagation();
+			@post('/threads/%s/archive');
+		`, threadID)),
+		iconArchive(),
+	)
+}
+
+func SidebarFooter(email string) Node {
+	return Div(
+		Class("sidebar-footer"),
+		UserAvatar(email),
+		Form(Method("post"), Action("/logout"), LogoutButton()),
+	)
+}
+
+func UserAvatar(email string) Node {
+	return Div(Class("user-avatar"), Text(userInitial(email)))
+}
+
+func userInitial(email string) string {
+	if email == "" {
+		return "?"
+	}
+	return string([]rune(email)[0])
+}
 
 func LogoutButton() Node {
 	return Button(Type("submit"), Class("logout-button"), Text("Log out"))
