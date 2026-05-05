@@ -126,7 +126,7 @@ var webSearchRecentTool = Tool{
 	Strict: true,
 }
 
-type webSearchArgs struct {
+type WebSearchArgs struct {
 	Query              string   `json:"query"`
 	NumResults         int      `json:"numResults"`
 	IncludeDomains     []string `json:"includeDomains"`
@@ -139,21 +139,21 @@ type webSearchArgs struct {
 	MaxCharacters      int      `json:"maxCharacters"`
 }
 
-type webReadArgs struct {
+type WebReadArgs struct {
 	URLs          []string `json:"urls"`
 	Mode          string   `json:"mode"`
 	Query         string   `json:"query"`
 	MaxCharacters int      `json:"maxCharacters"`
 }
 
-type webSearchRecentArgs struct {
+type WebSearchRecentArgs struct {
 	Query      string `json:"query"`
 	DaysBack   int    `json:"daysBack"`
 	NumResults int    `json:"numResults"`
 	Category   string `json:"category"`
 }
 
-func (x *Agent) webSearch(ctx context.Context, args webSearchArgs) (string, error) {
+func (x *Agent) webSearch(ctx context.Context, args WebSearchArgs) (string, error) {
 	if args.NumResults == 0 {
 		args.NumResults = 5
 	}
@@ -196,7 +196,7 @@ func (x *Agent) webSearch(ctx context.Context, args webSearchArgs) (string, erro
 	return string(result), nil
 }
 
-func (x *Agent) webRead(ctx context.Context, args webReadArgs) (string, error) {
+func (x *Agent) webRead(ctx context.Context, args WebReadArgs) (string, error) {
 	if args.Mode == "" {
 		args.Mode = "highlights"
 	}
@@ -227,7 +227,7 @@ func (x *Agent) webRead(ctx context.Context, args webReadArgs) (string, error) {
 	return string(result), nil
 }
 
-func (x *Agent) webSearchRecent(ctx context.Context, args webSearchRecentArgs) (string, error) {
+func (x *Agent) webSearchRecent(ctx context.Context, args WebSearchRecentArgs) (string, error) {
 	if args.DaysBack == 0 {
 		args.DaysBack = 30
 	}

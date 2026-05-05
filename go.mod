@@ -15,7 +15,7 @@ require (
 	github.com/lmittmann/tint v1.1.3
 	github.com/openai/openai-go/v3 v3.32.0
 	github.com/starfederation/datastar-go v1.2.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/unrolled/secure v1.17.0
 	github.com/yuin/goldmark v1.8.2
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc

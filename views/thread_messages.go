@@ -1,8 +1,12 @@
 package views
 
 import (
+	"encoding/json"
 	"log/slog"
+	"strconv"
+	"strings"
 
+	"afastchat.com/agents"
 	"github.com/starfederation/datastar-go/datastar"
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/components"
@@ -39,11 +43,13 @@ type (
 	}
 	ToolCallPart struct {
 		ID   string
-		Text string
+		Name string
+		Args string
 	}
 	ReasoningPart struct {
-		ID   string
-		Text string
+		ID        string
+		Text      string
+		MdContent string
 	}
 )
 
@@ -220,25 +226,46 @@ var _ = styles.Style(`
 		border-radius: var(--radius-2);
 		background: var(--gray-11);
 		overflow: hidden;
-
-		summary {
-			cursor: pointer;
-			list-style: none;
-			padding: var(--size-2) var(--size-3);
-			font-weight: var(--font-weight-6);
-			color: var(--text-secondary);
-		}
-
-		summary::-webkit-details-marker {
-			display: none;
-		}
 	}
-	.tool-call-part-summary {
-		border-bottom: 1px solid var(--border-color);
+	.reasoning-part summary {
+		cursor: pointer;
+		list-style: none;
+		padding: var(--size-2) var(--size-3);
+		color: var(--text-secondary);
 	}
 
-	.tool-call-part-body {
-		border-radius: 0;
+	.reasoning-part summary::-webkit-details-marker {
+		display: none;
+	}
+	.reasoning-part-summary {
+		display: flex;
+		gap: var(--size-2);
+		align-items: baseline;
+		min-width: 0;
+	}
+	.reasoning-part-label,
+	.tool-call-part-name {
+		font-weight: var(--font-weight-6);
+		color: var(--text-primary);
+		white-space: nowrap;
+	}
+	.reasoning-part-preview,
+	.tool-call-part-arg {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--text-secondary);
+	}
+	.tool-call-part {
+		display: flex;
+		align-items: baseline;
+		gap: var(--size-2);
+		padding: var(--size-2) var(--size-3);
+	}
+	.tool-call-part-arg {
+		font-family: var(--font-code);
+		font-size: var(--font-size-0);
 	}
 	.reasoning-part-body {
 		padding: 0 var(--size-3) var(--size-3);
@@ -383,18 +410,12 @@ func (x AssistantTextPart) Node() Node {
 }
 
 func (x ToolCallPart) Node() Node {
-	return Details(
+	name, arg := toolCallDisplay(x.Name, x.Args)
+	return Div(
 		ID("part-"+x.ID),
 		Class("assistant-part tool-call-part"),
-		Data("preserve-attr", "open"),
-		Summary(
-			Class("tool-call-part-summary"),
-			Text("Tool call"),
-		),
-		Pre(
-			Class("tool-call-part-body"),
-			Text(x.Text),
-		),
+		Span(Class("tool-call-part-name"), Text(name)),
+		Span(Class("tool-call-part-arg"), Text(arg)),
 	)
 }
 
@@ -405,11 +426,44 @@ func (x ReasoningPart) Node() Node {
 		Data("preserve-attr", "open"),
 		Summary(
 			Class("reasoning-part-summary"),
-			Text("Reasoning"),
+			Span(Class("reasoning-part-label"), Text("Reasoning")),
+			Span(Class("reasoning-part-preview"), Text(reasoningPreview(x.Text))),
 		),
 		Div(
 			Class("reasoning-part-body"),
-			MarkdownContent(x.Text),
+			MarkdownContent(x.MdContent),
 		),
 	)
+}
+
+func reasoningPreview(text string) string {
+	return strings.Join(strings.Fields(text), " ")
+}
+
+func toolCallDisplay(name, args string) (string, string) {
+	switch name {
+	case "web_search":
+		var a agents.WebSearchArgs
+		_ = json.Unmarshal([]byte(args), &a)
+		return "Searching web", a.Query
+	case "web_search_recent":
+		var a agents.WebSearchRecentArgs
+		_ = json.Unmarshal([]byte(args), &a)
+		if a.DaysBack == 0 {
+			return "Searching recent web", a.Query
+		}
+		return "Searching recent web", a.Query + " · " + strconv.Itoa(a.DaysBack) + " days"
+	case "web_read":
+		var a agents.WebReadArgs
+		_ = json.Unmarshal([]byte(args), &a)
+		if len(a.URLs) == 1 {
+			return "Reading web page", a.URLs[0]
+		}
+		if len(a.URLs) > 1 {
+			return "Reading web pages", strconv.Itoa(len(a.URLs)) + " URLs"
+		}
+		return "Reading web page", ""
+	default:
+		return name, ""
+	}
 }

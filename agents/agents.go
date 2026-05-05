@@ -67,7 +67,7 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 			Instructions: "You are a helpful assistant. Before each tool call, briefly tell the user what you are about to do in one short sentence.",
 		}
 
-		for range 10 {
+		for range 30 {
 			var calledTools []Toolcall
 
 			for event, err := range x.provider.Stream(ctx, req) {
@@ -132,21 +132,21 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, error) {
 	switch name {
 	case "web_search":
-		var args webSearchArgs
+		var args WebSearchArgs
 		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 			return "", err
 		}
 
 		return x.webSearch(ctx, args)
 	case "web_read":
-		var args webReadArgs
+		var args WebReadArgs
 		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 			return "", err
 		}
 
 		return x.webRead(ctx, args)
 	case "web_search_recent":
-		var args webSearchRecentArgs
+		var args WebSearchRecentArgs
 		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 			return "", err
 		}

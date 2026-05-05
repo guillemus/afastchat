@@ -14,6 +14,7 @@ type Env struct {
 	FireworksAPIKey  string
 	OpenRouterAPIKey string
 	ExaAPIKey        string
+	PolarAPIKey      string
 	Port             string
 	AssetVersion     string
 	Dev              bool
@@ -30,6 +31,7 @@ func ParseEnv() Env {
 		FireworksAPIKey:  os.Getenv("FIREWORKS_API_KEY"),
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 		ExaAPIKey:        os.Getenv("EXA_AI_API_KEY"),
+		PolarAPIKey:      os.Getenv("POLAR_ACCESS_TOKEN"),
 		Port:             getEnvOr("PORT", "3000"),
 		AssetVersion:     fmt.Sprintf("%d", time.Now().Unix()),
 		Dev:              os.Getenv("DEV") == "true",
