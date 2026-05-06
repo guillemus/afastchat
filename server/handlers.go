@@ -15,21 +15,6 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func (x *Server) handleLanding(w http.ResponseWriter, r *http.Request) {
-	_, found, err := x.currentUser(r)
-	if err != nil {
-		slog.Error("landing: current user", "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if found {
-		http.Redirect(w, r, "/app", http.StatusSeeOther)
-		return
-	}
-
-	x.renderer.RenderLandingPage(w)
-}
-
 func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request, user db.User) {
 	threads, err := x.db.ListThreads(r.Context(), user.ID)
 	if err != nil {
@@ -106,7 +91,7 @@ func (x *Server) handleArchiveThread(
 
 	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
 	sse.ExecuteScript(fmt.Sprintf(
-		`if (window.location.pathname === '/threads/%s') window.location.replace('/app')`,
+		`if (window.location.pathname === '/threads/%s') window.location.replace('/')`,
 		threadID,
 	))
 }

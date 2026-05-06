@@ -269,7 +269,7 @@ func AppLogo() Node {
 }
 
 func NewChatButton() Node {
-	return A(Href("/app"), Class("new-chat-button"), iconPlus(), Text("New Chat"))
+	return A(Href("/"), Class("new-chat-button"), iconPlus(), Text("New Chat"))
 }
 
 func ThreadSearch() Node {

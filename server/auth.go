@@ -80,7 +80,7 @@ func (x *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if found {
-		http.Redirect(w, r, "/app", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (x *Server) handleSignupPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if found {
-		http.Redirect(w, r, "/app", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (x *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/app", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
@@ -226,7 +226,7 @@ func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/app", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (x *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
