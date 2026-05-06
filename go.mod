@@ -27,7 +27,9 @@ require (
 
 require (
 	github.com/CAFxX/httpcompression v0.0.9 // indirect
+	github.com/FurqanSoftware/goldmark-katex v0.0.0-20260328091149-1897eb7a41e4 // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
+	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -48,7 +50,9 @@ require (
 	golang.org/x/tools v0.44.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.72.2 // indirect
+	modernc.org/libquickjs v0.12.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
+	modernc.org/quickjs v0.17.1 // indirect
 	modernc.org/sqlite v1.50.0 // indirect
 )

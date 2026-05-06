@@ -59,12 +59,18 @@ func MapDBMessages(dbMessages []db.Message) []Message {
 	return messages
 }
 
+var sysPrompt = strings.TrimSpace(`
+You are a helpful assistant. Before each tool call, briefly tell the user what you are about to do in one short sentence.
+
+When writing math, use LaTeX inside $...$ for inline math and $$...$$ for display math. Do not put LaTeX math in code blocks unless the user asks for source syntax.
+`)
+
 func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[StreamEvent, error] {
 	return func(yield func(StreamEvent, error) bool) {
 		req := ProviderRequest{
 			Messages:     MapDBMessages(messages),
 			Tools:        []Tool{webSearchTool, webReadTool, webSearchRecentTool},
-			Instructions: "You are a helpful assistant. Before each tool call, briefly tell the user what you are about to do in one short sentence.",
+			Instructions: sysPrompt,
 		}
 
 		for range 30 {

@@ -335,10 +335,10 @@ func PatchThreadMessageList(
 	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
 	ssePatch(sse, MessageThread{Messages: messages}.MessageList())
 	if scrollMessages {
-		err := sse.ExecuteScript(`
+		err := sse.ExecuteScript(`{
 			let el = document.querySelector('#messages');
 			el.scrollTop = el.scrollHeight;
-		`)
+		}`)
 		if err != nil {
 			slog.Error("sse.ExecuteScript error", "err", err)
 		}

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"unsafe"
 
+	katex "github.com/FurqanSoftware/goldmark-katex"
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -15,6 +16,7 @@ import (
 var md = goldmark.New(
 	goldmark.WithExtensions(
 		extension.GFM,
+		&katex.Extender{},
 		highlighting.NewHighlighting(
 			highlighting.WithFormatOptions(
 				chromahtml.WithClasses(true),

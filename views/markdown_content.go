@@ -96,6 +96,12 @@ var _ = styles.Style(`
 			margin: var(--size-3) 0;
 		}
 
+		.katex-display {
+			overflow-x: auto;
+			overflow-y: hidden;
+			padding: var(--size-1) 0;
+		}
+
 		.chroma {
 			background: var(--gray-11);
 			color: var(--gray-3);
