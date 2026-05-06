@@ -54,3 +54,21 @@ CREATE UNIQUE INDEX idx_messages_thread_id_seq ON messages(thread_id, seq);
 CREATE INDEX idx_messages_created_at ON messages(thread_id, created_at, seq);
 CREATE INDEX idx_messages_provider_response_id ON messages(provider_response_id);
 CREATE INDEX idx_messages_tool_call_id ON messages(tool_call_id);
+
+CREATE TABLE usage (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    thread_id TEXT NOT NULL REFERENCES threads(id),
+    message_id TEXT REFERENCES messages(id),
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_usage_user_id_created_at ON usage(user_id, created_at);
+CREATE INDEX idx_usage_thread_id_created_at ON usage(thread_id, created_at);
+CREATE INDEX idx_usage_message_id ON usage(message_id);

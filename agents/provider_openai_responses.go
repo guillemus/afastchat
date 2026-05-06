@@ -110,6 +110,19 @@ func (x *OpenAIResponsesProvider) Stream(ctx context.Context, req ProviderReques
 					return
 				}
 			case responses.ResponseCompletedEvent:
+				slog.Debug("openai response completed usage", "usage_raw", ev.Response.JSON.Usage.Raw(), "response_raw", ev.Response.RawJSON())
+				if ev.Response.JSON.Usage.Valid() {
+					if !yield(UsageDelta{Usage: Usage{
+						Provider:          "openai",
+						Model:             string(ev.Response.Model),
+						InputTokens:       ev.Response.Usage.InputTokens,
+						CachedInputTokens: ev.Response.Usage.InputTokensDetails.CachedTokens,
+						OutputTokens:      ev.Response.Usage.OutputTokens,
+						ReasoningTokens:   ev.Response.Usage.OutputTokensDetails.ReasoningTokens,
+					}}, nil) {
+						return
+					}
+				}
 				return
 			case responses.ResponseErrorEvent:
 				yield(nil, fmt.Errorf("response error: %s", ev.Message))

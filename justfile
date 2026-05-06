@@ -2,7 +2,8 @@ migrate:
 	atlas schema apply \
 	  --to "file://db/schema.sql" \
 	  --url "sqlite://tmp/app.db" \
-	  --dev-url "sqlite://dev?mode=memory"
+	  --dev-url "sqlite://dev?mode=memory" \
+	  --auto-approve
 
 build-linux:
 	mkdir -p dist

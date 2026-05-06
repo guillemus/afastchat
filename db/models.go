@@ -45,3 +45,17 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
+
+type Usage struct {
+	ID                string
+	UserID            string
+	ThreadID          string
+	MessageID         string
+	Provider          string
+	Model             string
+	InputTokens       int64
+	CachedInputTokens int64
+	OutputTokens      int64
+	ReasoningTokens   int64
+	CreatedAt         time.Time
+}

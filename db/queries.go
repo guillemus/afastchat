@@ -436,3 +436,72 @@ func (x *Pool) CreateUser(ctx context.Context, email, passwordHash string) (User
 	})
 	return user, err
 }
+
+func (x *Pool) CreateUsage(ctx context.Context, usage Usage) (Usage, error) {
+	id := uuid.New().String()
+	messageID := any(nil)
+	if usage.MessageID != "" {
+		messageID = usage.MessageID
+	}
+
+	var created Usage
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		err := sqlitex.Execute(conn, `
+			INSERT INTO usage (
+				id, user_id, thread_id, message_id, provider, model,
+				input_tokens, cached_input_tokens, output_tokens, reasoning_tokens
+			)
+			VALUES (
+				:id, :user_id, :thread_id, :message_id, :provider, :model,
+				:input_tokens, :cached_input_tokens, :output_tokens, :reasoning_tokens
+			)
+			RETURNING id, user_id, thread_id, message_id, provider, model,
+				input_tokens, cached_input_tokens, output_tokens, reasoning_tokens,
+				created_at
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{
+				":id":                  id,
+				":user_id":             usage.UserID,
+				":thread_id":           usage.ThreadID,
+				":message_id":          messageID,
+				":provider":            usage.Provider,
+				":model":               usage.Model,
+				":input_tokens":        usage.InputTokens,
+				":cached_input_tokens": usage.CachedInputTokens,
+				":output_tokens":       usage.OutputTokens,
+				":reasoning_tokens":    usage.ReasoningTokens,
+			},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				created = scanUsage(stmt)
+				return nil
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("insert usage: %w", err)
+		}
+		return nil
+	})
+	return created, err
+}
+
+func (x *Pool) ListUsageByThread(ctx context.Context, userID, threadID string) ([]Usage, error) {
+	var usages []Usage
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
+		return sqlitex.Execute(conn, `
+			SELECT usage.id, usage.user_id, usage.thread_id, usage.message_id, usage.provider, usage.model,
+			       usage.input_tokens, usage.cached_input_tokens, usage.output_tokens, usage.reasoning_tokens,
+			       usage.created_at
+			FROM usage
+			JOIN threads ON threads.id = usage.thread_id
+			WHERE usage.thread_id = :thread_id AND threads.user_id = :user_id
+			ORDER BY usage.created_at ASC
+		`, &sqlitex.ExecOptions{
+			Named: map[string]any{":user_id": userID, ":thread_id": threadID},
+			ResultFunc: func(stmt *sqlite.Stmt) error {
+				usages = append(usages, scanUsage(stmt))
+				return nil
+			},
+		})
+	})
+	return usages, err
+}

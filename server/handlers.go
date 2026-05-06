@@ -292,14 +292,45 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 				ToolCallID: evt.CallID,
 				ToolName:   evt.Name,
 			})
+		case agents.UsageDelta:
+			logger.Debug("received usage",
+				"provider", evt.Usage.Provider,
+				"model", evt.Usage.Model,
+				"input_tokens", evt.Usage.InputTokens,
+				"cached_input_tokens", evt.Usage.CachedInputTokens,
+				"output_tokens", evt.Usage.OutputTokens,
+				"reasoning_tokens", evt.Usage.ReasoningTokens,
+			)
+			_, err = x.db.CreateUsage(ctx, db.Usage{
+				UserID:            userID,
+				ThreadID:          threadID,
+				MessageID:         lastAssistantMessageID(messages),
+				Provider:          evt.Usage.Provider,
+				Model:             evt.Usage.Model,
+				InputTokens:       evt.Usage.InputTokens,
+				CachedInputTokens: evt.Usage.CachedInputTokens,
+				OutputTokens:      evt.Usage.OutputTokens,
+				ReasoningTokens:   evt.Usage.ReasoningTokens,
+			})
 		}
 		if err != nil {
 			logger.Error("persist stream message", "err", err)
 			break
 		}
 
-		x.publishThreadDidUpdateEventEvent(threadID)
+		if _, ok := tokenEvt.(agents.UsageDelta); !ok {
+			x.publishThreadDidUpdateEventEvent(threadID)
+		}
 	}
+}
+
+func lastAssistantMessageID(messages []db.Message) string {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Type == db.AssistantMessage {
+			return messages[i].ID
+		}
+	}
+	return ""
 }
 
 func (x *Server) updateThreadTitle(ctx context.Context, userID, threadID string, userMessage string) {

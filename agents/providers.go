@@ -58,6 +58,17 @@ type (
 	ProviderStateDelta struct {
 		State ProviderState
 	}
+	Usage struct {
+		Provider          string
+		Model             string
+		InputTokens       int64
+		CachedInputTokens int64
+		OutputTokens      int64
+		ReasoningTokens   int64
+	}
+	UsageDelta struct {
+		Usage Usage
+	}
 )
 
 func (AssistantDelta) isStreamEvent()     {}
@@ -65,6 +76,7 @@ func (ReasoningDelta) isStreamEvent()     {}
 func (Toolcall) isStreamEvent()           {}
 func (ToolOutput) isStreamEvent()         {}
 func (ProviderStateDelta) isStreamEvent() {}
+func (UsageDelta) isStreamEvent()         {}
 
 type ToolcallBuf struct {
 	ItemID string

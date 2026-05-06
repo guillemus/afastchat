@@ -70,3 +70,19 @@ func scanUser(stmt *sqlite.Stmt) User {
 		UpdatedAt:    parseTime(stmt.GetText("updated_at")),
 	}
 }
+
+func scanUsage(stmt *sqlite.Stmt) Usage {
+	return Usage{
+		ID:                stmt.GetText("id"),
+		UserID:            stmt.GetText("user_id"),
+		ThreadID:          stmt.GetText("thread_id"),
+		MessageID:         stmt.GetText("message_id"),
+		Provider:          stmt.GetText("provider"),
+		Model:             stmt.GetText("model"),
+		InputTokens:       stmt.GetInt64("input_tokens"),
+		CachedInputTokens: stmt.GetInt64("cached_input_tokens"),
+		OutputTokens:      stmt.GetInt64("output_tokens"),
+		ReasoningTokens:   stmt.GetInt64("reasoning_tokens"),
+		CreatedAt:         parseTime(stmt.GetText("created_at")),
+	}
+}

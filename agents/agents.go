@@ -98,6 +98,10 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 					}
 				case ProviderStateDelta:
 					req.State = ev.State
+				case UsageDelta:
+					if !yield(ev, nil) {
+						return
+					}
 				}
 			}
 
