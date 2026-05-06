@@ -90,6 +90,9 @@ func (x *Server) handleArchiveThread(
 	sse := datastar.NewSSE(w, r)
 
 	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
+
+	// TODO: we should probably send the threadID from the path, so that we can just
+	// check serverside whether to redirect instead of doing it clientside.
 	sse.ExecuteScript(fmt.Sprintf(
 		`if (window.location.pathname === '/threads/%s') window.location.replace('/')`,
 		threadID,
