@@ -21,6 +21,13 @@ func parseTime(v string) time.Time {
 	return parsed
 }
 
+func nullableString(v string) any {
+	if v == "" {
+		return nil
+	}
+	return v
+}
+
 func scanThread(stmt *sqlite.Stmt) Thread {
 	return Thread{
 		ID:          stmt.GetText("id"),
@@ -63,11 +70,13 @@ func nullableTime(isNull bool, val string) *time.Time {
 
 func scanUser(stmt *sqlite.Stmt) User {
 	return User{
-		ID:           stmt.GetText("id"),
-		Email:        stmt.GetText("email"),
-		PasswordHash: stmt.GetText("password_hash"),
-		CreatedAt:    parseTime(stmt.GetText("created_at")),
-		UpdatedAt:    parseTime(stmt.GetText("updated_at")),
+		ID:                stmt.GetText("id"),
+		Email:             stmt.GetText("email"),
+		PasswordHash:      stmt.GetText("password_hash"),
+		PaidAt:            nullableTime(stmt.IsNull("paid_at"), stmt.GetText("paid_at")),
+		PaymentCustomerID: stmt.GetText("payment_customer_id"),
+		CreatedAt:         parseTime(stmt.GetText("created_at")),
+		UpdatedAt:         parseTime(stmt.GetText("updated_at")),
 	}
 }
 
@@ -83,6 +92,45 @@ func scanUsage(stmt *sqlite.Stmt) Usage {
 		CachedInputTokens: stmt.GetInt64("cached_input_tokens"),
 		OutputTokens:      stmt.GetInt64("output_tokens"),
 		ReasoningTokens:   stmt.GetInt64("reasoning_tokens"),
+		CreatedAt:         parseTime(stmt.GetText("created_at")),
+	}
+}
+
+func scanPayment(stmt *sqlite.Stmt) Payment {
+	return Payment{
+		ID:                 stmt.GetText("id"),
+		UserID:             stmt.GetText("user_id"),
+		Provider:           stmt.GetText("provider"),
+		ProviderCheckoutID: stmt.GetText("provider_checkout_id"),
+		Type:               stmt.GetText("type"),
+		Status:             stmt.GetText("status"),
+		AmountCents:        stmt.GetInt64("amount_cents"),
+		CreditCents:        stmt.GetInt64("credit_cents"),
+		CreatedAt:          parseTime(stmt.GetText("created_at")),
+		UpdatedAt:          parseTime(stmt.GetText("updated_at")),
+	}
+}
+
+func scanPaymentEvent(stmt *sqlite.Stmt) PaymentEvent {
+	return PaymentEvent{
+		ID:              stmt.GetText("id"),
+		Provider:        stmt.GetText("provider"),
+		ProviderEventID: stmt.GetText("provider_event_id"),
+		Type:            stmt.GetText("type"),
+		Payload:         stmt.GetText("payload"),
+		ProcessedAt:     nullableTime(stmt.IsNull("processed_at"), stmt.GetText("processed_at")),
+		CreatedAt:       parseTime(stmt.GetText("created_at")),
+	}
+}
+
+func scanBillingLedgerEntry(stmt *sqlite.Stmt) BillingLedgerEntry {
+	return BillingLedgerEntry{
+		ID:                stmt.GetText("id"),
+		UserID:            stmt.GetText("user_id"),
+		PaymentCheckoutID: stmt.GetText("payment_checkout_id"),
+		UsageID:           stmt.GetText("usage_id"),
+		Type:              stmt.GetText("type"),
+		AmountCents:       stmt.GetInt64("amount_cents"),
 		CreatedAt:         parseTime(stmt.GetText("created_at")),
 	}
 }

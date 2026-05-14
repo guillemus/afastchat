@@ -15,6 +15,7 @@ var schema string
 
 var ErrNotFound = errors.New("not found")
 var ErrDuplicateEmail = errors.New("duplicate email")
+var ErrDuplicatePaymentEvent = errors.New("duplicate payment event")
 
 type Pool struct {
 	pool *sqlitex.Pool
@@ -47,24 +48,19 @@ func Connect(dbPath string) (*Pool, error) {
 }
 
 func prepareConn(conn *sqlite.Conn) error {
-	if err := sqlitex.Execute(conn, "PRAGMA journal_mode = WAL;", nil); err != nil {
-		return err
+	for _, it := range []string{
+		"PRAGMA journal_mode = WAL;",
+		"PRAGMA busy_timeout = 5000;",
+		"PRAGMA synchronous = NORMAL;",
+		"PRAGMA cache_size = -262144;",
+		"PRAGMA foreign_keys = ON;",
+		"PRAGMA temp_store = MEMORY;",
+	} {
+		if err := sqlitex.Execute(conn, it, nil); err != nil {
+			return fmt.Errorf("prepare conn stmt err: %w", err)
+		}
 	}
-	if err := sqlitex.Execute(conn, "PRAGMA busy_timeout = 5000;", nil); err != nil {
-		return err
-	}
-	if err := sqlitex.Execute(conn, "PRAGMA synchronous = NORMAL;", nil); err != nil {
-		return err
-	}
-	if err := sqlitex.Execute(conn, "PRAGMA cache_size = -262144;", nil); err != nil {
-		return err
-	}
-	if err := sqlitex.Execute(conn, "PRAGMA foreign_keys = ON;", nil); err != nil {
-		return err
-	}
-	if err := sqlitex.Execute(conn, "PRAGMA temp_store = MEMORY;", nil); err != nil {
-		return err
-	}
+
 	return nil
 }
 

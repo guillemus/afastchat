@@ -4,8 +4,8 @@ A Fast Chat uses a one-time purchase plus prepaid usage credits.
 
 ## Plan
 
-- **$37 one-time fee** for lifetime access.
-- Includes **$10 of usage credit**.
+- **$17 one-time fee** for lifetime access.
+- Includes **$5 of usage credit**.
 - Users can buy more usage credit when needed.
 
 ## How it works

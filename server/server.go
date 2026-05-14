@@ -9,6 +9,7 @@ import (
 	"afastchat.com"
 	"afastchat.com/db"
 	"afastchat.com/env"
+	"afastchat.com/polar"
 	"afastchat.com/views"
 
 	"github.com/alexedwards/scs/v2"
@@ -24,6 +25,7 @@ type Server struct {
 	router                chi.Router
 	renderer              *views.Renderer
 	db                    *db.Pool
+	polar                 *polar.Polar
 	sessions              *scs.SessionManager
 	crossOriginProtection *http.CrossOriginProtection
 	authIPLimiter         *httprate.RateLimiter
@@ -52,6 +54,7 @@ func StartServer(env env.Env) {
 		router:                chi.NewRouter(),
 		renderer:              views.NewRenderer(env),
 		db:                    conn,
+		polar:                 polar.New(env.PolarAPIKey),
 		sessions:              sessionManager,
 		crossOriginProtection: newCrossOriginProtection(),
 		authIPLimiter:         newAuthRateLimiter(),
@@ -63,6 +66,7 @@ func StartServer(env env.Env) {
 	s.router.Use(s.crossOriginProtection.Handler)
 	s.router.Use(s.sessions.LoadAndSave)
 
+	// TODO: how does cloudflare interact with this? Should we even handle static asset caching ourselves, or does cf do it automatically?
 	s.router.
 		With(middleware.Maybe(
 			middleware.NoCache,
@@ -70,18 +74,33 @@ func StartServer(env env.Env) {
 		)).
 		Get("/public/*", afastchat.GetPublicHandler(env).ServeHTTP)
 
-	s.router.Get("/", s.withUser(s.handleIndex))
+	s.router.Post("/webhooks/polar", s.handlePolarWebhook)
+
 	s.router.Get("/login", s.handleLoginPage)
 	s.router.Post("/login", s.handleLogin)
 	s.router.Get("/signup", s.handleSignupPage)
 	s.router.Post("/signup", s.handleSignup)
-	s.router.Post("/logout", s.handleLogout)
-	s.router.Get("/threads/{id}", s.handlePathVal(s.handleThread, "id"))
-	s.router.Get("/threads/{id}/events", s.handlePathVal(s.handleThreadEvents, "id"))
-	s.router.Post("/threads/{id}/archive", s.handlePathVal(s.handleArchiveThread, "id"))
-	s.router.Get("/threads/search", handleSignals(s, s.handleSearchThreads))
-	s.router.Post("/chat/send", handleSignals(s, s.handleSendMessage))
-	s.router.Post("/chat/stop", handleSignals(s, s.handleStopStreaming))
+
+	s.router.Group(func(r chi.Router) {
+		r.Use(s.requireAuth)
+
+		r.Get("/settings", s.handleSettings)
+		r.Post("/settings/checkout/pro", s.handleProCheckout)
+		r.Get("/settings/thank-you", s.handleCheckoutThankYou)
+		r.Post("/logout", s.handleLogout)
+
+		r.Group(func(r chi.Router) {
+			r.Use(s.requirePaid)
+
+			r.Get("/", s.handleIndex)
+			r.Get("/threads/{id}", s.handleThread)
+			r.Get("/threads/{id}/events", s.handleThreadEvents)
+			r.Post("/threads/{id}/archive", s.handleArchiveThread)
+			r.Get("/threads/search", s.handleSearchThreads)
+			r.Post("/chat/send", s.handleSendMessage)
+			r.Post("/chat/stop", s.handleStopStreaming)
+		})
+	})
 
 	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)

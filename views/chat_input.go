@@ -28,7 +28,7 @@ var _ = styles.Style(`
 
 		.chat-input-box {
 			display: flex;
-			align-items: flex-start;
+			align-items: center;
 			background: var(--bg-input);
 			border: 1px solid var(--border-color);
 			border-radius: var(--radius-3);
@@ -50,7 +50,9 @@ var _ = styles.Style(`
 				resize: none;
 				outline: none;
 				field-sizing: content;
-				min-height: 24px;
+				line-height: var(--font-lineheight-2);
+				min-height: 32px;
+				padding-block: calc((32px - 1lh) / 2);
 				max-height: 180px;
 				scrollbar-width: thin;
 				scrollbar-color: var(--gray-9) transparent;
@@ -64,6 +66,7 @@ var _ = styles.Style(`
 		.chat-input-actions {
 			display: flex;
 			justify-content: left;
+			align-self: flex-start;
 		}
 
 		.chat-input-submit-btn {

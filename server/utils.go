@@ -6,8 +6,6 @@ import (
 
 	"afastchat.com/db"
 	"afastchat.com/views"
-	"github.com/go-chi/chi/v5"
-	"github.com/starfederation/datastar-go/datastar"
 )
 
 func GoRecover(fn func()) {
@@ -24,61 +22,6 @@ func GoRecover(fn func()) {
 func handleBadReq(w http.ResponseWriter, msg string, err error) {
 	slog.Error(msg, "err", err)
 	http.Error(w, "bad request", http.StatusBadRequest)
-}
-
-func handleSignals[T any](
-	s *Server,
-	fn func(w http.ResponseWriter, r *http.Request, user db.User, v T),
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var t T
-		if err := datastar.ReadSignals(r, &t); err != nil {
-			handleBadReq(w, "read signals failed", err)
-			return
-		}
-
-		user, ok := s.requireUser(w, r)
-		if !ok {
-			return
-		}
-
-		slog.Debug("read signals", "signals", t)
-
-		fn(w, r, user, t)
-	}
-}
-
-func (x *Server) withUser(
-	fn func(w http.ResponseWriter, r *http.Request, user db.User),
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok := x.requireUser(w, r)
-		if !ok {
-			return
-		}
-
-		fn(w, r, user)
-	}
-}
-
-func (x *Server) handlePathVal(
-	fn func(w http.ResponseWriter, r *http.Request, user db.User, val string),
-	pathValName string,
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		val := chi.URLParam(r, pathValName)
-		if val == "" {
-			handleBadReq(w, "missing path value", nil)
-			return
-		}
-
-		user, ok := x.requireUser(w, r)
-		if !ok {
-			return
-		}
-
-		fn(w, r, user, val)
-	}
 }
 
 func viewThreadFromDbThread(thread db.Thread) views.Thread {

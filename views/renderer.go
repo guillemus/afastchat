@@ -118,6 +118,17 @@ func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSideba
 	))
 }
 
+func (x *Renderer) RenderSettingsPage(w io.Writer, data SettingsData) {
+	renderNode(w, x.appLayout(
+		Sidebar{data.Threads, "", data.UserEmail}.Node(),
+		SettingsPage(data),
+	))
+}
+
+func (x *Renderer) RenderCheckoutThankYouPage(w io.Writer, confirmed bool) {
+	renderNode(w, x.guestLayout(CheckoutThankYouPage(confirmed)))
+}
+
 func (x *Renderer) RenderLandingPage(w io.Writer) {
 	renderNode(w, x.guestLayout(LandingPage()))
 }

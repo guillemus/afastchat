@@ -39,11 +39,13 @@ type Message struct {
 }
 
 type User struct {
-	ID           string
-	Email        string
-	PasswordHash string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID                string
+	Email             string
+	PasswordHash      string
+	PaidAt            *time.Time
+	PaymentCustomerID string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type Usage struct {
@@ -57,5 +59,38 @@ type Usage struct {
 	CachedInputTokens int64
 	OutputTokens      int64
 	ReasoningTokens   int64
+	CreatedAt         time.Time
+}
+
+type Payment struct {
+	ID                 string
+	UserID             string
+	Provider           string
+	ProviderCheckoutID string
+	Type               string
+	Status             string
+	AmountCents        int64
+	CreditCents        int64
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type PaymentEvent struct {
+	ID              string
+	Provider        string
+	ProviderEventID string
+	Type            string
+	Payload         string
+	ProcessedAt     *time.Time
+	CreatedAt       time.Time
+}
+
+type BillingLedgerEntry struct {
+	ID                string
+	UserID            string
+	PaymentCheckoutID string
+	UsageID           string
+	Type              string
+	AmountCents       int64
 	CreatedAt         time.Time
 }

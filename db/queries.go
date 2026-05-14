@@ -361,7 +361,7 @@ func (x *Pool) GetUser(ctx context.Context, id string) (User, error) {
 	var user User
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		err := sqlitex.Execute(conn, `
-			SELECT id, email, password_hash, created_at, updated_at
+			SELECT id, email, password_hash, paid_at, payment_customer_id, created_at, updated_at
 			FROM users
 			WHERE id = :id
 		`, &sqlitex.ExecOptions{
@@ -386,7 +386,7 @@ func (x *Pool) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	var user User
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		err := sqlitex.Execute(conn, `
-			SELECT id, email, password_hash, created_at, updated_at
+			SELECT id, email, password_hash, paid_at, payment_customer_id, created_at, updated_at
 			FROM users
 			WHERE lower(email) = lower(:email)
 		`, &sqlitex.ExecOptions{
@@ -414,7 +414,7 @@ func (x *Pool) CreateUser(ctx context.Context, email, passwordHash string) (User
 		err := sqlitex.Execute(conn, `
 			INSERT INTO users (id, email, password_hash)
 			VALUES (:id, :email, :password_hash)
-			RETURNING id, email, password_hash, created_at, updated_at
+			RETURNING id, email, password_hash, paid_at, payment_customer_id, created_at, updated_at
 		`, &sqlitex.ExecOptions{
 			Named: map[string]any{
 				":id":            id,

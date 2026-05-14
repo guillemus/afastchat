@@ -365,7 +365,11 @@ func SidebarFooter(email string) Node {
 }
 
 func UserAvatar(email string) Node {
-	return Div(Class("user-avatar"), Text(userInitial(email)))
+	return A(Href("/settings"), Class("sidebar-footer-link"),
+		Div(Class("user-avatar"),
+			Text(userInitial(email)),
+		),
+	)
 }
 
 func userInitial(email string) string {

@@ -12,11 +12,14 @@ import (
 	"afastchat.com/db"
 	"afastchat.com/views"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request, user db.User) {
-	threads, err := x.db.ListThreads(r.Context(), user.ID)
+func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	threads, err := x.db.ListThreads(ctx, user.ID)
 	if err != nil {
 		handleBadReq(w, "list threads", err)
 		return
@@ -25,6 +28,29 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request, user db.Use
 	x.renderer.RenderIndexPage(w, views.IndexData{
 		Threads:   mapViewThreads(threads),
 		UserEmail: user.Email,
+	})
+}
+
+func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	threads, err := x.db.ListThreads(ctx, user.ID)
+	if err != nil {
+		handleBadReq(w, "list threads", err)
+		return
+	}
+
+	balance, err := x.db.GetBillingBalanceCents(ctx, user.ID)
+	if err != nil {
+		handleBadReq(w, "get billing balance", err)
+		return
+	}
+
+	x.renderer.RenderSettingsPage(w, views.SettingsData{
+		Threads:      mapViewThreads(threads),
+		UserEmail:    user.Email,
+		Paid:         user.PaidAt != nil,
+		BalanceCents: balance,
 	})
 }
 
@@ -68,8 +94,9 @@ func (x *Server) getThreadPage(
 	}, nil
 }
 
-func (x *Server) handleThread(
-	w http.ResponseWriter, r *http.Request, user db.User, threadID string) {
+func (x *Server) handleThread(w http.ResponseWriter, r *http.Request) {
+	user := mustGetUser(r)
+	threadID := chi.URLParam(r, "id")
 	ctx := r.Context()
 	threadPage, err := x.getThreadPage(ctx, user, threadID)
 	if err != nil {
@@ -80,9 +107,11 @@ func (x *Server) handleThread(
 	x.renderer.RenderThreadPage(w, threadPage, true)
 }
 
-func (x *Server) handleArchiveThread(
-	w http.ResponseWriter, r *http.Request, user db.User, threadID string) {
-	if err := x.db.ArchiveThread(r.Context(), user.ID, threadID); err != nil {
+func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	threadID := chi.URLParam(r, "id")
+	if err := x.db.ArchiveThread(ctx, user.ID, threadID); err != nil {
 		handleBadReq(w, "archive thread", err)
 		return
 	}
@@ -104,9 +133,15 @@ type SearchThreadsSig struct {
 	ThreadID     string `json:"threadId"`
 }
 
-func (x *Server) handleSearchThreads(
-	w http.ResponseWriter, r *http.Request, user db.User, sig SearchThreadsSig) {
-	threads, err := x.db.ListThreads(r.Context(), user.ID)
+func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	var sig SearchThreadsSig
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		handleBadReq(w, "read signals", err)
+		return
+	}
+	threads, err := x.db.ListThreads(ctx, user.ID)
 	if err != nil {
 		handleBadReq(w, "list threads", err)
 		return
@@ -129,9 +164,23 @@ type SendMessageSignals struct {
 	ThreadID *string `json:"threadId"`
 }
 
-func (x *Server) handleSendMessage(
-	w http.ResponseWriter, r *http.Request, user db.User, sig SendMessageSignals) {
+func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := mustGetUser(r)
+	var sig SendMessageSignals
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		handleBadReq(w, "read signals", err)
+		return
+	}
+	balance, err := x.db.GetBillingBalanceCents(ctx, user.ID)
+	if err != nil {
+		handleBadReq(w, "get billing balance", err)
+		return
+	}
+	if balance <= 0 {
+		http.Error(w, "usage balance depleted", http.StatusPaymentRequired)
+		return
+	}
 
 	userMessage := sig.Message
 
@@ -333,8 +382,9 @@ func (x *Server) updateThreadTitle(ctx context.Context, userID, threadID string,
 	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
 }
 
-func (x *Server) handleThreadEvents(
-	w http.ResponseWriter, r *http.Request, user db.User, threadID string) {
+func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
+	user := mustGetUser(r)
+	threadID := chi.URLParam(r, "id")
 	ctx := r.Context()
 
 	threadEvtsC := make(chan ThreadEvent, 100)
@@ -416,9 +466,15 @@ type StopStreamingSignals struct {
 	ThreadID string `json:"threadId"`
 }
 
-func (x *Server) handleStopStreaming(
-	w http.ResponseWriter, r *http.Request, user db.User, sig StopStreamingSignals) {
-	if _, err := x.db.GetThread(r.Context(), sig.ThreadID, user.ID); err != nil {
+func (x *Server) handleStopStreaming(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	var sig StopStreamingSignals
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		handleBadReq(w, "read signals", err)
+		return
+	}
+	if _, err := x.db.GetThread(ctx, sig.ThreadID, user.ID); err != nil {
 		handleBadReq(w, "get thread", err)
 		return
 	}

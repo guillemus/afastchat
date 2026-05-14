@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -53,23 +54,52 @@ func (x *Server) currentUser(r *http.Request) (user db.User, found bool, err err
 	return user, true, nil
 }
 
-func (x *Server) requireUser(w http.ResponseWriter, r *http.Request) (db.User, bool) {
-	user, found, err := x.currentUser(r)
-	if err != nil {
-		slog.Error("load current user", "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return user, false
-	}
-	if found {
-		return user, true
-	}
+type userContextKey struct{}
 
-	if r.Method == http.MethodGet && isHTMLNavigation(r) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	} else {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+func (x *Server) requireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, found, err := x.currentUser(r)
+		if err != nil {
+			slog.Error("load current user", "err", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !found {
+			if r.Method == http.MethodGet && isHTMLNavigation(r) {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+			} else {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			}
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), userContextKey{}, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (x *Server) requirePaid(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := mustGetUser(r)
+		if user.PaidAt == nil {
+			if r.Method == http.MethodGet && isHTMLNavigation(r) {
+				http.Redirect(w, r, "/settings", http.StatusSeeOther)
+			} else {
+				http.Error(w, "payment required", http.StatusPaymentRequired)
+			}
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func mustGetUser(r *http.Request) db.User {
+	user, ok := r.Context().Value(userContextKey{}).(db.User)
+	if !ok {
+		panic("user missing from request context")
 	}
-	return user, false
+	return user
 }
 
 func (x *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
@@ -103,14 +133,16 @@ func (x *Server) handleSignupPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (x *Server) createSession(r *http.Request, userID string) error {
-	if err := x.sessions.RenewToken(r.Context()); err != nil {
+	ctx := r.Context()
+	if err := x.sessions.RenewToken(ctx); err != nil {
 		return err
 	}
-	x.sessions.Put(r.Context(), "user_id", userID)
+	x.sessions.Put(ctx, "user_id", userID)
 	return nil
 }
 
 func (x *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	email := normalizeEmail(r.FormValue("email"))
 	password := r.FormValue("password")
 
@@ -131,7 +163,7 @@ func (x *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := x.db.GetUserByEmail(r.Context(), email)
+	user, err := x.db.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			x.renderer.RenderLoginPage(w, views.LoginPageData{
@@ -170,6 +202,7 @@ func (x *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	email := normalizeEmail(r.FormValue("email"))
 	password := r.FormValue("password")
 
@@ -200,7 +233,7 @@ func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := x.db.CreateUser(r.Context(), email, string(hash))
+	user, err := x.db.CreateUser(ctx, email, string(hash))
 	if err != nil {
 		if errors.Is(err, db.ErrDuplicateEmail) {
 			x.renderer.RenderSignupPage(w, views.SignupPageData{
@@ -230,7 +263,8 @@ func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (x *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if err := x.sessions.Destroy(r.Context()); err != nil {
+	ctx := r.Context()
+	if err := x.sessions.Destroy(ctx); err != nil {
 		slog.Error("logout: destroy session", "err", err)
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
