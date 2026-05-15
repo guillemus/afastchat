@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -41,17 +40,12 @@ func scanThread(stmt *sqlite.Stmt) Thread {
 }
 
 func scanMessage(stmt *sqlite.Stmt) (Message, error) {
-	content, err := scanMessageContent(stmt)
-	if err != nil {
-		return Message{}, fmt.Errorf("scan content: %w", err)
-	}
-
 	return Message{
 		ID:                 stmt.GetText("id"),
 		ThreadID:           stmt.GetText("thread_id"),
 		Type:               MessageType(stmt.GetText("type")),
 		Seq:                int(stmt.GetInt64("seq")),
-		Content:            content,
+		Content:            stmt.GetText("content"),
 		ToolCallID:         stmt.GetText("tool_call_id"),
 		ToolName:           stmt.GetText("tool_name"),
 		ProviderResponseID: stmt.GetText("provider_response_id"),

@@ -43,7 +43,7 @@ CREATE TABLE messages (
     type TEXT NOT NULL,
     -- Per thread message order. Used for stable conversation rendering.
     seq INTEGER NOT NULL,
-    content BLOB NOT NULL,
+    content TEXT NOT NULL,
     tool_call_id TEXT NOT NULL DEFAULT '',
     tool_name TEXT NOT NULL DEFAULT '',
     provider_response_id TEXT NOT NULL DEFAULT '',

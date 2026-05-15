@@ -92,7 +92,6 @@ func (x *Pool) CreateMessage(ctx context.Context, userID, threadID string, typ M
 
 func (x *Pool) CreateMessageWithMeta(ctx context.Context, userID string, message Message) (Message, error) {
 	var created Message
-	compressedContent := compressMessageContent(message.Content)
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		id := uuid.New().String()
 		seq := 1
@@ -142,7 +141,7 @@ func (x *Pool) CreateMessageWithMeta(ctx context.Context, userID string, message
 				":thread_id":            message.ThreadID,
 				":type":                 message.Type,
 				":seq":                  seq,
-				":content":              compressedContent,
+				":content":              message.Content,
 				":tool_call_id":         message.ToolCallID,
 				":tool_name":            message.ToolName,
 				":provider_response_id": message.ProviderResponseID,
@@ -184,12 +183,11 @@ func (x *Pool) GetMessagesByThread(ctx context.Context, userID, threadID string)
 }
 
 func (x *Pool) UpdateMessageContent(ctx context.Context, id, content string) error {
-	compressedContent := compressMessageContent(content)
 	return x.exec(ctx, "update message", `
 		UPDATE messages
 		SET content = :content, updated_at = datetime('now')
 		WHERE id = :id
-	`, map[string]any{":content": compressedContent, ":id": id})
+	`, map[string]any{":content": content, ":id": id})
 }
 
 func (x *Pool) DeleteMessage(ctx context.Context, id string) error {
@@ -201,7 +199,6 @@ func (x *Pool) DeleteMessage(ctx context.Context, id string) error {
 
 func (x *Pool) InitThread(ctx context.Context, userID, title, sysMsg string) (string, error) {
 	threadID := uuid.New().String()
-	compressedSysMsg := compressMessageContent(sysMsg)
 	err := x.WithConn(ctx, func(conn *sqlite.Conn) error {
 		err := sqlitex.ExecuteTransient(conn, `
 			INSERT INTO threads (id, user_id, title)
@@ -217,7 +214,7 @@ func (x *Pool) InitThread(ctx context.Context, userID, title, sysMsg string) (st
 			INSERT INTO messages (id, thread_id, type, seq, content)
 			VALUES (:id, :thread_id, 'system_message', 1, :content)
 		`, &sqlitex.ExecOptions{
-			Named: map[string]any{":id": uuid.New().String(), ":thread_id": threadID, ":content": compressedSysMsg},
+			Named: map[string]any{":id": uuid.New().String(), ":thread_id": threadID, ":content": sysMsg},
 		})
 		if err != nil {
 			return fmt.Errorf("create system message: %w", err)
