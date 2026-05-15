@@ -9,13 +9,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type SettingsData struct {
-	Threads      []Thread
-	UserEmail    string
-	Paid         bool
-	BalanceCents polar.Cents
-}
-
 var _ = styles.Style(`
 	.settings-page {
 		flex: 1;
@@ -76,6 +69,33 @@ var _ = styles.Style(`
 		text-decoration: none;
 		cursor: pointer;
 	}
+	.settings-form {
+		display: flex;
+		align-items: center;
+		gap: var(--size-2);
+		margin-top: var(--size-3);
+	}
+	.settings-input-wrap {
+		position: relative;
+	}
+	.settings-input-prefix {
+		position: absolute;
+		left: var(--size-2);
+		top: 50%;
+		translate: 0 -50%;
+		color: var(--text-secondary);
+		pointer-events: none;
+	}
+	.settings-input {
+		width: 140px;
+		min-height: 36px;
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius-2);
+		background: var(--bg-input);
+		color: var(--text-primary);
+		font: inherit;
+		padding: 0 var(--size-2) 0 var(--size-5);
+	}
 	.sidebar-footer-link {
 		display: flex;
 		align-items: center;
@@ -83,6 +103,13 @@ var _ = styles.Style(`
 		text-decoration: none;
 	}
 `)
+
+type SettingsData struct {
+	Threads      []Thread
+	UserEmail    string
+	Paid         bool
+	BalanceCents polar.Cents
+}
 
 func SettingsPage(data SettingsData) Node {
 	return Main(Class("settings-page"),
@@ -112,7 +139,14 @@ func BillingCard(data SettingsData) Node {
 			Span(Text("Usage balance")),
 			Span(Class("settings-value"), Text(data.BalanceCents.Format())),
 		),
-		A(Class("settings-action"), Href("/settings/billing"), Text("Add usage credit")),
+		Div(Class("settings-form"),
+			Data("signals:amount-dollars", `"5"`),
+			Label(Class("settings-input-wrap"),
+				Span(Class("settings-input-prefix"), Text("$")),
+				Input(Class("settings-input"), Type("text"), Value("5"), Attr("inputmode", "numeric"), Pattern("[0-9]*"), Data("bind:amount-dollars", "")),
+			),
+			Button(Type("button"), Class("settings-action"), Data("on:click", `@post('/settings/checkout/balance')`), Text("Add usage credit")),
+		),
 	)
 }
 
@@ -131,12 +165,18 @@ func PaywallCard() Node {
 	)
 }
 
-func CheckoutThankYouPage(confirmed bool) Node {
+type CheckoutThankYouData struct {
+	Confirmed   bool
+	PaymentType string
+	CreditCents polar.Cents
+}
+
+func CheckoutThankYouPage(data CheckoutThankYouData) Node {
 	return Main(Class("settings-page"),
 		Div(Class("settings-shell"),
 			Section(Class("settings-card"),
-				H1(Class("settings-title"), Text(thankYouTitle(confirmed))),
-				P(Class("settings-copy"), Text(thankYouCopy(confirmed))),
+				H1(Class("settings-title"), Text(thankYouTitle(data.Confirmed))),
+				P(Class("settings-copy"), Text(thankYouCopy(data))),
 				A(Class("settings-action"), Href("/"), Text("Start chatting")),
 			),
 		),
@@ -157,12 +197,12 @@ func thankYouTitle(confirmed bool) string {
 	return "Payment pending"
 }
 
-func thankYouCopy(confirmed bool) string {
-	if confirmed {
-		return fmt.Sprintf(
-			"Your lifetime access is active and %s of usage credit was added to your account.",
-			polar.ProductProIncludedCreditCents.Format(),
-		)
+func thankYouCopy(data CheckoutThankYouData) string {
+	if !data.Confirmed {
+		return "We could not confirm the payment yet. Refresh this page in a moment."
 	}
-	return "We could not confirm the payment yet. Refresh this page in a moment."
+	if data.PaymentType == "lifetime" {
+		return fmt.Sprintf("Your lifetime access is active and %s of usage credit was added to your account.", data.CreditCents.Format())
+	}
+	return fmt.Sprintf("%s of usage credit was added to your account.", data.CreditCents.Format())
 }

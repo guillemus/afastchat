@@ -111,12 +111,17 @@ func (x *Server) processPolarOrderPaid(ctx context.Context, event polarWebhookEv
 	if err := x.db.UpdatePaymentStatus(ctx, payment.ID, db.PaymentStatusSucceeded); err != nil {
 		return fmt.Errorf("update payment: %w", err)
 	}
-	if err := x.db.MarkUserPaid(ctx, payment.UserID, order.CustomerID); err != nil {
-		return fmt.Errorf("mark user paid: %w", err)
-	}
 	if payment.Type == db.PaymentTypeLifetime {
+		if err := x.db.MarkUserPaid(ctx, payment.UserID, order.CustomerID); err != nil {
+			return fmt.Errorf("mark user paid: %w", err)
+		}
 		if err := x.db.CreateInitialCreditIfMissing(ctx, payment.UserID, payment.ID, polar.ProductProIncludedCreditCents); err != nil {
 			return fmt.Errorf("create initial credit: %w", err)
+		}
+	}
+	if payment.Type == db.PaymentTypeTopup {
+		if err := x.db.CreateTopupCreditIfMissing(ctx, payment.UserID, payment.ID, polar.Cents(payment.CreditCents)); err != nil {
+			return fmt.Errorf("create topup credit: %w", err)
 		}
 	}
 	return nil

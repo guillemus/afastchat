@@ -112,7 +112,8 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
 	if err := x.db.ArchiveThread(ctx, user.ID, threadID); err != nil {
-		handleBadReq(w, "archive thread", err)
+		slog.Error("archive thread", "err", err)
+		toastShowError(w, r, "Unable to archive chat", "We couldn't archive this chat. Try again.")
 		return
 	}
 
@@ -128,22 +129,22 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
-type SearchThreadsSig struct {
-	ThreadSearch string `json:"threadSearch"`
-	ThreadID     string `json:"threadId"`
-}
-
 func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	var sig SearchThreadsSig
+	var sig struct {
+		ThreadSearch string `json:"threadSearch"`
+		ThreadID     string `json:"threadId"`
+	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
-		handleBadReq(w, "read signals", err)
+		slog.Error("read search signals", "err", err)
+		toastShowError(w, r, "Unable to search chats", "Refresh the page, then try searching again.")
 		return
 	}
 	threads, err := x.db.ListThreads(ctx, user.ID)
 	if err != nil {
-		handleBadReq(w, "list threads", err)
+		slog.Error("list threads for search", "err", err)
+		toastShowError(w, r, "Unable to search chats", "We couldn't search your chats. Try again.")
 		return
 	}
 
@@ -159,26 +160,30 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 	views.PatchThreads(sse, mapViewThreads(filtered), sig.ThreadID)
 }
 
-type SendMessageSignals struct {
-	Message  string  `json:"message"`
-	ThreadID *string `json:"threadId"`
-}
-
 func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	var sig SendMessageSignals
+	var sig struct {
+		Message  string  `json:"message"`
+		ThreadID *string `json:"threadId"`
+	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
-		handleBadReq(w, "read signals", err)
+		slog.Error("read send message signals", "err", err)
+		toastShowError(w, r, "Unable to send message", "Refresh the page, then try again.")
 		return
 	}
 	balance, err := x.db.GetBillingBalanceCents(ctx, user.ID)
 	if err != nil {
-		handleBadReq(w, "get billing balance", err)
+		slog.Error("get billing balance before send", "err", err)
+		toastShowError(w, r, "Unable to send message", "Try again in a moment.")
 		return
 	}
 	if balance <= 0 {
-		http.Error(w, "usage balance depleted", http.StatusPaymentRequired)
+		toastShow(w, r, views.ToastData{
+			Title:   "Usage balance empty",
+			Message: "Add credit in Settings to keep chatting.",
+			Action:  &views.ToastAction{Label: "Add credit", Href: "/settings"},
+		})
 		return
 	}
 
@@ -189,7 +194,8 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	if isNewThread {
 		id, err := x.db.InitThread(ctx, user.ID, "New Chat", "You are a helpful assistant")
 		if err != nil {
-			handleBadReq(w, "create thread", err)
+			slog.Error("create thread before send", "err", err)
+			toastShowError(w, r, "Unable to send message", "Try again.")
 			return
 		}
 
@@ -208,10 +214,11 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_, err := x.db.GetThread(ctx, *sig.ThreadID, user.ID)
 		if errors.Is(err, db.ErrNotFound) {
-			handleBadReq(w, "thread not found", err)
+			toastShowError(w, r, "Chat not found", "This chat may have been removed. Go home and choose another chat.")
 			return
 		} else if err != nil {
-			handleBadReq(w, "get thread", err)
+			slog.Error("get thread before send", "err", err)
+			toastShowError(w, r, "Unable to send message", "Try again.")
 			return
 		}
 
@@ -407,7 +414,8 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 	{
 		threadPage, err := x.getThreadPage(ctx, user, threadID)
 		if err != nil {
-			handleBadReq(w, "get thread", err)
+			slog.Error("load thread event page", "err", err)
+			views.PatchErrorToast(sse, "Unable to load updates", "Refresh the page to reconnect this chat.")
 			return
 		}
 
@@ -462,20 +470,20 @@ msgloop:
 	}
 }
 
-type StopStreamingSignals struct {
-	ThreadID string `json:"threadId"`
-}
-
 func (x *Server) handleStopStreaming(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	var sig StopStreamingSignals
+	var sig struct {
+		ThreadID string `json:"threadId"`
+	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
-		handleBadReq(w, "read signals", err)
+		slog.Error("read stop streaming signals", "err", err)
+		toastShowError(w, r, "Unable to stop response", "Refresh the page, then try again.")
 		return
 	}
 	if _, err := x.db.GetThread(ctx, sig.ThreadID, user.ID); err != nil {
-		handleBadReq(w, "get thread", err)
+		slog.Error("get thread before stop", "err", err)
+		toastShowError(w, r, "Unable to stop response", "We couldn't stop this response. Try again.")
 		return
 	}
 

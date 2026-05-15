@@ -92,6 +92,8 @@ func StartServer(env env.Env) {
 		r.Group(func(r chi.Router) {
 			r.Use(s.requirePaid)
 
+			r.Post("/settings/checkout/balance", s.handleBalanceCheckout)
+
 			r.Get("/", s.handleIndex)
 			r.Get("/threads/{id}", s.handleThread)
 			r.Get("/threads/{id}/events", s.handleThreadEvents)

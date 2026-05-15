@@ -6,6 +6,7 @@ import (
 
 	"afastchat.com/db"
 	"afastchat.com/views"
+	"github.com/starfederation/datastar-go/datastar"
 )
 
 func GoRecover(fn func()) {
@@ -108,4 +109,14 @@ func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGro
 	}
 
 	return out
+}
+
+func toastShowError(w http.ResponseWriter, r *http.Request, title, message string) {
+	sse := datastar.NewSSE(w, r)
+	views.PatchErrorToast(sse, title, message)
+}
+
+func toastShow(w http.ResponseWriter, r *http.Request, toast views.ToastData) {
+	sse := datastar.NewSSE(w, r)
+	views.PatchToast(sse, toast)
 }

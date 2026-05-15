@@ -128,14 +128,22 @@ func (x *Pool) CreateBillingLedgerEntry(ctx context.Context, entry BillingLedger
 }
 
 func (x *Pool) CreateInitialCreditIfMissing(ctx context.Context, userID, paymentCheckoutID string, amountCents polar.Cents) error {
-	return x.exec(ctx, "insert initial credit", `
+	return x.createPaymentCreditIfMissing(ctx, userID, paymentCheckoutID, BillingLedgerTypeInitialCredit, amountCents)
+}
+
+func (x *Pool) CreateTopupCreditIfMissing(ctx context.Context, userID, paymentCheckoutID string, amountCents polar.Cents) error {
+	return x.createPaymentCreditIfMissing(ctx, userID, paymentCheckoutID, BillingLedgerTypeTopupCredit, amountCents)
+}
+
+func (x *Pool) createPaymentCreditIfMissing(ctx context.Context, userID, paymentCheckoutID string, typ BillingLedgerType, amountCents polar.Cents) error {
+	return x.exec(ctx, "insert payment credit", `
 		INSERT OR IGNORE INTO billing_ledger (id, user_id, payment_checkout_id, type, amount_cents)
 		VALUES (:id, :user_id, :payment_checkout_id, :type, :amount_cents)
 	`, map[string]any{
 		":id":                  uuid.New().String(),
 		":user_id":             userID,
 		":payment_checkout_id": paymentCheckoutID,
-		":type":                BillingLedgerTypeInitialCredit,
+		":type":                typ,
 		":amount_cents":        amountCents,
 	})
 }

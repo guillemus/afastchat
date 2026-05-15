@@ -69,6 +69,7 @@ func (x *Renderer) layout(body Node) Node {
 		Body: []Node{
 			DebugSignals(x.env),
 			body,
+			ToastRegion(),
 		},
 	})
 }
@@ -125,8 +126,8 @@ func (x *Renderer) RenderSettingsPage(w io.Writer, data SettingsData) {
 	))
 }
 
-func (x *Renderer) RenderCheckoutThankYouPage(w io.Writer, confirmed bool) {
-	renderNode(w, x.guestLayout(CheckoutThankYouPage(confirmed)))
+func (x *Renderer) RenderCheckoutThankYouPage(w io.Writer, data CheckoutThankYouData) {
+	renderNode(w, x.guestLayout(CheckoutThankYouPage(data)))
 }
 
 func (x *Renderer) RenderLandingPage(w io.Writer) {

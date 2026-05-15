@@ -67,6 +67,12 @@ func (x *Server) requireAuth(next http.Handler) http.Handler {
 		if !found {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/login", http.StatusSeeOther)
+			} else if isDatastar(r) {
+				toastShow(w, r, views.ToastData{
+					Title:   "Sign in required",
+					Message: "Sign in, then try that again.",
+					Action:  &views.ToastAction{Label: "Sign in", Href: "/login"},
+				})
 			} else {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 			}
@@ -84,6 +90,12 @@ func (x *Server) requirePaid(next http.Handler) http.Handler {
 		if user.PaidAt == nil {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/settings", http.StatusSeeOther)
+			} else if isDatastar(r) {
+				toastShow(w, r, views.ToastData{
+					Title:   "Lifetime access required",
+					Message: "Unlock A Fast Chat, then try that again.",
+					Action:  &views.ToastAction{Label: "Open settings", Href: "/settings"},
+				})
 			} else {
 				http.Error(w, "payment required", http.StatusPaymentRequired)
 			}

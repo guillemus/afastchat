@@ -65,6 +65,10 @@ func isHTMLNavigation(r *http.Request) bool {
 	return strings.Contains(accept, "text/html") && !strings.Contains(accept, "text/event-stream")
 }
 
+func isDatastar(r *http.Request) bool {
+	return r.Header.Get("Datastar-Request") == "true"
+}
+
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
