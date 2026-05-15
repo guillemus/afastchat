@@ -11,60 +11,70 @@ var _ = styles.Style(`
 		min-height: 100dvh;
 		display: grid;
 		place-items: center;
-		padding: var(--size-fluid-5);
+		padding: var(--size-4);
 
 		.auth-shell {
-			width: min(100%, 48rem);
+			width: min(100%, 25rem);
 		}
 
 		.auth-card {
 			display: flex;
 			flex-direction: column;
 			gap: var(--size-4);
-			padding: var(--size-fluid-6);
-			width: min(100%, 30rem);
-			margin: 0 auto;
-			background: color-mix(in oklch, var(--bg-sidebar) 75%, var(--bg-primary));
-			border: 1px solid var(--border-color);
-			border-radius: var(--radius-4);
-			box-shadow: var(--shadow-4);
+			padding: var(--size-7);
+			background: color-mix(in oklch, var(--bg-sidebar) 70%, var(--bg-primary));
+			border: 1px solid color-mix(in oklch, var(--border-color) 80%, var(--text-muted));
+			border-radius: var(--radius-3);
+			box-shadow: var(--shadow-3);
 		}
 
-		.landing-eyebrow {
-			color: var(--text-secondary);
+		.auth-kicker {
+			color: var(--text-muted);
+			font-size: var(--font-size-0);
+			font-weight: var(--font-weight-6);
+			letter-spacing: 0.12em;
+			line-height: 1;
 			text-transform: uppercase;
-			letter-spacing: 0.08em;
 		}
 
 		.auth-title {
+			font-size: var(--font-size-6);
 			letter-spacing: -0.04em;
-			line-height: 1;
+			line-height: var(--font-lineheight-0);
 		}
 
 		.auth-copy {
+			max-width: 21rem;
 			color: var(--text-secondary);
+			font-size: var(--font-size-2);
 			line-height: var(--font-lineheight-3);
 		}
 
 		.auth-form {
 			display: flex;
 			flex-direction: column;
+			gap: var(--size-4);
+		}
+
+		.auth-field {
+			display: grid;
 			gap: var(--size-2);
 
 			label {
 				color: var(--text-secondary);
+				font-weight: var(--font-weight-6);
 			}
 
 			input {
 				width: 100%;
-				min-height: 44px;
-				background: var(--bg-input);
+				min-height: 3rem;
+				background: color-mix(in oklch, var(--bg-input) 88%, var(--bg-primary));
 				color: var(--text-primary);
 				border: 1px solid var(--border-color);
 				border-radius: var(--radius-2);
 				padding: 0 var(--size-3);
 				font-family: inherit;
-				font-size: inherit;
+				font-size: var(--font-size-2);
 				outline: none;
 
 				&::placeholder {
@@ -72,8 +82,8 @@ var _ = styles.Style(`
 				}
 
 				&:focus {
-					border-color: color-mix(in oklch, var(--bg-button) 60%, var(--border-color));
-					box-shadow: 0 0 0 3px color-mix(in oklch, var(--bg-button) 20%, transparent);
+					border-color: color-mix(in oklch, var(--bg-button) 70%, white);
+					box-shadow: 0 0 0 3px color-mix(in oklch, var(--bg-button) 22%, transparent);
 				}
 			}
 		}
@@ -90,26 +100,28 @@ var _ = styles.Style(`
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
-			min-height: 44px;
+			min-height: 3rem;
 			padding: 0 var(--size-5);
-			border-radius: var(--radius-3);
-			border: 1px solid transparent;
+			border-radius: var(--radius-2);
+			border: 1px solid color-mix(in oklch, var(--bg-button) 80%, white);
 			font-family: inherit;
-			font-size: inherit;
-			font-weight: var(--font-weight-6);
+			font-size: var(--font-size-1);
+			font-weight: var(--font-weight-7);
 			text-decoration: none;
 			cursor: pointer;
-			transition: filter 0.15s var(--ease-3);
-			background: var(--bg-button);
+			transition:
+				transform 0.15s var(--ease-3),
+				filter 0.15s var(--ease-3);
+			background: linear-gradient(180deg, color-mix(in oklch, var(--bg-button) 92%, white), var(--bg-button));
 			color: white;
 
 			&:hover {
-				filter: brightness(1.08);
+				filter: brightness(1.07);
+				transform: translateY(-1px);
 			}
 		}
 
 		.auth-submit {
-			margin-top: var(--size-2);
 			width: 100%;
 		}
 
@@ -119,6 +131,7 @@ var _ = styles.Style(`
 
 			a {
 				color: var(--text-primary);
+				font-weight: var(--font-weight-6);
 			}
 		}
 	}
@@ -136,7 +149,7 @@ func LoginPage(data LoginPageData) Node {
 			Class("auth-shell"),
 			Div(
 				Class("auth-card"),
-				P(Class("landing-eyebrow"), Text("Welcome back")),
+				P(Class("auth-kicker"), Text("Welcome back")),
 				H1(Class("auth-title"), Text("Log in")),
 				P(
 					Class("auth-copy"),
@@ -149,23 +162,27 @@ func LoginPage(data LoginPageData) Node {
 					Class("auth-form"),
 					Method("post"),
 					Action("/login"),
-					Label(For("email"), Text("Email")),
-					Input(
-						Type("email"),
-						ID("email"),
-						Name("email"),
-						Placeholder("you@example.com"),
-						Value(data.Email),
-						Required(),
-						AutoFocus(),
+					Div(Class("auth-field"),
+						Label(For("email"), Text("Email")),
+						Input(
+							Type("email"),
+							ID("email"),
+							Name("email"),
+							Placeholder("you@example.com"),
+							Value(data.Email),
+							Required(),
+							AutoFocus(),
+						),
 					),
-					Label(For("password"), Text("Password")),
-					Input(
-						Type("password"),
-						ID("password"),
-						Name("password"),
-						Placeholder("Password"),
-						Required(),
+					Div(Class("auth-field"),
+						Label(For("password"), Text("Password")),
+						Input(
+							Type("password"),
+							ID("password"),
+							Name("password"),
+							Placeholder("Password"),
+							Required(),
+						),
 					),
 					Button(Type("submit"), Class("btn-primary auth-submit"), Text("Log in")),
 				),
@@ -191,7 +208,7 @@ func SignupPage(data SignupPageData) Node {
 			Class("auth-shell"),
 			Div(
 				Class("auth-card"),
-				P(Class("landing-eyebrow"), Text("Create account")),
+				P(Class("auth-kicker"), Text("Create account")),
 				H1(Class("auth-title"), Text("Sign up")),
 				P(
 					Class("auth-copy"),
@@ -204,23 +221,27 @@ func SignupPage(data SignupPageData) Node {
 					Class("auth-form"),
 					Method("post"),
 					Action("/signup"),
-					Label(For("email"), Text("Email")),
-					Input(
-						Type("email"),
-						ID("email"),
-						Name("email"),
-						Placeholder("you@example.com"),
-						Value(data.Email),
-						Required(),
-						AutoFocus(),
+					Div(Class("auth-field"),
+						Label(For("email"), Text("Email")),
+						Input(
+							Type("email"),
+							ID("email"),
+							Name("email"),
+							Placeholder("you@example.com"),
+							Value(data.Email),
+							Required(),
+							AutoFocus(),
+						),
 					),
-					Label(For("password"), Text("Password")),
-					Input(
-						Type("password"),
-						ID("password"),
-						Name("password"),
-						Placeholder("At least 8 characters"),
-						Required(),
+					Div(Class("auth-field"),
+						Label(For("password"), Text("Password")),
+						Input(
+							Type("password"),
+							ID("password"),
+							Name("password"),
+							Placeholder("At least 8 characters"),
+							Required(),
+						),
 					),
 					Button(Type("submit"), Class("btn-primary auth-submit"), Text("Sign up")),
 				),
