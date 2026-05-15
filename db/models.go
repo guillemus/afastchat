@@ -62,13 +62,31 @@ type Usage struct {
 	CreatedAt         time.Time
 }
 
+const PaymentProviderPolar = "polar"
+
+type PaymentType string
+
+const (
+	PaymentTypeLifetime PaymentType = "lifetime"
+	PaymentTypeTopup    PaymentType = "topup"
+)
+
+type PaymentStatus string
+
+const (
+	PaymentStatusCreated   PaymentStatus = "created"
+	PaymentStatusSucceeded PaymentStatus = "succeeded"
+	PaymentStatusFailed    PaymentStatus = "failed"
+	PaymentStatusExpired   PaymentStatus = "expired"
+)
+
 type Payment struct {
 	ID                 string
 	UserID             string
 	Provider           string
 	ProviderCheckoutID string
-	Type               string
-	Status             string
+	Type               PaymentType
+	Status             PaymentStatus
 	AmountCents        int64
 	CreditCents        int64
 	CreatedAt          time.Time
@@ -85,12 +103,21 @@ type PaymentEvent struct {
 	CreatedAt       time.Time
 }
 
+type BillingLedgerType string
+
+const (
+	BillingLedgerTypeInitialCredit BillingLedgerType = "initial_credit"
+	BillingLedgerTypeTopupCredit   BillingLedgerType = "topup_credit"
+	BillingLedgerTypeUsageDebit    BillingLedgerType = "usage_debit"
+	BillingLedgerTypeAdjustment    BillingLedgerType = "adjustment"
+)
+
 type BillingLedgerEntry struct {
 	ID                string
 	UserID            string
 	PaymentCheckoutID string
 	UsageID           string
-	Type              string
+	Type              BillingLedgerType
 	AmountCents       int64
 	CreatedAt         time.Time
 }

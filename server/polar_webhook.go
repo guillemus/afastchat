@@ -53,7 +53,6 @@ func (x *Server) handlePolarWebhook(w http.ResponseWriter, r *http.Request) {
 	logger := slog.With("event_id", event.ID, "event", event.Name)
 
 	saved, err := x.db.CreatePaymentEvent(ctx, db.PaymentEvent{
-		Provider:        paymentProviderPolar,
 		ProviderEventID: event.ID,
 		Type:            event.Name,
 		Payload:         string(body),
@@ -105,17 +104,17 @@ func (x *Server) processPolarOrderPaid(ctx context.Context, event polarWebhookEv
 		return nil
 	}
 
-	payment, err := x.db.GetPaymentByProviderCheckoutID(ctx, paymentProviderPolar, *order.CheckoutID)
+	payment, err := x.db.GetPaymentByCheckoutID(ctx, *order.CheckoutID)
 	if err != nil {
 		return fmt.Errorf("get payment: %w", err)
 	}
-	if err := x.db.UpdatePaymentStatus(ctx, payment.ID, paymentStatusSucceeded); err != nil {
+	if err := x.db.UpdatePaymentStatus(ctx, payment.ID, db.PaymentStatusSucceeded); err != nil {
 		return fmt.Errorf("update payment: %w", err)
 	}
 	if err := x.db.MarkUserPaid(ctx, payment.UserID, order.CustomerID); err != nil {
 		return fmt.Errorf("mark user paid: %w", err)
 	}
-	if payment.Type == paymentTypeLifetime {
+	if payment.Type == db.PaymentTypeLifetime {
 		if err := x.db.CreateInitialCreditIfMissing(ctx, payment.UserID, payment.ID, polar.ProductProIncludedCreditCents); err != nil {
 			return fmt.Errorf("create initial credit: %w", err)
 		}

@@ -50,7 +50,7 @@ func (x *Pool) CreatePayment(ctx context.Context, payment Payment) (Payment, err
 	`, map[string]any{
 		":id":                   id,
 		":user_id":              payment.UserID,
-		":provider":             payment.Provider,
+		":provider":             PaymentProviderPolar,
 		":provider_checkout_id": payment.ProviderCheckoutID,
 		":type":                 payment.Type,
 		":status":               payment.Status,
@@ -61,17 +61,17 @@ func (x *Pool) CreatePayment(ctx context.Context, payment Payment) (Payment, err
 	})
 }
 
-func (x *Pool) GetPaymentByProviderCheckoutID(ctx context.Context, provider, providerCheckoutID string) (Payment, error) {
+func (x *Pool) GetPaymentByCheckoutID(ctx context.Context, providerCheckoutID string) (Payment, error) {
 	return queryOne(ctx, x, "query payment", `
 		SELECT id, user_id, provider, provider_checkout_id, type, status, amount_cents, credit_cents, created_at, updated_at
 		FROM payments
 		WHERE provider = :provider AND provider_checkout_id = :provider_checkout_id
-	`, map[string]any{":provider": provider, ":provider_checkout_id": providerCheckoutID}, func(stmt *sqlite.Stmt) (Payment, error) {
+	`, map[string]any{":provider": PaymentProviderPolar, ":provider_checkout_id": providerCheckoutID}, func(stmt *sqlite.Stmt) (Payment, error) {
 		return scanPayment(stmt), nil
 	})
 }
 
-func (x *Pool) UpdatePaymentStatus(ctx context.Context, id, status string) error {
+func (x *Pool) UpdatePaymentStatus(ctx context.Context, id string, status PaymentStatus) error {
 	return x.exec(ctx, "update payment", `
 		UPDATE payments
 		SET status = :status, updated_at = datetime('now')
@@ -88,7 +88,7 @@ func (x *Pool) CreatePaymentEvent(ctx context.Context, event PaymentEvent) (Paym
 		RETURNING id, provider, provider_event_id, type, payload, processed_at, created_at
 	`, map[string]any{
 		":id":                id,
-		":provider":          event.Provider,
+		":provider":          PaymentProviderPolar,
 		":provider_event_id": event.ProviderEventID,
 		":type":              event.Type,
 		":payload":           event.Payload,
@@ -130,11 +130,12 @@ func (x *Pool) CreateBillingLedgerEntry(ctx context.Context, entry BillingLedger
 func (x *Pool) CreateInitialCreditIfMissing(ctx context.Context, userID, paymentCheckoutID string, amountCents polar.Cents) error {
 	return x.exec(ctx, "insert initial credit", `
 		INSERT OR IGNORE INTO billing_ledger (id, user_id, payment_checkout_id, type, amount_cents)
-		VALUES (:id, :user_id, :payment_checkout_id, 'initial_credit', :amount_cents)
+		VALUES (:id, :user_id, :payment_checkout_id, :type, :amount_cents)
 	`, map[string]any{
 		":id":                  uuid.New().String(),
 		":user_id":             userID,
 		":payment_checkout_id": paymentCheckoutID,
+		":type":                BillingLedgerTypeInitialCredit,
 		":amount_cents":        amountCents,
 	})
 }

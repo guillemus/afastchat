@@ -1,3 +1,4 @@
+-- Allowed values are enforced in app code with Go string enum types, not DB CHECK constraints.
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,

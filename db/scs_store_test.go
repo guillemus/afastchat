@@ -5,8 +5,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
+
+func newTestPool(t *testing.T) *Pool {
+	t.Helper()
+
+	pool, err := Connect("file:" + uuid.New().String() + "?mode=memory&cache=shared")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, pool.Close()) })
+
+	err = pool.WithConn(context.Background(), func(conn *sqlite.Conn) error {
+		return sqlitex.ExecuteScript(conn, schema, nil)
+	})
+	require.NoError(t, err)
+
+	return pool
+}
 
 func TestSCSStoreCommitFindDelete(t *testing.T) {
 	t.Parallel()

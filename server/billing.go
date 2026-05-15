@@ -12,13 +12,6 @@ import (
 	"github.com/polarsource/polar-go/models/components"
 )
 
-const (
-	paymentProviderPolar   = "polar"
-	paymentTypeLifetime    = "lifetime"
-	paymentStatusCreated   = "created"
-	paymentStatusSucceeded = "succeeded"
-)
-
 func (x *Server) handleProCheckout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
@@ -33,7 +26,7 @@ func (x *Server) handleProCheckout(w http.ResponseWriter, r *http.Request) {
 		SuccessURL:         &successURL,
 		ReturnURL:          &returnURL,
 		Metadata: map[string]components.CheckoutCreateMetadata{
-			"type":    components.CreateCheckoutCreateMetadataStr(paymentTypeLifetime),
+			"type":    components.CreateCheckoutCreateMetadataStr(string(db.PaymentTypeLifetime)),
 			"user_id": components.CreateCheckoutCreateMetadataStr(user.ID),
 		},
 	})
@@ -44,10 +37,9 @@ func (x *Server) handleProCheckout(w http.ResponseWriter, r *http.Request) {
 
 	_, err = x.db.CreatePayment(ctx, db.Payment{
 		UserID:             user.ID,
-		Provider:           paymentProviderPolar,
 		ProviderCheckoutID: res.Checkout.ID,
-		Type:               paymentTypeLifetime,
-		Status:             paymentStatusCreated,
+		Type:               db.PaymentTypeLifetime,
+		Status:             db.PaymentStatusCreated,
 		AmountCents:        int64(polar.ProductProPriceCents),
 		CreditCents:        int64(polar.ProductProIncludedCreditCents),
 	})
@@ -73,7 +65,7 @@ func (x *Server) handleCheckoutThankYou(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		slog.Error("get polar checkout", "err", err, "checkout_id", checkoutID)
 	} else if res.Checkout.Status == components.CheckoutStatusSucceeded {
-		checkout, err := x.db.GetPaymentByProviderCheckoutID(ctx, paymentProviderPolar, checkoutID)
+		checkout, err := x.db.GetPaymentByCheckoutID(ctx, checkoutID)
 		if err != nil {
 			handleBadReq(w, "get payment checkout", err)
 			return
@@ -83,7 +75,7 @@ func (x *Server) handleCheckoutThankYou(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		if err := x.db.UpdatePaymentStatus(ctx, checkout.ID, paymentStatusSucceeded); err != nil {
+		if err := x.db.UpdatePaymentStatus(ctx, checkout.ID, db.PaymentStatusSucceeded); err != nil {
 			handleBadReq(w, "update payment checkout", err)
 			return
 		}
