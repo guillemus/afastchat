@@ -42,10 +42,25 @@ type User struct {
 	ID                string
 	Email             string
 	PasswordHash      string
-	PaidAt            *time.Time
 	PaymentCustomerID string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+}
+
+type LicenseTier string
+
+const (
+	LicenseTierLifetime LicenseTier = "lifetime"
+)
+
+type License struct {
+	ID              string
+	UserID          string
+	SourcePaymentID string
+	Tier            LicenseTier
+	GrantedAt       time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Usage struct {

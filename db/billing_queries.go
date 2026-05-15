@@ -3,38 +3,57 @@ package db
 import (
 	"context"
 	"errors"
-	"time"
 
 	"afastchat.com/polar"
 	"github.com/google/uuid"
 	"zombiezen.com/go/sqlite"
 )
 
-func (x *Pool) MarkUserPaid(ctx context.Context, userID, paymentCustomerID string) error {
+func (x *Pool) GrantLifetimeLicense(ctx context.Context, userID, sourcePaymentID, paymentCustomerID string) error {
 	user, err := x.GetUser(ctx, userID)
 	if err != nil {
 		return err
-	}
-
-	paidAt := time.Now().UTC().Format("2006-01-02 15:04:05")
-	if user.PaidAt != nil {
-		paidAt = user.PaidAt.Format("2006-01-02 15:04:05")
 	}
 
 	if paymentCustomerID == "" {
 		paymentCustomerID = user.PaymentCustomerID
 	}
 
-	return x.exec(ctx, "update user paid", `
+	if err := x.exec(ctx, "update payment customer", `
 		UPDATE users
-		SET paid_at = :paid_at, payment_customer_id = :payment_customer_id, updated_at = datetime('now')
+		SET payment_customer_id = :payment_customer_id, updated_at = datetime('now')
 		WHERE id = :id
 		RETURNING id
 	`, map[string]any{
 		":id":                  userID,
-		":paid_at":             paidAt,
 		":payment_customer_id": paymentCustomerID,
+	}); err != nil {
+		return err
+	}
+
+	return x.exec(ctx, "insert lifetime license", `
+		INSERT OR IGNORE INTO licenses (id, user_id, source_payment_id, tier)
+		VALUES (:id, :user_id, :source_payment_id, :tier)
+	`, map[string]any{
+		":id":                uuid.New().String(),
+		":user_id":           userID,
+		":source_payment_id": nullableString(sourcePaymentID),
+		":tier":              LicenseTierLifetime,
 	})
+}
+
+func (x *Pool) UserHasLicense(ctx context.Context, userID string, tier LicenseTier) (bool, error) {
+	_, err := queryOne(ctx, x, "query user license", `
+		SELECT id, user_id, source_payment_id, tier, granted_at, created_at, updated_at
+		FROM licenses
+		WHERE user_id = :user_id AND tier = :tier
+	`, map[string]any{":user_id": userID, ":tier": tier}, func(stmt *sqlite.Stmt) (License, error) {
+		return scanLicense(stmt), nil
+	})
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func (x *Pool) CreatePayment(ctx context.Context, payment Payment) (Payment, error) {

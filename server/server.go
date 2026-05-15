@@ -90,7 +90,7 @@ func StartServer(env env.Env) {
 		r.Post("/logout", s.handleLogout)
 
 		r.Group(func(r chi.Router) {
-			r.Use(s.requirePaid)
+			r.Use(s.requireLifetimeLicense)
 
 			r.Post("/settings/checkout/balance", s.handleBalanceCheckout)
 

@@ -84,10 +84,16 @@ func (x *Server) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (x *Server) requirePaid(next http.Handler) http.Handler {
+func (x *Server) requireLifetimeLicense(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := mustGetUser(r)
-		if user.PaidAt == nil {
+		hasLicense, err := x.db.UserHasLicense(r.Context(), user.ID, db.LicenseTierLifetime)
+		if err != nil {
+			slog.Error("query lifetime license", "err", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !hasLicense {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/settings", http.StatusSeeOther)
 			} else if isDatastar(r) {

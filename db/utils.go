@@ -67,10 +67,21 @@ func scanUser(stmt *sqlite.Stmt) User {
 		ID:                stmt.GetText("id"),
 		Email:             stmt.GetText("email"),
 		PasswordHash:      stmt.GetText("password_hash"),
-		PaidAt:            nullableTime(stmt.IsNull("paid_at"), stmt.GetText("paid_at")),
 		PaymentCustomerID: stmt.GetText("payment_customer_id"),
 		CreatedAt:         parseTime(stmt.GetText("created_at")),
 		UpdatedAt:         parseTime(stmt.GetText("updated_at")),
+	}
+}
+
+func scanLicense(stmt *sqlite.Stmt) License {
+	return License{
+		ID:              stmt.GetText("id"),
+		UserID:          stmt.GetText("user_id"),
+		SourcePaymentID: stmt.GetText("source_payment_id"),
+		Tier:            LicenseTier(stmt.GetText("tier")),
+		GrantedAt:       parseTime(stmt.GetText("granted_at")),
+		CreatedAt:       parseTime(stmt.GetText("created_at")),
+		UpdatedAt:       parseTime(stmt.GetText("updated_at")),
 	}
 }
 

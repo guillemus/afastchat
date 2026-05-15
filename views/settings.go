@@ -105,10 +105,10 @@ var _ = styles.Style(`
 `)
 
 type SettingsData struct {
-	Threads      []Thread
-	UserEmail    string
-	Paid         bool
-	BalanceCents polar.Cents
+	Threads            []Thread
+	UserEmail          string
+	HasLifetimeLicense bool
+	BalanceCents       polar.Cents
 }
 
 func SettingsPage(data SettingsData) Node {
@@ -122,8 +122,8 @@ func SettingsPage(data SettingsData) Node {
 					Span(Class("settings-value"), Text(data.UserEmail)),
 				),
 			),
-			If(data.Paid, BillingCard(data)),
-			If(!data.Paid, PaywallCard()),
+			If(data.HasLifetimeLicense, BillingCard(data)),
+			If(!data.HasLifetimeLicense, PaywallCard()),
 		),
 	)
 }
@@ -133,7 +133,7 @@ func BillingCard(data SettingsData) Node {
 		H2(Class("settings-card-title"), Text("Billing")),
 		Div(Class("settings-row"),
 			Span(Text("Plan")),
-			Span(Class("settings-value"), Text(planLabel(data.Paid))),
+			Span(Class("settings-value"), Text(planLabel(data.HasLifetimeLicense))),
 		),
 		Div(Class("settings-row"),
 			Span(Text("Usage balance")),
@@ -183,8 +183,8 @@ func CheckoutThankYouPage(data CheckoutThankYouData) Node {
 	)
 }
 
-func planLabel(paid bool) string {
-	if paid {
+func planLabel(hasLifetimeLicense bool) string {
+	if hasLifetimeLicense {
 		return "Lifetime access"
 	}
 	return "Not active"

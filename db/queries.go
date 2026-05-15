@@ -241,7 +241,7 @@ func (x *Pool) CreateSystemMessage(ctx context.Context, userID, threadID, msg st
 
 func (x *Pool) GetUser(ctx context.Context, id string) (User, error) {
 	return queryOne(ctx, x, "query user", `
-		SELECT id, email, password_hash, paid_at, payment_customer_id, created_at, updated_at
+		SELECT id, email, password_hash, payment_customer_id, created_at, updated_at
 		FROM users
 		WHERE id = :id
 	`, map[string]any{":id": id}, func(stmt *sqlite.Stmt) (User, error) {
@@ -251,7 +251,7 @@ func (x *Pool) GetUser(ctx context.Context, id string) (User, error) {
 
 func (x *Pool) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	return queryOne(ctx, x, "query user by email", `
-		SELECT id, email, password_hash, paid_at, payment_customer_id, created_at, updated_at
+		SELECT id, email, password_hash, payment_customer_id, created_at, updated_at
 		FROM users
 		WHERE lower(email) = lower(:email)
 	`, map[string]any{":email": email}, func(stmt *sqlite.Stmt) (User, error) {
@@ -264,7 +264,7 @@ func (x *Pool) CreateUser(ctx context.Context, email, passwordHash string) (User
 	user, err := execReturning(ctx, x, "insert user", `
 		INSERT INTO users (id, email, password_hash)
 		VALUES (:id, :email, :password_hash)
-		RETURNING id, email, password_hash, paid_at, payment_customer_id, created_at, updated_at
+		RETURNING id, email, password_hash, payment_customer_id, created_at, updated_at
 	`, map[string]any{
 		":id":            id,
 		":email":         email,

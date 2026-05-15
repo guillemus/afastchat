@@ -165,8 +165,8 @@ func (x *Server) handleCheckoutThankYou(w http.ResponseWriter, r *http.Request) 
 			customerID = *res.Checkout.CustomerID
 		}
 		if checkout.Type == db.PaymentTypeLifetime {
-			if err := x.db.MarkUserPaid(ctx, user.ID, customerID); err != nil {
-				handleBadReq(w, "mark user paid", err)
+			if err := x.db.GrantLifetimeLicense(ctx, user.ID, checkout.ID, customerID); err != nil {
+				handleBadReq(w, "grant lifetime license", err)
 				return
 			}
 			if err := x.db.CreateInitialCreditIfMissing(ctx, user.ID, checkout.ID, polar.ProductProIncludedCreditCents); err != nil {

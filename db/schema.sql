@@ -3,7 +3,6 @@ CREATE TABLE users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    paid_at DATETIME,
     payment_customer_id TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -114,6 +113,20 @@ CREATE TABLE payment_events (
 
 CREATE UNIQUE INDEX idx_payment_events_provider_event_id ON payment_events(provider, provider_event_id);
 CREATE INDEX idx_payment_events_type_created_at ON payment_events(provider, type, created_at);
+
+CREATE TABLE licenses (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    source_payment_id TEXT REFERENCES payments(id),
+    -- Current tier: lifetime. More tiers will be added in the future.
+    tier TEXT NOT NULL,
+    granted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_licenses_user_id_tier ON licenses(user_id, tier);
+CREATE INDEX idx_licenses_source_payment_id ON licenses(source_payment_id);
 
 CREATE TABLE billing_ledger (
     id TEXT PRIMARY KEY,

@@ -45,12 +45,17 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		handleBadReq(w, "get billing balance", err)
 		return
 	}
+	hasLifetimeLicense, err := x.db.UserHasLicense(ctx, user.ID, db.LicenseTierLifetime)
+	if err != nil {
+		handleBadReq(w, "get lifetime license", err)
+		return
+	}
 
 	x.renderer.RenderSettingsPage(w, views.SettingsData{
-		Threads:      mapViewThreads(threads),
-		UserEmail:    user.Email,
-		Paid:         user.PaidAt != nil,
-		BalanceCents: balance,
+		Threads:            mapViewThreads(threads),
+		UserEmail:          user.Email,
+		HasLifetimeLicense: hasLifetimeLicense,
+		BalanceCents:       balance,
 	})
 }
 
