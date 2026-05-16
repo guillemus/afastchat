@@ -337,7 +337,13 @@ func PatchThreadMessageList(
 	if scrollMessages {
 		err := sse.ExecuteScript(`{
 			let el = document.querySelector('#messages');
-			el.scrollTop = el.scrollHeight;
+			let userMessages = el?.querySelectorAll('.user-message');
+			let latestUserMessage = userMessages?.[userMessages.length - 1];
+			if (latestUserMessage) {
+				latestUserMessage.scrollIntoView({ block: 'start' });
+			} else if (el) {
+				el.scrollTop = el.scrollHeight;
+			}
 		}`)
 		if err != nil {
 			slog.Error("sse.ExecuteScript error", "err", err)
