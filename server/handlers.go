@@ -304,6 +304,10 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 	}
 
 	logger.Info("starting agent stream")
+	x.streamAgentMessages(ctx, userID, threadID, messages, logger)
+}
+
+func (x *Server) streamAgentMessages(ctx context.Context, userID, threadID string, messages []db.Message, logger *slog.Logger) {
 	agent := agents.NewAgent(x.env)
 
 	for tokenEvt, err := range agent.Stream(ctx, messages) {

@@ -31,6 +31,17 @@ func (x *Pool) ListThreads(ctx context.Context, userID string) ([]Thread, error)
 	})
 }
 
+func (x *Pool) ListStreamingThreads(ctx context.Context) ([]Thread, error) {
+	return queryAll(ctx, x, "query streaming threads", `
+		SELECT id, user_id, title, archived_at, is_streaming, created_at, updated_at
+		FROM threads
+		WHERE is_streaming = 1 AND archived_at IS NULL
+		ORDER BY updated_at ASC
+	`, nil, func(stmt *sqlite.Stmt) (Thread, error) {
+		return scanThread(stmt), nil
+	})
+}
+
 func (x *Pool) CreateThread(ctx context.Context, userID, title string) (Thread, error) {
 	id := uuid.New().String()
 	return execReturning(ctx, x, "insert thread", `

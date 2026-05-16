@@ -104,6 +104,8 @@ func StartServer(env env.Env) {
 		})
 	})
 
+	go s.resumeStreamingThreads()
+
 	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)
 	if err := http.ListenAndServe(addr, s.router); err != nil {
