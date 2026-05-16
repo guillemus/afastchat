@@ -156,6 +156,9 @@ func ssePatch(sse *datastar.ServerSentEventGenerator, node Node) {
 	}
 
 	if err := sse.PatchElements(sb.String()); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
 		slog.Error("sse.PatchElements error", "err", err)
 		return
 	}
