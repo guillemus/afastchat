@@ -66,7 +66,7 @@ func StartServer(env env.Env) {
 	s.router.Use(s.crossOriginProtection.Handler)
 	s.router.Use(s.sessions.LoadAndSave)
 
-	// TODO: how does cloudflare interact with this? Should we even handle static asset caching ourselves, or does cf do it automatically?
+	// Avoid stale assets during local development.
 	s.router.
 		With(middleware.Maybe(
 			middleware.NoCache,
