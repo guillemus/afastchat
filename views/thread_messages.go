@@ -8,6 +8,7 @@ import (
 	"afastchat.com/agents"
 	"github.com/starfederation/datastar-go/datastar"
 	. "maragu.dev/gomponents"
+	. "maragu.dev/gomponents/components"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -21,8 +22,9 @@ type (
 		MdContent string
 	}
 	AssistantMessageParts struct {
-		ID    string
-		Parts []AssistantPart
+		ID          string
+		LargeHeight bool
+		Parts       []AssistantPart
 	}
 )
 
@@ -55,38 +57,38 @@ func (ToolCallPart) isAssistantPart()      {}
 func (ReasoningPart) isAssistantPart()     {}
 
 type MessageThread struct {
-	Messages         []MessageGroup
-	ThreadID         string
-	DoScrollSidebar  bool
-	IsStreaming      bool
-	KeepBottomSpacer bool
+	Messages        []MessageGroup
+	ThreadID        string
+	DoScrollSidebar bool
+	IsStreaming     bool
 }
 
 func NewEmptyMessageThread() Node {
 	return MessageThread{
-		Messages:         []MessageGroup{},
-		ThreadID:         "",
-		DoScrollSidebar:  false,
-		IsStreaming:      false,
-		KeepBottomSpacer: false,
+		Messages:        []MessageGroup{},
+		ThreadID:        "",
+		DoScrollSidebar: false,
+		IsStreaming:     false,
 	}.Node()
 }
 
 var _ = styles.Style(`
 	.message-thread {
-		flex: 1;
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
 		min-height: 0;
+		height: 100%;
+		overflow: hidden;
 		background: var(--bg-primary);
 	}
 	.thread-shell {
 		display: flex;
 		flex-direction: column;
-		flex: 1;
+		flex: 1 1 0;
 		position: relative;
 		min-height: 0;
+		overflow: hidden;
 	}
 	.jump-to-bottom-btn {
 		position: absolute;
@@ -128,7 +130,7 @@ var _ = styles.Style(`
 		}
 	}
 	.main-body {
-		flex: 1;
+		flex: 1 1 0;
 		min-height: 0;
 		min-width: 0;
 		display: flex;
@@ -206,10 +208,9 @@ var _ = styles.Style(`
 		flex-direction: column;
 		gap: var(--size-3);
 
-	}
-	.message-bottom-spacer {
-		flex: 0 0 calc(100dvh - 13rem);
-		min-height: 0;
+		&.large-height {
+			min-height: calc(100dvh - 13rem);
+		}
 	}
 	.assistant-part {
 		min-width: 0;
@@ -333,9 +334,8 @@ func MessageScrollRestoreScript() Node {
 	}`))
 }
 
-func PatchThreadMessageList(
-	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool, isStreaming bool) {
-	ssePatch(sse, MessageThread{Messages: messages, IsStreaming: isStreaming, KeepBottomSpacer: true}.MessageList())
+func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
+	ssePatch(sse, MessageThread{Messages: messages}.MessageList())
 	ssePatch(sse, MessageMinimap(messages))
 	sseExecJS(sse, `updateVisibleMinimapMessages()`)
 	if scrollMessages {
@@ -382,7 +382,6 @@ func (x MessageThread) MessageList() Node {
 		Map(x.Messages, func(m MessageGroup) Node {
 			return m.Node()
 		}),
-		If(x.IsStreaming || x.KeepBottomSpacer, Div(ID("message-bottom-spacer"), Class("message-bottom-spacer"))),
 	)
 }
 
@@ -401,7 +400,10 @@ func (x AssistantMessageParts) Node() Node {
 func (x AssistantMessageParts) assistantMessage() Node {
 	return Div(
 		ID("msg-"+x.ID),
-		Class("message assistant-message"),
+		Classes{
+			"message assistant-message": true,
+			"large-height":              x.LargeHeight,
+		},
 		Map(x.Parts, func(part AssistantPart) Node {
 			return part.Node()
 		}),

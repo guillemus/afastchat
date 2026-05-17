@@ -41,7 +41,7 @@ func mapViewThreads(threads []db.Thread) []views.Thread {
 	return out
 }
 
-func mapViewMessages(messages []db.Message) []views.MessageGroup {
+func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGroup {
 	out := make([]views.MessageGroup, 0, len(messages))
 	var assistant *views.AssistantMessageParts
 
@@ -96,6 +96,16 @@ func mapViewMessages(messages []db.Message) []views.MessageGroup {
 	if assistant != nil {
 		out = append(out, *assistant)
 		assistant = nil
+	}
+
+	if largeHeight {
+		for i := len(out) - 1; i >= 0; i-- {
+			if msg, ok := out[i].(views.AssistantMessageParts); ok {
+				msg.LargeHeight = true
+				out[i] = msg
+				break
+			}
+		}
 	}
 
 	return out
