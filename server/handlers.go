@@ -59,15 +59,13 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (x *Server) getDisplayMessages(
-	ctx context.Context, userID, threadID string, withLargeHeight bool,
-) ([]views.MessageGroup, error) {
+func (x *Server) getDisplayMessages(ctx context.Context, userID, threadID string) ([]views.MessageGroup, error) {
 	messages, err := x.db.GetMessagesByThread(ctx, userID, threadID)
 	if err != nil {
 		return nil, fmt.Errorf("get messages: %w", err)
 	}
 
-	return mapViewMessages(messages, withLargeHeight), nil
+	return mapViewMessages(messages), nil
 }
 
 func (x *Server) getThreadPage(
@@ -80,7 +78,7 @@ func (x *Server) getThreadPage(
 		return td, err
 	}
 
-	messages, err := x.getDisplayMessages(ctx, user.ID, threadID, false)
+	messages, err := x.getDisplayMessages(ctx, user.ID, threadID)
 	if err != nil {
 		return td, err
 	}
@@ -446,17 +444,17 @@ msgloop:
 				continue msgloop
 			}
 
-			messages, err := x.getDisplayMessages(ctx, user.ID, threadID, true)
+			messages, err := x.getDisplayMessages(ctx, user.ID, threadID)
 			if err != nil {
 				slog.Error("error getting messages", "err", err)
 				continue msgloop
 			}
 
 			if evt.UserMessageCreated {
-				views.PatchThreadMessageList(sse, messages, true)
+				views.PatchThreadMessageList(sse, messages, true, thread.IsStreaming)
 				views.ClearMessageInput(sse)
 			} else {
-				views.PatchThreadMessageList(sse, messages, false)
+				views.PatchThreadMessageList(sse, messages, false, thread.IsStreaming)
 				views.PatchIsStreaming(sse, thread.IsStreaming)
 			}
 

@@ -26,10 +26,10 @@ func (x *Styles) Node() Node {
 var _ = styles.Style(`
 	.debug-signals {
 		background: var(--gray-12);
-		position: absolute;
-		top: 0;
-		right: 0;
-		width: 320px;
+		position: fixed;
+		top: var(--size-2);
+		right: var(--size-5);
+		width: 220px;
 		padding: var(--size-2);
 		overflow: hidden;
 		z-index: 10;

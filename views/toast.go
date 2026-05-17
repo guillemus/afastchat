@@ -89,10 +89,10 @@ func PatchToast(sse *datastar.ServerSentEventGenerator, data ToastData) {
 	if data.Action != nil {
 		timeout = "6000"
 	}
-	sse.ExecuteScript(`setTimeout(() => {
+	sseExecJS(sse, `setTimeout(() => {
 		const toast = document.getElementById('toast');
 		if (!toast) return;
 		toast.classList.add('is-hiding');
 		setTimeout(() => toast.remove(), 100);
-	}, ` + timeout + `)`)
+	}, `+timeout+`)`)
 }

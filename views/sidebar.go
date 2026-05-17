@@ -16,11 +16,8 @@ type Sidebar struct {
 
 var _ = styles.Style(`
 	.sidebar {
-		width: 260px;
-		min-width: 260px;
-		max-width: 260px;
+		width: 100%;
 		font-size: var(--font-sidebar-size);
-		flex-shrink: 0;
 		min-height: 100vh;
 		background: var(--bg-sidebar);
 		display: flex;

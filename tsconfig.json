@@ -7,8 +7,8 @@
         "allowJs": true,
         "checkJs": true,
         "noEmit": true,
-        "strict": false,
-        "noImplicitAny": false,
+        "strict": true,
+        "noImplicitAny": true,
         "strictNullChecks": true,
         "strictFunctionTypes": true,
         "strictBindCallApply": true,
@@ -23,6 +23,6 @@
         "forceConsistentCasingInFileNames": true,
         "types": []
     },
-    "include": ["public/**/*.d.ts", "public/**/*.js", "views/**/*"],
+    "include": ["public/**/*.d.ts", "public/**/*.js", "views/**/*.d.ts", "views/**/*.js"],
     "exclude": ["node_modules", "public/datastar.js"]
 }

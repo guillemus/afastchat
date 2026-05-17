@@ -1,6 +1,9 @@
 package views
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/url"
@@ -64,6 +67,7 @@ func (x *Renderer) layout(body Node) Node {
 				}]
 			}`)),
 			styles.Node(),
+			// We do it inline so that the functions are available ASAP.
 			JS,
 		},
 		Body: []Node{
@@ -76,7 +80,8 @@ func (x *Renderer) layout(body Node) Node {
 
 var _ = styles.Style(`
 	.app {
-		display: flex;
+		display: grid;
+		grid-template-columns: 260px minmax(0, 1fr) 420px;
 		width: 100%;
 		height: 100vh;
 		height: 100dvh;
@@ -116,6 +121,7 @@ func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSideba
 			DoScrollSidebar: doScrollSidebar,
 			IsStreaming:     data.Streaming,
 		}.Node(),
+		MessageMinimap(data.Messages),
 	))
 }
 
@@ -161,6 +167,14 @@ func ssePatch(sse *datastar.ServerSentEventGenerator, node Node) {
 		}
 		slog.Error("sse.PatchElements error", "err", err)
 		return
+	}
+}
+
+func sseExecJS(sse *datastar.ServerSentEventGenerator, script string) {
+	// Add block scope so that declared variables are not on global scope.
+	s := fmt.Sprintf("{ %s }", script)
+	if err := sse.ExecuteScript(s); err != nil {
+		slog.Error("sse.ExecuteScript", "err", err)
 	}
 }
 

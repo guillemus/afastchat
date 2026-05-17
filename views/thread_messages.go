@@ -2,14 +2,12 @@ package views
 
 import (
 	"encoding/json"
-	"log/slog"
 	"strconv"
 	"strings"
 
 	"afastchat.com/agents"
 	"github.com/starfederation/datastar-go/datastar"
 	. "maragu.dev/gomponents"
-	. "maragu.dev/gomponents/components"
 	. "maragu.dev/gomponents/html"
 )
 
@@ -23,9 +21,8 @@ type (
 		MdContent string
 	}
 	AssistantMessageParts struct {
-		ID          string
-		LargeHeight bool
-		Parts       []AssistantPart
+		ID    string
+		Parts []AssistantPart
 	}
 )
 
@@ -58,18 +55,20 @@ func (ToolCallPart) isAssistantPart()      {}
 func (ReasoningPart) isAssistantPart()     {}
 
 type MessageThread struct {
-	Messages        []MessageGroup
-	ThreadID        string
-	DoScrollSidebar bool
-	IsStreaming     bool
+	Messages         []MessageGroup
+	ThreadID         string
+	DoScrollSidebar  bool
+	IsStreaming      bool
+	KeepBottomSpacer bool
 }
 
 func NewEmptyMessageThread() Node {
 	return MessageThread{
-		Messages:        []MessageGroup{},
-		ThreadID:        "",
-		DoScrollSidebar: false,
-		IsStreaming:     false,
+		Messages:         []MessageGroup{},
+		ThreadID:         "",
+		DoScrollSidebar:  false,
+		IsStreaming:      false,
+		KeepBottomSpacer: false,
 	}.Node()
 }
 
@@ -135,7 +134,7 @@ var _ = styles.Style(`
 		display: flex;
 		flex-direction: column;
 		align-items: stretch;
-		padding: var(--size-5) var(--size-6);
+		padding: var(--size-5) var(--size-5);
 		gap: var(--size-3);
 		overflow-y: auto;
 		overflow-x: hidden;
@@ -143,7 +142,7 @@ var _ = styles.Style(`
 		overflow-anchor: auto;
 		overscroll-behavior: contain;
 		width: 100%;
-		max-width: 960px;
+		max-width: 860px;
 		margin: 0 auto;
 		scrollbar-width: thin;
 		scrollbar-color: var(--gray-9) transparent;
@@ -207,9 +206,10 @@ var _ = styles.Style(`
 		flex-direction: column;
 		gap: var(--size-3);
 
-		&.large-height {
-			min-height: calc(100vh - 13rem);
-		}
+	}
+	.message-bottom-spacer {
+		flex: 0 0 calc(100dvh - 13rem);
+		min-height: 0;
 	}
 	.assistant-part {
 		min-width: 0;
@@ -296,6 +296,7 @@ func (x MessageThread) Node() Node {
 					const overflow = $messages.scrollHeight - $messages.clientHeight;
 					const distanceFromBottom = overflow - $messages.scrollTop;
 					$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+					updateVisibleMinimapMessages();
 				`),
 				x.MessageList(),
 				Button(
@@ -328,14 +329,17 @@ func MessageScrollRestoreScript() Node {
 	return Script(Raw(`{
 		let el = document.querySelector('#messages');
 		el.scrollTop = el.scrollHeight;
+		updateVisibleMinimapMessages();
 	}`))
 }
 
 func PatchThreadMessageList(
-	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
-	ssePatch(sse, MessageThread{Messages: messages}.MessageList())
+	sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool, isStreaming bool) {
+	ssePatch(sse, MessageThread{Messages: messages, IsStreaming: isStreaming, KeepBottomSpacer: true}.MessageList())
+	ssePatch(sse, MessageMinimap(messages))
+	sseExecJS(sse, `updateVisibleMinimapMessages()`)
 	if scrollMessages {
-		err := sse.ExecuteScript(`{
+		sseExecJS(sse, `
 			let el = document.querySelector('#messages');
 			let userMessages = el?.querySelectorAll('.user-message');
 			let latestUserMessage = userMessages?.[userMessages.length - 1];
@@ -344,10 +348,8 @@ func PatchThreadMessageList(
 			} else if (el) {
 				el.scrollTop = el.scrollHeight;
 			}
-		}`)
-		if err != nil {
-			slog.Error("sse.ExecuteScript error", "err", err)
-		}
+			updateVisibleMinimapMessages();
+		`)
 	}
 }
 
@@ -374,11 +376,13 @@ func (x MessageThread) MessageList() Node {
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
 			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+			updateVisibleMinimapMessages();
 		`),
 
 		Map(x.Messages, func(m MessageGroup) Node {
 			return m.Node()
 		}),
+		If(x.IsStreaming || x.KeepBottomSpacer, Div(ID("message-bottom-spacer"), Class("message-bottom-spacer"))),
 	)
 }
 
@@ -397,10 +401,7 @@ func (x AssistantMessageParts) Node() Node {
 func (x AssistantMessageParts) assistantMessage() Node {
 	return Div(
 		ID("msg-"+x.ID),
-		Classes{
-			"message assistant-message": true,
-			"large-height":              x.LargeHeight,
-		},
+		Class("message assistant-message"),
 		Map(x.Parts, func(part AssistantPart) Node {
 			return part.Node()
 		}),

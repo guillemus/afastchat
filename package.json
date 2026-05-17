@@ -1,4 +1,7 @@
 {
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
     "dependencies": {},
     "devDependencies": {
         "prettier": "^3.8.1",
