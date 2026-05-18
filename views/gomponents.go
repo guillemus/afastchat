@@ -29,7 +29,7 @@ var _ = styles.Style(`
 		position: fixed;
 		top: var(--size-2);
 		right: var(--size-5);
-		width: 220px;
+		width: 500px;
 		padding: var(--size-2);
 		overflow: hidden;
 		z-index: 10;
