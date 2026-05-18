@@ -44,6 +44,14 @@ var _ = styles.Style(`
 		align-items: center;
 		gap: var(--size-3);
 	}
+	.minimap-empty {
+		display: grid;
+		place-items: center;
+		min-height: 40vh;
+		color: var(--text-secondary);
+		text-align: center;
+		line-height: var(--font-lineheight-3);
+	}
 	.minimap-node {
 		position: relative;
 		width: min(100%, 340px);
@@ -130,6 +138,8 @@ var _ = styles.Style(`
 `)
 
 func MessageMinimap(messages []MessageGroup) Node {
+	items := minimapItems(messages)
+
 	return Aside(
 		ID("conversation-minimap"),
 		Class("conversation-minimap"),
@@ -142,9 +152,14 @@ func MessageMinimap(messages []MessageGroup) Node {
 		Nav(
 			Class("minimap-list"),
 			Attr("aria-label", "Conversation minimap"),
-			Div(
-				Class("minimap-track"),
-				Map(minimapItems(messages), minimapItemNode),
+			If(len(items) == 0,
+				Div(Class("minimap-empty"), Text("Start chatting to grow the tree.")),
+			),
+			If(len(items) > 0,
+				Div(
+					Class("minimap-track"),
+					Map(items, minimapItemNode),
+				),
 			),
 		),
 	)

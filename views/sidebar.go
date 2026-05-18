@@ -636,7 +636,6 @@ var _ = styles.Style(`
 		&.active {
 			background: color-mix(in oklch, var(--bg-button) 18%, transparent);
 			color: var(--text-primary);
-			box-shadow: inset 2px 0 0 var(--bg-button);
 		}
 
 		.thread-list-item-icon {
