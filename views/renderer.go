@@ -35,31 +35,17 @@ type Thread struct {
 	Title       string
 }
 
-type SidebarTree struct {
-	Folders []SidebarFolder
-	Threads []Thread
-}
-
-type SidebarFolder struct {
-	ID                string
-	Name              string
-	Folders           []SidebarFolder
-	Threads           []Thread
-	DeleteFolderCount int
-	DeleteThreadCount int
-}
-
 type IndexData struct {
-	SidebarTree SidebarTree
-	UserEmail   string
+	Threads   []Thread
+	UserEmail string
 }
 
 type ThreadData struct {
-	SidebarTree SidebarTree
-	Thread      Thread
-	Messages    []MessageGroup
-	Streaming   bool
-	UserEmail   string
+	Threads   []Thread
+	Thread    Thread
+	Messages  []MessageGroup
+	Streaming bool
+	UserEmail string
 }
 
 func (x *Renderer) layout(body Node) Node {
@@ -121,15 +107,14 @@ func (x *Renderer) guestLayout(body ...Node) Node {
 
 func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.SidebarTree, "", data.UserEmail}.Node(),
+		Sidebar{data.Threads, "", data.UserEmail}.Node(),
 		NewEmptyMessageThread(),
-		MessageMinimap(nil),
 	))
 }
 
 func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.SidebarTree, data.Thread.ID, data.UserEmail}.Node(),
+		Sidebar{data.Threads, data.Thread.ID, data.UserEmail}.Node(),
 		MessageThread{
 			Messages:        data.Messages,
 			ThreadID:        data.Thread.ID,
@@ -142,7 +127,7 @@ func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSideba
 
 func (x *Renderer) RenderSettingsPage(w io.Writer, data SettingsData) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.SidebarTree, "", data.UserEmail}.Node(),
+		Sidebar{data.Threads, "", data.UserEmail}.Node(),
 		SettingsPage(data),
 	))
 }
@@ -193,6 +178,10 @@ func sseExecJS(sse *datastar.ServerSentEventGenerator, script string) {
 	}
 }
 
-func PatchSidebarTree(sse *datastar.ServerSentEventGenerator, tree SidebarTree, activeThreadID string) {
-	ssePatch(sse, SidebarItems(tree, activeThreadID))
+func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
+	ssePatch(sse, ThreadItems(threads, activeThreadID))
+}
+
+func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread) {
+	ssePatch(sse, ThreadListItem(thread, true))
 }

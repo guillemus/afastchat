@@ -18,24 +18,9 @@ CREATE TABLE sessions (
 
 CREATE INDEX sessions_expiry_idx ON sessions(expiry);
 
-CREATE TABLE folders (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    parent_id TEXT REFERENCES folders(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_folders_user_id ON folders(user_id);
-CREATE INDEX idx_folders_parent_id ON folders(parent_id);
-CREATE UNIQUE INDEX idx_folders_root_name ON folders(user_id, lower(name)) WHERE parent_id IS NULL;
-CREATE UNIQUE INDEX idx_folders_child_name ON folders(user_id, parent_id, lower(name)) WHERE parent_id IS NOT NULL;
-
 CREATE TABLE threads (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),
-    folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
     title TEXT NOT NULL DEFAULT '',
     archived_at DATETIME,
     is_streaming INTEGER NOT NULL DEFAULT 0 CHECK (is_streaming IN (0, 1)),
@@ -44,7 +29,6 @@ CREATE TABLE threads (
 );
 
 CREATE INDEX idx_threads_user_id ON threads(user_id);
-CREATE INDEX idx_threads_folder_id ON threads(folder_id);
 
 CREATE TABLE messages (
     id TEXT PRIMARY KEY,

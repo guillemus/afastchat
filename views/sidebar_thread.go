@@ -19,10 +19,7 @@ var _ = styles.Style(`
 		text-decoration: none;
 		transition:
 			background 0.12s,
-			color 0.12s,
-			opacity 0.12s,
-			transform 0.12s,
-			box-shadow 0.12s;
+			color 0.12s;
 
 		&:hover {
 			background: var(--bg-hover);
@@ -123,20 +120,6 @@ func ThreadListItem(thread Thread, isActive bool) Node {
 			"thread-list-item": true,
 			"active":           isActive,
 		},
-		Attr("draggable", "true"),
-		Data("on:dragstart", fmt.Sprintf(`
-			$editingFolderMode = '';
-			$editingFolderId = '';
-			evt.dataTransfer.effectAllowed = 'move';
-			evt.dataTransfer.setData('text/thread-id', '%s');
-			document.body.classList.add('is-sidebar-dragging');
-			el.classList.add('is-drag-source');
-		`, thread.ID)),
-		Data("on:dragend", `
-			document.body.classList.remove('is-sidebar-dragging');
-			document.querySelectorAll('.is-drop-target').forEach(node => node.classList.remove('is-drop-target'));
-			document.querySelectorAll('.is-drag-source:not(.is-drop-pending)').forEach(node => node.classList.remove('is-drag-source'));
-		`),
 		Href(fmt.Sprintf("/threads/%s", thread.ID)),
 		Span(Class("thread-list-item-icon"), iconChat()),
 		ThreadListItemTitle(thread.Title),

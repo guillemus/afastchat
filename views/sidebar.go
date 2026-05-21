@@ -8,7 +8,7 @@ import (
 )
 
 type Sidebar struct {
-	Tree           SidebarTree
+	Threads        []Thread
 	ActiveThreadID string
 	UserEmail      string
 }
@@ -158,19 +158,13 @@ func (x Sidebar) Node() Node {
 	return Aside(
 		Class("sidebar"),
 		Data("signals:thread-id", fmt.Sprintf("'%s'", x.ActiveThreadID)),
-		Data("signals:folder-name", "''"),
-		Data("signals:editing-folder-id", "''"),
-		Data("signals:editing-folder-mode", "''"),
-		Data("signals:drag-thread-id", "''"),
-		Data("signals:drag-folder-id", "''"),
-		Data("signals:target-folder-id", "''"),
 		If(x.ActiveThreadID != "",
 			Data("init", fmt.Sprintf("@get('/threads/%s/events')", x.ActiveThreadID)),
 		),
 		SidebarHeader(),
 		NewChatButton(),
 		ThreadSearch(),
-		ThreadList(x.Tree, x.ActiveThreadID),
+		ThreadList(x.Threads, x.ActiveThreadID),
 		SidebarFooter(x.UserEmail),
 		ThreadListScrollRestoreScript(),
 	)

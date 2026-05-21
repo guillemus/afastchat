@@ -34,7 +34,7 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 	unsub := subscribeToStops(x.bus, thread.ID, cancel)
 	defer unsub()
 
-	x.publishThreadEvent(thread.ID, ThreadEvent{SidebarChanged: true})
+	x.publishSidebarEvent(sidebarEvent{threadID: thread.ID})
 	defer func() {
 		ctx := context.Background()
 		if err := x.db.SetThreadStreaming(ctx, thread.UserID, thread.ID, false); err != nil {
@@ -42,7 +42,7 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 			return
 		}
 		x.publishThreadDidUpdateEventEvent(thread.ID)
-		x.publishThreadEvent(thread.ID, ThreadEvent{SidebarChanged: true})
+		x.publishSidebarEvent(sidebarEvent{threadID: thread.ID})
 	}()
 
 	messages, err := x.db.GetMessagesByThread(ctx, thread.UserID, thread.ID)

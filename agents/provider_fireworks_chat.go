@@ -50,8 +50,7 @@ func (x *FireworksChatProvider) Stream(ctx context.Context, req ProviderRequest)
 			ctx,
 			params,
 			option.WithJSONSet("top_k", 40),
-			// option.WithJSONSet("reasoning_effort", "medium"),
-			option.WithJSONSet("reasoning_effort", "low"),
+			option.WithJSONSet("reasoning_effort", "medium"),
 		)
 		defer stream.Close()
 

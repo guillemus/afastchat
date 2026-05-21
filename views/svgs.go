@@ -29,48 +29,6 @@ func iconSearch() Node {
 	)
 }
 
-func iconFolder() Node {
-	return El("svg",
-		Attr("xmlns", "http://www.w3.org/2000/svg"),
-		Attr("viewBox", "0 0 24 24"),
-		Attr("fill", "none"),
-		Attr("stroke", "currentColor"),
-		Attr("stroke-width", "2"),
-		Attr("stroke-linecap", "round"),
-		Attr("stroke-linejoin", "round"),
-		El("path", Attr("d", "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z")),
-	)
-}
-
-func iconFolderOpen() Node {
-	return El("svg",
-		Attr("xmlns", "http://www.w3.org/2000/svg"),
-		Attr("viewBox", "0 0 24 24"),
-		Attr("fill", "none"),
-		Attr("stroke", "currentColor"),
-		Attr("stroke-width", "2"),
-		Attr("stroke-linecap", "round"),
-		Attr("stroke-linejoin", "round"),
-		El("path", Attr("d", "M3 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v1")),
-		El("path", Attr("d", "M3 17.5 5.2 10h17l-2.1 7.5A2 2 0 0 1 18.2 19H5a2 2 0 0 1-2-1.5Z")),
-	)
-}
-
-func iconFolderPlus() Node {
-	return El("svg",
-		Attr("xmlns", "http://www.w3.org/2000/svg"),
-		Attr("viewBox", "0 0 24 24"),
-		Attr("fill", "none"),
-		Attr("stroke", "currentColor"),
-		Attr("stroke-width", "2"),
-		Attr("stroke-linecap", "round"),
-		Attr("stroke-linejoin", "round"),
-		El("path", Attr("d", "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z")),
-		El("path", Attr("d", "M9 13h6")),
-		El("path", Attr("d", "M12 10v6")),
-	)
-}
-
 func iconChat() Node {
 	return El("svg",
 		Attr("xmlns", "http://www.w3.org/2000/svg"),

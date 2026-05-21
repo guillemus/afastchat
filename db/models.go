@@ -4,19 +4,9 @@ import (
 	"time"
 )
 
-type Folder struct {
-	ID        string
-	UserID    string
-	ParentID  *string
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
 type Thread struct {
 	ID          string
 	UserID      string
-	FolderID    *string
 	Title       string
 	ArchivedAt  *time.Time // nil if not archived
 	IsStreaming bool
