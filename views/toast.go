@@ -7,17 +7,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type ToastData struct {
-	Title   string
-	Message string
-	Action  *ToastAction
-}
-
-type ToastAction struct {
-	Label string
-	Href  string
-}
-
 var _ = styles.Style(`
 	.toast-region {
 		position: fixed;
@@ -70,20 +59,39 @@ func ToastRegion() Node {
 	return Div(ID("toast-region"), Class("toast-region"))
 }
 
-func Toast(data ToastData) Node {
+type ToastProps struct {
+	Title   string
+	Message string
+	Action  *ToastAction
+}
+
+type ToastAction struct {
+	Label string
+	Href  string
+}
+
+func Toast(data ToastProps) Node {
+	var action Node
+	if data.Action != nil {
+		action = A(Class("toast-action"), Href(data.Action.Href), Text(data.Action.Label))
+	}
+
 	return Div(ID("toast"), Class("toast"),
 		Div(Class("toast-title"), Text(data.Title)),
-		Button(Type("button"), Class("toast-close"), Aria("label", "Close"), Data("on:click", `document.getElementById('toast')?.remove()`), Text("×")),
+		Button(Type("button"),
+			Class("toast-close"),
+			Aria("label", "Close"),
+			Data("on:click", `document.getElementById('toast')?.remove()`), Text("×")),
 		Div(Class("toast-message"), Text(data.Message)),
-		If(data.Action != nil, A(Class("toast-action"), Href(data.Action.Href), Text(data.Action.Label))),
+		action,
 	)
 }
 
 func PatchErrorToast(sse *datastar.ServerSentEventGenerator, title, message string) {
-	PatchToast(sse, ToastData{Title: title, Message: message})
+	PatchToast(sse, ToastProps{Title: title, Message: message})
 }
 
-func PatchToast(sse *datastar.ServerSentEventGenerator, data ToastData) {
+func PatchToast(sse *datastar.ServerSentEventGenerator, data ToastProps) {
 	ssePatch(sse, Div(ID("toast-region"), Class("toast-region"), Toast(data)))
 	timeout := "3000"
 	if data.Action != nil {

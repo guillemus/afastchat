@@ -68,7 +68,7 @@ func (x *Server) requireAuth(next http.Handler) http.Handler {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/login", http.StatusSeeOther)
 			} else if isDatastar(r) {
-				toastShow(w, r, views.ToastData{
+				toastShow(w, r, views.ToastProps{
 					Title:   "Sign in required",
 					Message: "Sign in, then try that again.",
 					Action:  &views.ToastAction{Label: "Sign in", Href: "/login"},
@@ -97,7 +97,7 @@ func (x *Server) requireLifetimeLicense(next http.Handler) http.Handler {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/settings", http.StatusSeeOther)
 			} else if isDatastar(r) {
-				toastShow(w, r, views.ToastData{
+				toastShow(w, r, views.ToastProps{
 					Title:   "Lifetime access required",
 					Message: "Unlock A Fast Chat, then try that again.",
 					Action:  &views.ToastAction{Label: "Open settings", Href: "/settings"},

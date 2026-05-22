@@ -116,7 +116,7 @@ func chatInput(props chatInputProps) Node {
 		),
 		Data("signals:is-streaming", fmt.Sprintf("%t", props.isStreaming)),
 		Data("signals:message", "''"),
-		Data("computed:can-submit", "$message.trim() !== ''"),
+		Data("computed:can-submit", "$message.trim() !== '' && !$isStreaming"),
 		Div(
 			Class("chat-input-box"),
 			Data("class:is-sending", "$sendingMessage"),
@@ -128,8 +128,8 @@ func chatInput(props chatInputProps) Node {
 				Data("bind:message", ""),
 				Data("on:keydown", `
 					if (evt.key !== 'Enter' || evt.shiftKey) return;
-					if (!$canSubmit) return;
 					evt.preventDefault(); // prevent writing an enter character.
+					if (!$canSubmit) return;
 					@post('/chat/send');
 				`),
 			),

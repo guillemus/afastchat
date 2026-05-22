@@ -167,8 +167,8 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
 	var sig struct {
-		Message  string  `json:"message"`
-		ThreadID *string `json:"threadId"`
+		Message  string `json:"message"`
+		ThreadID string `json:"threadId"`
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read send message signals", "err", err)
@@ -182,7 +182,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if balance <= 0 {
-		toastShow(w, r, views.ToastData{
+		toastShow(w, r, views.ToastProps{
 			Title:   "Usage balance empty",
 			Message: "Add credit in Settings to keep chatting.",
 			Action:  &views.ToastAction{Label: "Add credit", Href: "/settings"},
@@ -193,7 +193,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	userMessage := sig.Message
 
 	var threadID string
-	isNewThread := sig.ThreadID == nil
+	isNewThread := sig.ThreadID == ""
 	if isNewThread {
 		id, err := x.db.InitThread(ctx, user.ID, "New Chat", "You are a helpful assistant")
 		if err != nil {
@@ -215,7 +215,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		slog.Info("redirecting")
 		sse.Redirectf("/threads/%s", threadID)
 	} else {
-		_, err := x.db.GetThread(ctx, *sig.ThreadID, user.ID)
+		_, err := x.db.GetThread(ctx, sig.ThreadID, user.ID)
 		if errors.Is(err, db.ErrNotFound) {
 			toastShowError(w, r, "Chat not found", "This chat may have been removed. Go home and choose another chat.")
 			return
@@ -225,7 +225,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		threadID = *sig.ThreadID
+		threadID = sig.ThreadID
 	}
 
 	GoRecover(func() {

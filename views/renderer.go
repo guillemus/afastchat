@@ -71,7 +71,7 @@ func (x *Renderer) layout(body Node) Node {
 			JS,
 		},
 		Body: []Node{
-			// DebugSignals(x.env),
+			DebugSignals(x.env),
 			body,
 			ToastRegion(),
 		},

@@ -31,7 +31,6 @@ func ThreadList(threads []Thread, activeThreadID string) Node {
 		Data("on:scroll__debounce.10ms", `
 			setSessionVal('thread_list_scroll', String(el.scrollTop));
 		`),
-		ThreadSectionLabel("Recent"),
 		ThreadItems(threads, activeThreadID),
 	)
 }

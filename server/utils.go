@@ -116,7 +116,7 @@ func toastShowError(w http.ResponseWriter, r *http.Request, title, message strin
 	views.PatchErrorToast(sse, title, message)
 }
 
-func toastShow(w http.ResponseWriter, r *http.Request, toast views.ToastData) {
+func toastShow(w http.ResponseWriter, r *http.Request, toast views.ToastProps) {
 	sse := datastar.NewSSE(w, r)
 	views.PatchToast(sse, toast)
 }
