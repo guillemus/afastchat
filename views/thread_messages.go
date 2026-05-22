@@ -15,48 +15,46 @@ import (
 type (
 	MessageGroup interface {
 		isMessageGroup()
-		Node() Node
 	}
-	UserMessage struct {
+	UserMessageProps struct {
 		ID        string
 		MdContent string
 	}
-	AssistantMessageParts struct {
+	AssistantMessagePartsProps struct {
 		ID          string
 		LargeHeight bool
 		Parts       []AssistantPart
 	}
 )
 
-func (UserMessage) isMessageGroup()           {}
-func (AssistantMessageParts) isMessageGroup() {}
+func (UserMessageProps) isMessageGroup()           {}
+func (AssistantMessagePartsProps) isMessageGroup() {}
 
 type (
 	AssistantPart interface {
 		isAssistantPart()
-		Node() Node
 	}
-	AssistantTextPart struct {
+	AssistantTextPartProps struct {
 		ID        string
 		MdContent string
 	}
-	ToolCallPart struct {
+	ToolCallPartProps struct {
 		ID   string
 		Name string
 		Args string
 	}
-	ReasoningPart struct {
+	ReasoningPartProps struct {
 		ID        string
 		Text      string
 		MdContent string
 	}
 )
 
-func (AssistantTextPart) isAssistantPart() {}
-func (ToolCallPart) isAssistantPart()      {}
-func (ReasoningPart) isAssistantPart()     {}
+func (AssistantTextPartProps) isAssistantPart() {}
+func (ToolCallPartProps) isAssistantPart()      {}
+func (ReasoningPartProps) isAssistantPart()     {}
 
-type MessageThread struct {
+type MessageThreadProps struct {
 	Messages        []MessageGroup
 	ThreadID        string
 	DoScrollSidebar bool
@@ -64,12 +62,12 @@ type MessageThread struct {
 }
 
 func NewEmptyMessageThread() Node {
-	return MessageThread{
+	return MessageThread(MessageThreadProps{
 		Messages:        []MessageGroup{},
 		ThreadID:        "",
 		DoScrollSidebar: false,
 		IsStreaming:     false,
-	}.Node()
+	})
 }
 
 var _ = styles.Style(`
@@ -275,7 +273,7 @@ var _ = styles.Style(`
 	}
 `)
 
-func (x MessageThread) Node() Node {
+func MessageThread(x MessageThreadProps) Node {
 	var contents Node
 	if len(x.Messages) == 0 {
 		input := newThreadChatInput()
@@ -284,7 +282,7 @@ func (x MessageThread) Node() Node {
 		}
 
 		contents = Group{
-			x.MessageList(),
+			MessageList(x),
 			input,
 		}
 	} else {
@@ -299,7 +297,7 @@ func (x MessageThread) Node() Node {
 					$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 					updateVisibleMinimapMessages();
 				`),
-				x.MessageList(),
+				MessageList(x),
 				Button(
 					Type("button"),
 					Style("display: none"),
@@ -335,7 +333,7 @@ func MessageScrollRestoreScript() Node {
 }
 
 func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
-	ssePatch(sse, MessageThread{Messages: messages}.MessageList())
+	ssePatch(sse, MessageList(MessageThreadProps{Messages: messages}))
 	ssePatch(sse, MessageMinimap(messages))
 	sseExecJS(sse, `updateVisibleMinimapMessages()`)
 	if scrollMessages {
@@ -353,7 +351,7 @@ func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []M
 	}
 }
 
-func (x MessageThread) MessageList() Node {
+func MessageList(x MessageThreadProps) Node {
 	if len(x.Messages) == 0 {
 		return Div(
 			ID("messages"),
@@ -380,12 +378,22 @@ func (x MessageThread) MessageList() Node {
 		`),
 
 		Map(x.Messages, func(m MessageGroup) Node {
-			return m.Node()
+			return MessageGroupNode(m)
 		}),
 	)
 }
 
-func (x UserMessage) Node() Node {
+func MessageGroupNode(x MessageGroup) Node {
+	switch x := x.(type) {
+	case UserMessageProps:
+		return UserMessage(x)
+	case AssistantMessagePartsProps:
+		return AssistantMessageParts(x)
+	}
+	panic("unknown message group")
+}
+
+func UserMessage(x UserMessageProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
 		Class("message user-message"),
@@ -393,11 +401,7 @@ func (x UserMessage) Node() Node {
 	)
 }
 
-func (x AssistantMessageParts) Node() Node {
-	return x.assistantMessage()
-}
-
-func (x AssistantMessageParts) assistantMessage() Node {
+func AssistantMessageParts(x AssistantMessagePartsProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
 		Classes{
@@ -405,12 +409,24 @@ func (x AssistantMessageParts) assistantMessage() Node {
 			"large-height":              x.LargeHeight,
 		},
 		Map(x.Parts, func(part AssistantPart) Node {
-			return part.Node()
+			return AssistantPartNode(part)
 		}),
 	)
 }
 
-func (x AssistantTextPart) Node() Node {
+func AssistantPartNode(x AssistantPart) Node {
+	switch x := x.(type) {
+	case AssistantTextPartProps:
+		return AssistantTextPart(x)
+	case ToolCallPartProps:
+		return ToolCallPart(x)
+	case ReasoningPartProps:
+		return ReasoningPart(x)
+	}
+	panic("unknown assistant part")
+}
+
+func AssistantTextPart(x AssistantTextPartProps) Node {
 	return Div(
 		ID("part-"+x.ID),
 		Class("assistant-part assistant-text-part"),
@@ -418,7 +434,7 @@ func (x AssistantTextPart) Node() Node {
 	)
 }
 
-func (x ToolCallPart) Node() Node {
+func ToolCallPart(x ToolCallPartProps) Node {
 	name, arg := toolCallDisplay(x.Name, x.Args)
 	return Div(
 		ID("part-"+x.ID),
@@ -428,7 +444,7 @@ func (x ToolCallPart) Node() Node {
 	)
 }
 
-func (x ReasoningPart) Node() Node {
+func ReasoningPart(x ReasoningPartProps) Node {
 	return Details(
 		ID("part-"+x.ID),
 		Class("assistant-part reasoning-part"),

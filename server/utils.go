@@ -43,7 +43,7 @@ func mapViewThreads(threads []db.Thread) []views.Thread {
 
 func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGroup {
 	out := make([]views.MessageGroup, 0, len(messages))
-	var assistant *views.AssistantMessageParts
+	var assistant *views.AssistantMessagePartsProps
 
 	for _, it := range messages {
 		switch it.Type {
@@ -54,38 +54,38 @@ func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGro
 				out = append(out, *assistant)
 				assistant = nil
 			}
-			out = append(out, views.UserMessage{
+			out = append(out, views.UserMessageProps{
 				ID:        it.ID,
 				MdContent: renderMarkdown(it.Content),
 			})
 		case db.AssistantMessage:
 			if assistant == nil {
-				assistant = &views.AssistantMessageParts{
+				assistant = &views.AssistantMessagePartsProps{
 					ID: it.ID,
 				}
 			}
-			assistant.Parts = append(assistant.Parts, views.AssistantTextPart{
+			assistant.Parts = append(assistant.Parts, views.AssistantTextPartProps{
 				ID:        it.ID,
 				MdContent: renderMarkdown(it.Content),
 			})
 		case db.AssistantReasoning:
 			if assistant == nil {
-				assistant = &views.AssistantMessageParts{
+				assistant = &views.AssistantMessagePartsProps{
 					ID: it.ID,
 				}
 			}
-			assistant.Parts = append(assistant.Parts, views.ReasoningPart{
+			assistant.Parts = append(assistant.Parts, views.ReasoningPartProps{
 				ID:        it.ID,
 				Text:      it.Content,
 				MdContent: renderMarkdown(it.Content),
 			})
 		case db.AssistantToolCall:
 			if assistant == nil {
-				assistant = &views.AssistantMessageParts{
+				assistant = &views.AssistantMessagePartsProps{
 					ID: it.ID,
 				}
 			}
-			assistant.Parts = append(assistant.Parts, views.ToolCallPart{
+			assistant.Parts = append(assistant.Parts, views.ToolCallPartProps{
 				ID:   it.ID,
 				Name: it.ToolName,
 				Args: it.Content,
@@ -100,7 +100,7 @@ func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGro
 
 	if largeHeight {
 		for i := len(out) - 1; i >= 0; i-- {
-			if msg, ok := out[i].(views.AssistantMessageParts); ok {
+			if msg, ok := out[i].(views.AssistantMessagePartsProps); ok {
 				msg.LargeHeight = true
 				out[i] = msg
 				break

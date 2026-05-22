@@ -7,7 +7,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type Sidebar struct {
+type SidebarProps struct {
 	Threads        []Thread
 	ActiveThreadID string
 	UserEmail      string
@@ -154,7 +154,7 @@ var _ = styles.Style(`
 	}
 `)
 
-func (x Sidebar) Node() Node {
+func Sidebar(x SidebarProps) Node {
 	return Aside(
 		Class("sidebar"),
 		Data("signals:thread-id", fmt.Sprintf("'%s'", x.ActiveThreadID)),

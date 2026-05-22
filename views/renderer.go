@@ -107,27 +107,28 @@ func (x *Renderer) guestLayout(body ...Node) Node {
 
 func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, "", data.UserEmail}.Node(),
+		Sidebar(SidebarProps{data.Threads, "", data.UserEmail}),
 		NewEmptyMessageThread(),
+		MessageMinimap(nil),
 	))
 }
 
 func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSidebar bool) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, data.Thread.ID, data.UserEmail}.Node(),
-		MessageThread{
+		Sidebar(SidebarProps{data.Threads, data.Thread.ID, data.UserEmail}),
+		MessageThread(MessageThreadProps{
 			Messages:        data.Messages,
 			ThreadID:        data.Thread.ID,
 			DoScrollSidebar: doScrollSidebar,
 			IsStreaming:     data.Streaming,
-		}.Node(),
+		}),
 		MessageMinimap(data.Messages),
 	))
 }
 
 func (x *Renderer) RenderSettingsPage(w io.Writer, data SettingsData) {
 	renderNode(w, x.appLayout(
-		Sidebar{data.Threads, "", data.UserEmail}.Node(),
+		Sidebar(SidebarProps{data.Threads, "", data.UserEmail}),
 		SettingsPage(data),
 	))
 }

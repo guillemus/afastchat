@@ -175,9 +175,9 @@ func minimapItems(messages []MessageGroup) []minimapItem {
 	items := make([]minimapItem, 0, len(messages))
 	for _, message := range messages {
 		switch it := message.(type) {
-		case UserMessage:
+		case UserMessageProps:
 			items = append(items, minimapItem{ID: it.ID, Role: "User", Preview: minimapPreview(it.MdContent)})
-		case AssistantMessageParts:
+		case AssistantMessagePartsProps:
 			preview := minimapPreview(assistantPreview(it.Parts))
 			if preview != "" {
 				items = append(items, minimapItem{ID: it.ID, Role: "Assistant", Preview: preview})
@@ -216,7 +216,7 @@ func minimapItemNode(item minimapItem) Node {
 
 func assistantPreview(parts []AssistantPart) string {
 	for i := len(parts) - 1; i >= 0; i-- {
-		if it, ok := parts[i].(AssistantTextPart); ok {
+		if it, ok := parts[i].(AssistantTextPartProps); ok {
 			return it.MdContent
 		}
 	}
