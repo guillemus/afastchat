@@ -295,7 +295,6 @@ func MessageThread(x MessageThreadProps) Node {
 					const overflow = $messages.scrollHeight - $messages.clientHeight;
 					const distanceFromBottom = overflow - $messages.scrollTop;
 					$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
-					updateVisibleMinimapMessages();
 				`),
 				MessageList(x),
 				Button(
@@ -328,14 +327,12 @@ func MessageScrollRestoreScript() Node {
 	return Script(Raw(`{
 		let el = document.querySelector('#messages');
 		el.scrollTop = el.scrollHeight;
-		updateVisibleMinimapMessages();
 	}`))
 }
 
 func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
 	ssePatch(sse, MessageList(MessageThreadProps{Messages: messages}))
 	ssePatch(sse, MessageMinimap(messages))
-	sseExecJS(sse, `updateVisibleMinimapMessages()`)
 	if scrollMessages {
 		sseExecJS(sse, `
 			let el = document.querySelector('#messages');
@@ -346,7 +343,6 @@ func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []M
 			} else if (el) {
 				el.scrollTop = el.scrollHeight;
 			}
-			updateVisibleMinimapMessages();
 		`)
 	}
 }
@@ -374,7 +370,6 @@ func MessageList(x MessageThreadProps) Node {
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
 			$showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
-			updateVisibleMinimapMessages();
 		`),
 
 		Map(x.Messages, func(m MessageGroup) Node {

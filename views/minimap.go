@@ -94,12 +94,6 @@ var _ = styles.Style(`
 		background: color-mix(in oklch, var(--gray-10) 62%, transparent);
 		color: var(--text-primary);
 	}
-	.minimap-card.is-visible {
-		border-color: color-mix(in oklch, var(--bg-button) 30%, var(--border-color));
-		background: color-mix(in oklch, var(--bg-button) 7%, var(--gray-11));
-		color: var(--text-primary);
-		box-shadow: var(--shadow-1);
-	}
 	.minimap-card-top {
 		display: flex;
 		align-items: center;
@@ -143,7 +137,6 @@ func MessageMinimap(messages []MessageGroup) Node {
 	return Aside(
 		ID("conversation-minimap"),
 		Class("conversation-minimap"),
-		Data("init", "updateVisibleMinimapMessages()"),
 		Div(
 			Class("minimap-header"),
 			Span(Class("minimap-icon"), Text("⌘")),
@@ -197,12 +190,10 @@ func minimapItemNode(item minimapItem) Node {
 				"assistant":    item.Role == "Assistant",
 			},
 			Attr("aria-label", "Scroll to "+item.Role+" message"),
-			Attr("data-message-id", item.ID),
 			Data("on:click", `
 				const messages = document.getElementById('messages');
 				const target = document.getElementById('msg-`+item.ID+`');
 				messages.scrollTop += target.getBoundingClientRect().top - messages.getBoundingClientRect().top;
-				updateVisibleMinimapMessages();
 			`),
 			Div(
 				Class("minimap-card-top"),

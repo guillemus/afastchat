@@ -36,26 +36,6 @@ var _ = styles.Style(`
 		}
 	}
 
-	.thread-list-item-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		inline-size: 16px;
-		block-size: 16px;
-		flex-shrink: 0;
-		color: var(--blue-4);
-		opacity: 0.75;
-
-		svg {
-			inline-size: 15px;
-			block-size: 15px;
-		}
-	}
-
-	.thread-list-item.active .thread-list-item-icon {
-		opacity: 1;
-		color: var(--bg-button);
-	}
 
 	.thread-list-item-title {
 		white-space: nowrap;
@@ -121,7 +101,6 @@ func ThreadListItem(thread Thread, isActive bool) Node {
 			"active":           isActive,
 		},
 		Href(fmt.Sprintf("/threads/%s", thread.ID)),
-		Span(Class("thread-list-item-icon"), iconChat()),
 		ThreadListItemTitle(thread.Title),
 		If(thread.IsStreaming, ThreadStreamingIndicator()),
 		ThreadArchiveButton(thread.ID),
