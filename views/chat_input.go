@@ -123,12 +123,12 @@ func chatInput(props chatInputProps) Node {
 			Textarea(
 				AutoFocus(),
 				Name("message"),
-				Placeholder("Type your message here..."),
+				Placeholder("Ask anything"),
 				Data("indicator:sending-message", ""),
 				Data("bind:message", ""),
 				Data("on:keydown", `
 					if (evt.key !== 'Enter' || evt.shiftKey) return;
-					evt.preventDefault(); // prevent writing an enter character.
+					evt.preventDefault();
 					if (!$canSubmit) return;
 					@post('/chat/send');
 				`),

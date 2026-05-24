@@ -166,7 +166,7 @@ func (x *Agent) webSearch(ctx context.Context, args WebSearchArgs) (string, erro
 
 	req := &exa.SearchRequest{
 		Query:              args.Query,
-		Type:               "auto",
+		Type:               "instant",
 		NumResults:         args.NumResults,
 		IncludeDomains:     args.IncludeDomains,
 		ExcludeDomains:     args.ExcludeDomains,

@@ -27,7 +27,7 @@ var _ = styles.Style(`
 	.debug-signals {
 		background: var(--gray-12);
 		position: fixed;
-		top: var(--size-2);
+		bottom: var(--size-2);
 		right: var(--size-5);
 		width: 500px;
 		padding: var(--size-2);
