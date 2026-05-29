@@ -8,101 +8,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.chat-input {
-		flex-shrink: 0;
-		padding: var(--size-2) var(--size-6) var(--size-5);
-		width: 100%;
-		max-width: 768px;
-		margin: 0 auto;
-		
-		@keyframes chat-input-pulse-border {
-			0%,
-			100% {
-				box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-button) 10%, transparent);
-			}
-			50% {
-				box-shadow: 0 0 0 4px color-mix(in oklch, var(--bg-button) 30%, transparent);
-			}
-		}
-
-		.chat-input-box {
-			display: flex;
-			align-items: center;
-			background: var(--bg-input);
-			border: 1px solid var(--border-color);
-			border-radius: var(--radius-3);
-			padding: var(--size-3);
-
-			&.is-sending {
-				border-color: color-mix(in oklch, var(--bg-button) 60%, transparent);
-				box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-button) 20%, transparent);
-				animation: chat-input-pulse-border 1.5s ease-in-out infinite;
-			}
-
-			textarea {
-				width: 100%;
-				background: none;
-				border: none;
-				color: var(--text-primary);
-				font-family: inherit;
-				font-size: inherit;
-				resize: none;
-				outline: none;
-				field-sizing: content;
-				line-height: var(--font-lineheight-2);
-				min-height: 32px;
-				padding-block: calc((32px - 1lh) / 2);
-				max-height: 180px;
-				scrollbar-width: thin;
-				scrollbar-color: var(--gray-9) transparent;
-
-				&::placeholder {
-					color: var(--text-muted);
-				}
-			}
-		}
-
-		.chat-input-actions {
-			display: flex;
-			justify-content: left;
-			align-self: flex-start;
-		}
-
-		.chat-input-submit-btn {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			width: 32px;
-			height: 32px;
-			background: var(--bg-button);
-			color: white;
-			border: none;
-			border-radius: var(--radius-2);
-			cursor: pointer;
-			transition:
-				background-color 0.2s var(--ease-3),
-				color 0.2s var(--ease-3),
-				filter 0.15s var(--ease-3);
-
-			svg {
-				width: 16px;
-				height: 16px;
-			}
-
-			&:hover:not(:disabled) {
-				filter: brightness(1.1);
-			}
-
-			&:disabled {
-				background: var(--gray-10);
-				color: var(--text-muted);
-				cursor: not-allowed;
-			}
-		}
-	}
-`)
-
 type chatInputProps struct {
 	threadID    string
 	isStreaming bool
@@ -110,7 +15,7 @@ type chatInputProps struct {
 
 func chatInput(props chatInputProps) Node {
 	return Div(
-		Class("chat-input"),
+		Class("chat-input mx-auto w-full max-w-3xl shrink-0 px-6 pt-2 pb-5"),
 		If(props.threadID != "",
 			Data("signals:thread-id", fmt.Sprintf("'%s'", props.threadID)),
 		),
@@ -118,7 +23,7 @@ func chatInput(props chatInputProps) Node {
 		Data("signals:message", "''"),
 		Data("computed:can-submit", "$message.trim() !== '' && !$isStreaming"),
 		Div(
-			Class("chat-input-box"),
+			Class("chat-input-box flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] p-3 [&_textarea]:field-sizing-content [&_textarea]:max-h-[180px] [&_textarea]:min-h-8 [&_textarea]:w-full [&_textarea]:resize-none [&_textarea]:border-0 [&_textarea]:bg-transparent [&_textarea]:py-[calc((32px-1lh)/2)] [&_textarea]:font-[inherit] [&_textarea]:text-[inherit] [&_textarea]:leading-[var(--font-lineheight-2)] [&_textarea]:text-[var(--text-primary)] [&_textarea]:outline-none [&_textarea]:[scrollbar-color:var(--gray-9)_transparent] [&_textarea]:[scrollbar-width:thin] [&_textarea::placeholder]:text-[var(--text-muted)]"),
 			Data("class:is-sending", "$sendingMessage"),
 			Textarea(
 				AutoFocus(),
@@ -133,8 +38,8 @@ func chatInput(props chatInputProps) Node {
 					@post('/chat/send');
 				`),
 			),
-			Div(Class("chat-input-actions"),
-				Button(Class("chat-input-submit-btn"),
+			Div(Class("flex justify-start self-start"),
+				Button(Class("flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-[var(--bg-button)] text-white transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[var(--gray-10)] disabled:text-[var(--text-muted)] [&_svg]:h-4 [&_svg]:w-4"),
 					Data("show", "!$isStreaming"),
 					Disabled(),
 					Type("submit"),
@@ -144,7 +49,7 @@ func chatInput(props chatInputProps) Node {
 					`),
 					iconArrowUp(),
 				),
-				Button(Class("chat-input-submit-btn hidden"),
+				Button(Class("hidden flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-[var(--bg-button)] text-white transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:bg-[var(--gray-10)] disabled:text-[var(--text-muted)] [&_svg]:h-4 [&_svg]:w-4"),
 					Data("class:hidden", "!$isStreaming"),
 					Type("submit"),
 					Data("on:click", `

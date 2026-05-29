@@ -5,29 +5,9 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.thread-list {
-		flex: 1;
-		overflow-y: auto;
-		padding: var(--size-1) var(--size-2);
-		overscroll-behavior: contain;
-		scrollbar-width: thin;
-		scrollbar-color: var(--gray-9) transparent;
-	}
-
-	.thread-section-label {
-		font-weight: var(--font-weight-4);
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--text-muted);
-		padding: var(--size-1) var(--size-2) var(--size-1);
-		margin-bottom: var(--size-1);
-	}
-`)
-
 func ThreadList(threads []Thread, activeThreadID string) Node {
 	return Div(
-		Class("thread-list"),
+		Class("thread-list flex-1 overflow-y-auto overscroll-contain px-2 py-1 [scrollbar-color:var(--gray-9)_transparent] [scrollbar-width:thin]"),
 		Data("on:scroll__debounce.10ms", `
 			setSessionVal('thread_list_scroll', String(el.scrollTop));
 		`),
@@ -49,7 +29,7 @@ func ThreadListScrollRestoreScript() Node {
 }
 
 func ThreadSectionLabel(label string) Node {
-	return Div(ID("thread-section-recent"), Class("thread-section-label"), Text(label))
+	return Div(ID("thread-section-recent"), Class("mb-1 px-2 py-1 text-xs font-normal uppercase tracking-[0.08em] text-[var(--text-muted)]"), Text(label))
 }
 
 func ThreadItems(threads []Thread, activeThreadID string) Node {

@@ -66,7 +66,6 @@ func (x *Renderer) layout(body Node) Node {
 					"eagerness": "moderate"
 				}]
 			}`)),
-			styles.Node(),
 			// We do it inline so that the functions are available ASAP.
 			JS,
 		},
@@ -78,29 +77,14 @@ func (x *Renderer) layout(body Node) Node {
 	})
 }
 
-var _ = styles.Style(`
-	.app {
-		display: grid;
-		grid-template-columns: 260px minmax(0, 1fr) 420px;
-		width: 100%;
-		height: 100vh;
-		height: 100dvh;
-		overflow: hidden;
-	}
-	.guest-app {
-		min-height: 100vh;
-		min-height: 100dvh;
-	}
-`)
-
 func (x *Renderer) appLayout(body ...Node) Node {
-	return x.layout(Div(Class("app"),
+	return x.layout(Div(Class("grid h-dvh w-full grid-cols-[260px_minmax(0,1fr)_420px] overflow-hidden max-[1180px]:grid-cols-[260px_minmax(0,1fr)]"),
 		Group(body),
 	))
 }
 
 func (x *Renderer) guestLayout(body ...Node) Node {
-	return x.layout(Div(Class("guest-app"),
+	return x.layout(Div(Class("min-h-dvh"),
 		Group(body),
 	))
 }

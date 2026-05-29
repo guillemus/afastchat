@@ -5,138 +5,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.auth-page {
-		min-height: 100vh;
-		min-height: 100dvh;
-		display: grid;
-		place-items: center;
-		padding: var(--size-4);
-
-		.auth-shell {
-			width: min(100%, 25rem);
-		}
-
-		.auth-card {
-			display: flex;
-			flex-direction: column;
-			gap: var(--size-4);
-			padding: var(--size-7);
-			background: color-mix(in oklch, var(--bg-sidebar) 70%, var(--bg-primary));
-			border: 1px solid color-mix(in oklch, var(--border-color) 80%, var(--text-muted));
-			border-radius: var(--radius-3);
-			box-shadow: var(--shadow-3);
-		}
-
-		.auth-kicker {
-			color: var(--text-muted);
-			font-size: var(--font-size-0);
-			font-weight: var(--font-weight-6);
-			letter-spacing: 0.12em;
-			line-height: 1;
-			text-transform: uppercase;
-		}
-
-		.auth-title {
-			font-size: var(--font-size-6);
-			letter-spacing: -0.04em;
-			line-height: var(--font-lineheight-0);
-		}
-
-		.auth-copy {
-			max-width: 21rem;
-			color: var(--text-secondary);
-			font-size: var(--font-size-2);
-			line-height: var(--font-lineheight-3);
-		}
-
-		.auth-form {
-			display: flex;
-			flex-direction: column;
-			gap: var(--size-4);
-		}
-
-		.auth-field {
-			display: grid;
-			gap: var(--size-2);
-
-			label {
-				color: var(--text-secondary);
-				font-weight: var(--font-weight-6);
-			}
-
-			input {
-				width: 100%;
-				min-height: 3rem;
-				background: color-mix(in oklch, var(--bg-input) 88%, var(--bg-primary));
-				color: var(--text-primary);
-				border: 1px solid var(--border-color);
-				border-radius: var(--radius-2);
-				padding: 0 var(--size-3);
-				font-family: inherit;
-				font-size: var(--font-size-2);
-				outline: none;
-
-				&::placeholder {
-					color: var(--text-muted);
-				}
-
-				&:focus {
-					border-color: color-mix(in oklch, var(--bg-button) 70%, white);
-					box-shadow: 0 0 0 3px color-mix(in oklch, var(--bg-button) 22%, transparent);
-				}
-			}
-		}
-
-		.auth-error {
-			color: var(--red-3);
-			background: color-mix(in oklch, var(--red-9) 35%, transparent);
-			border: 1px solid color-mix(in oklch, var(--red-7) 30%, transparent);
-			border-radius: var(--radius-2);
-			padding: var(--size-2) var(--size-3);
-		}
-
-		.btn-primary {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			min-height: 3rem;
-			padding: 0 var(--size-5);
-			border-radius: var(--radius-2);
-			border: 1px solid color-mix(in oklch, var(--bg-button) 80%, white);
-			font-family: inherit;
-			font-size: var(--font-size-1);
-			font-weight: var(--font-weight-7);
-			text-decoration: none;
-			cursor: pointer;
-			transition:
-				transform 0.15s var(--ease-3),
-				filter 0.15s var(--ease-3);
-			background: linear-gradient(180deg, color-mix(in oklch, var(--bg-button) 92%, white), var(--bg-button));
-			color: white;
-
-			&:hover {
-				filter: brightness(1.07);
-				transform: translateY(-1px);
-			}
-		}
-
-		.auth-submit {
-			width: 100%;
-		}
-
-		.auth-footer {
-			color: var(--text-secondary);
-			text-align: center;
-
-			a {
-				color: var(--text-primary);
-				font-weight: var(--font-weight-6);
-			}
-		}
-	}
-`)
-
 type LoginPageData struct {
 	Email string
 	Error string
@@ -144,25 +12,25 @@ type LoginPageData struct {
 
 func LoginPage(data LoginPageData) Node {
 	return Main(
-		Class("auth-page"),
+		Class("grid min-h-dvh place-items-center p-4"),
 		Div(
-			Class("auth-shell"),
+			Class("w-full max-w-[25rem]"),
 			Div(
-				Class("auth-card"),
-				P(Class("auth-kicker"), Text("Welcome back")),
-				H1(Class("auth-title"), Text("Log in")),
+				Class("flex flex-col gap-4 rounded-xl border border-[color-mix(in_oklch,var(--border-color)_80%,var(--text-muted))] bg-[color-mix(in_oklch,var(--bg-sidebar)_70%,var(--bg-primary))] p-7 shadow-[var(--shadow-3)]"),
+				P(Class("text-xs font-semibold uppercase leading-none tracking-[0.12em] text-[var(--text-muted)]"), Text("Welcome back")),
+				H1(Class("text-4xl font-bold leading-none tracking-[-0.04em] text-[var(--text-primary)]"), Text("Log in")),
 				P(
-					Class("auth-copy"),
+					Class("max-w-[21rem] text-base leading-7 text-[var(--text-secondary)]"),
 					Text("Use your email and password to open afastchat."),
 				),
 				If(data.Error != "",
-					P(Class("auth-error"), Text(data.Error)),
+					P(Class("rounded-lg border border-[color-mix(in_oklch,var(--red-7)_30%,transparent)] bg-[color-mix(in_oklch,var(--red-9)_35%,transparent)] px-3 py-2 text-[var(--red-3)]"), Text(data.Error)),
 				),
 				Form(
-					Class("auth-form"),
+					Class("flex flex-col gap-4"),
 					Method("post"),
 					Action("/login"),
-					Div(Class("auth-field"),
+					Div(Class("grid gap-2 [&_label]:font-semibold [&_label]:text-[var(--text-secondary)] [&_input]:min-h-12 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[var(--border-color)] [&_input]:bg-[color-mix(in_oklch,var(--bg-input)_88%,var(--bg-primary))] [&_input]:px-3 [&_input]:font-[inherit] [&_input]:text-base [&_input]:text-[var(--text-primary)] [&_input]:outline-none [&_input:focus]:border-[color-mix(in_oklch,var(--bg-button)_70%,white)] [&_input:focus]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--bg-button)_22%,transparent)] [&_input::placeholder]:text-[var(--text-muted)]"),
 						Label(For("email"), Text("Email")),
 						Input(
 							Type("email"),
@@ -174,7 +42,7 @@ func LoginPage(data LoginPageData) Node {
 							AutoFocus(),
 						),
 					),
-					Div(Class("auth-field"),
+					Div(Class("grid gap-2 [&_label]:font-semibold [&_label]:text-[var(--text-secondary)] [&_input]:min-h-12 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[var(--border-color)] [&_input]:bg-[color-mix(in_oklch,var(--bg-input)_88%,var(--bg-primary))] [&_input]:px-3 [&_input]:font-[inherit] [&_input]:text-base [&_input]:text-[var(--text-primary)] [&_input]:outline-none [&_input:focus]:border-[color-mix(in_oklch,var(--bg-button)_70%,white)] [&_input:focus]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--bg-button)_22%,transparent)] [&_input::placeholder]:text-[var(--text-muted)]"),
 						Label(For("password"), Text("Password")),
 						Input(
 							Type("password"),
@@ -184,10 +52,10 @@ func LoginPage(data LoginPageData) Node {
 							Required(),
 						),
 					),
-					Button(Type("submit"), Class("btn-primary auth-submit"), Text("Log in")),
+					Button(Type("submit"), Class("inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-[color-mix(in_oklch,var(--bg-button)_80%,white)] bg-[linear-gradient(180deg,color-mix(in_oklch,var(--bg-button)_92%,white),var(--bg-button))] px-5 font-[inherit] text-sm font-bold text-white no-underline transition hover:-translate-y-px hover:brightness-110"), Text("Log in")),
 				),
 				P(
-					Class("auth-footer"),
+					Class("text-center text-[var(--text-secondary)] [&_a]:font-semibold [&_a]:text-[var(--text-primary)]"),
 					Text("Need an account? "),
 					A(Href("/signup"), Text("Sign up")),
 				),
@@ -203,25 +71,25 @@ type SignupPageData struct {
 
 func SignupPage(data SignupPageData) Node {
 	return Main(
-		Class("auth-page"),
+		Class("grid min-h-dvh place-items-center p-4"),
 		Div(
-			Class("auth-shell"),
+			Class("w-full max-w-[25rem]"),
 			Div(
-				Class("auth-card"),
-				P(Class("auth-kicker"), Text("Create account")),
-				H1(Class("auth-title"), Text("Sign up")),
+				Class("flex flex-col gap-4 rounded-xl border border-[color-mix(in_oklch,var(--border-color)_80%,var(--text-muted))] bg-[color-mix(in_oklch,var(--bg-sidebar)_70%,var(--bg-primary))] p-7 shadow-[var(--shadow-3)]"),
+				P(Class("text-xs font-semibold uppercase leading-none tracking-[0.12em] text-[var(--text-muted)]"), Text("Create account")),
+				H1(Class("text-4xl font-bold leading-none tracking-[-0.04em] text-[var(--text-primary)]"), Text("Sign up")),
 				P(
-					Class("auth-copy"),
+					Class("max-w-[21rem] text-base leading-7 text-[var(--text-secondary)]"),
 					Text("Create your account with email and password."),
 				),
 				If(data.Error != "",
-					P(Class("auth-error"), Text(data.Error)),
+					P(Class("rounded-lg border border-[color-mix(in_oklch,var(--red-7)_30%,transparent)] bg-[color-mix(in_oklch,var(--red-9)_35%,transparent)] px-3 py-2 text-[var(--red-3)]"), Text(data.Error)),
 				),
 				Form(
-					Class("auth-form"),
+					Class("flex flex-col gap-4"),
 					Method("post"),
 					Action("/signup"),
-					Div(Class("auth-field"),
+					Div(Class("grid gap-2 [&_label]:font-semibold [&_label]:text-[var(--text-secondary)] [&_input]:min-h-12 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[var(--border-color)] [&_input]:bg-[color-mix(in_oklch,var(--bg-input)_88%,var(--bg-primary))] [&_input]:px-3 [&_input]:font-[inherit] [&_input]:text-base [&_input]:text-[var(--text-primary)] [&_input]:outline-none [&_input:focus]:border-[color-mix(in_oklch,var(--bg-button)_70%,white)] [&_input:focus]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--bg-button)_22%,transparent)] [&_input::placeholder]:text-[var(--text-muted)]"),
 						Label(For("email"), Text("Email")),
 						Input(
 							Type("email"),
@@ -233,7 +101,7 @@ func SignupPage(data SignupPageData) Node {
 							AutoFocus(),
 						),
 					),
-					Div(Class("auth-field"),
+					Div(Class("grid gap-2 [&_label]:font-semibold [&_label]:text-[var(--text-secondary)] [&_input]:min-h-12 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[var(--border-color)] [&_input]:bg-[color-mix(in_oklch,var(--bg-input)_88%,var(--bg-primary))] [&_input]:px-3 [&_input]:font-[inherit] [&_input]:text-base [&_input]:text-[var(--text-primary)] [&_input]:outline-none [&_input:focus]:border-[color-mix(in_oklch,var(--bg-button)_70%,white)] [&_input:focus]:shadow-[0_0_0_3px_color-mix(in_oklch,var(--bg-button)_22%,transparent)] [&_input::placeholder]:text-[var(--text-muted)]"),
 						Label(For("password"), Text("Password")),
 						Input(
 							Type("password"),
@@ -243,10 +111,10 @@ func SignupPage(data SignupPageData) Node {
 							Required(),
 						),
 					),
-					Button(Type("submit"), Class("btn-primary auth-submit"), Text("Sign up")),
+					Button(Type("submit"), Class("inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-[color-mix(in_oklch,var(--bg-button)_80%,white)] bg-[linear-gradient(180deg,color-mix(in_oklch,var(--bg-button)_92%,white),var(--bg-button))] px-5 font-[inherit] text-sm font-bold text-white no-underline transition hover:-translate-y-px hover:brightness-110"), Text("Sign up")),
 				),
 				P(
-					Class("auth-footer"),
+					Class("text-center text-[var(--text-secondary)] [&_a]:font-semibold [&_a]:text-[var(--text-primary)]"),
 					Text("Already have an account? "),
 					A(Href("/login"), Text("Log in")),
 				),

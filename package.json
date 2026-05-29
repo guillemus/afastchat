@@ -4,7 +4,10 @@
     },
     "dependencies": {},
     "devDependencies": {
+        "@tailwindcss/cli": "^4.1.17",
+        "concurrently": "^9.2.1",
         "prettier": "^3.8.1",
+        "tailwindcss": "^4.1.17",
         "typescript": "^6.0.2"
     }
 }

@@ -1,3 +1,9 @@
+dev:
+	bunx concurrently -k -n go,css "air" "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --watch"
+
+build-assets:
+	bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --minify
+
 migrate:
 	atlas schema apply \
 	  --to "file://db/schema.sql" \
@@ -5,7 +11,7 @@ migrate:
 	  --dev-url "sqlite://dev?mode=memory" \
 	  --auto-approve
 
-build-linux:
+build-linux: build-assets
 	mkdir -p dist
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o dist/afastchat ./cmd/server
 

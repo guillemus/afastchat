@@ -7,56 +7,8 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.toast-region {
-		position: fixed;
-		right: var(--size-5);
-		bottom: var(--size-5);
-		z-index: 10;
-	}
-	.toast {
-		display: grid;
-		grid-template-columns: 1fr auto;
-		gap: var(--size-1) var(--size-3);
-		min-width: 280px;
-		max-width: 420px;
-		border: 1px solid var(--red-8);
-		border-radius: var(--radius-3);
-		background: var(--gray-11);
-		color: var(--text-primary);
-		box-shadow: var(--shadow-3);
-		padding: var(--size-3) var(--size-4);
-		opacity: 1;
-		transition: opacity 100ms var(--ease-3);
-	}
-	.toast.is-hiding {
-		opacity: 0;
-	}
-	.toast-title {
-		font-weight: var(--font-weight-6);
-	}
-	.toast-message {
-		grid-column: 1 / -1;
-		color: var(--text-secondary);
-		line-height: var(--font-lineheight-2);
-	}
-	.toast-action {
-		grid-column: 1 / -1;
-		color: var(--text-primary);
-		font-weight: var(--font-weight-5);
-	}
-	.toast-close {
-		border: 0;
-		background: transparent;
-		color: var(--text-secondary);
-		font: inherit;
-		cursor: pointer;
-		line-height: 1;
-	}
-`)
-
 func ToastRegion() Node {
-	return Div(ID("toast-region"), Class("toast-region"))
+	return Div(ID("toast-region"), Class("toast-region fixed right-5 bottom-5 z-10"))
 }
 
 type ToastProps struct {
@@ -73,16 +25,16 @@ type ToastAction struct {
 func Toast(data ToastProps) Node {
 	var action Node
 	if data.Action != nil {
-		action = A(Class("toast-action"), Href(data.Action.Href), Text(data.Action.Label))
+		action = A(Class("col-span-full font-medium text-[var(--text-primary)]"), Href(data.Action.Href), Text(data.Action.Label))
 	}
 
-	return Div(ID("toast"), Class("toast"),
-		Div(Class("toast-title"), Text(data.Title)),
+	return Div(ID("toast"), Class("grid min-w-[280px] max-w-[420px] grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-xl border border-[var(--red-8)] bg-[var(--gray-11)] px-4 py-3 text-[var(--text-primary)] opacity-100 shadow-[var(--shadow-3)] transition-opacity duration-100"),
+		Div(Class("font-semibold"), Text(data.Title)),
 		Button(Type("button"),
-			Class("toast-close"),
+			Class("cursor-pointer border-0 bg-transparent font-[inherit] leading-none text-[var(--text-secondary)]"),
 			Aria("label", "Close"),
 			Data("on:click", `document.getElementById('toast')?.remove()`), Text("×")),
-		Div(Class("toast-message"), Text(data.Message)),
+		Div(Class("col-span-full leading-6 text-[var(--text-secondary)]"), Text(data.Message)),
 		action,
 	)
 }
@@ -92,7 +44,7 @@ func PatchErrorToast(sse *datastar.ServerSentEventGenerator, title, message stri
 }
 
 func PatchToast(sse *datastar.ServerSentEventGenerator, data ToastProps) {
-	ssePatch(sse, Div(ID("toast-region"), Class("toast-region"), Toast(data)))
+	ssePatch(sse, Div(ID("toast-region"), Class("toast-region fixed right-5 bottom-5 z-10"), Toast(data)))
 	timeout := "3000"
 	if data.Action != nil {
 		timeout = "6000"
@@ -100,7 +52,7 @@ func PatchToast(sse *datastar.ServerSentEventGenerator, data ToastProps) {
 	sseExecJS(sse, `setTimeout(() => {
 		const toast = document.getElementById('toast');
 		if (!toast) return;
-		toast.classList.add('is-hiding');
+		toast.classList.add('opacity-0');
 		setTimeout(() => toast.remove(), 100);
 	}, `+timeout+`)`)
 }

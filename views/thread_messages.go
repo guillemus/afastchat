@@ -70,209 +70,6 @@ func NewEmptyMessageThread() Node {
 	})
 }
 
-var _ = styles.Style(`
-	.message-thread {
-		display: flex;
-		flex-direction: column;
-		min-width: 0;
-		min-height: 0;
-		height: 100%;
-		overflow: hidden;
-		background: var(--bg-primary);
-	}
-	.thread-shell {
-		display: flex;
-		flex-direction: column;
-		flex: 1 1 0;
-		position: relative;
-		min-height: 0;
-		overflow: hidden;
-	}
-	.jump-to-bottom-btn {
-		position: absolute;
-		left: 50%;
-		bottom: var(--size-4);
-		transform: translateX(-50%);
-		z-index: 10;
-		inline-size: 44px;
-		block-size: 44px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border: 1px solid color-mix(in oklch, var(--bg-button) 30%, var(--border-color));
-		border-radius: var(--radius-round);
-		background: color-mix(in oklch, var(--bg-primary) 88%, var(--bg-button));
-		color: var(--text-primary);
-		box-shadow: var(--shadow-3);
-		cursor: pointer;
-		transition:
-			transform 0.15s var(--ease-3),
-			filter 0.15s var(--ease-3),
-			opacity 0.15s var(--ease-3);
-
-		&:hover {
-			filter: brightness(1.08);
-			transform: translateX(-50%) translateY(-1px);
-		}
-
-		&:focus-visible {
-			outline: none;
-			box-shadow:
-				var(--shadow-3),
-				0 0 0 3px color-mix(in oklch, var(--bg-button) 28%, transparent);
-		}
-
-		svg {
-			inline-size: 22px;
-			block-size: 22px;
-		}
-	}
-	.main-body {
-		flex: 1 1 0;
-		min-height: 0;
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		padding: var(--size-5) var(--size-5);
-		gap: var(--size-3);
-		overflow-y: auto;
-		overflow-x: hidden;
-		scrollbar-gutter: stable;
-		overflow-anchor: auto;
-		overscroll-behavior: contain;
-		width: 100%;
-		max-width: 860px;
-		margin: 0 auto;
-		scrollbar-width: thin;
-		scrollbar-color: var(--gray-9) transparent;
-	}
-	.empty-thread {
-		justify-content: flex-end;
-		padding-top: var(--size-8);
-	}
-	.empty-state {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		gap: var(--size-3);
-		text-align: center;
-		color: var(--text-secondary);
-	}
-
-	.empty-state-title {
-		line-height: 1.1;
-		color: var(--text-primary);
-		letter-spacing: -0.04em;
-	}
-
-	.empty-state-subtitle {
-		max-width: 42ch;
-		line-height: var(--font-lineheight-3);
-	}
-	.message {
-		flex: 0 0 auto;
-		line-height: var(--font-lineheight-4);
-		padding: var(--size-3) var(--size-4);
-		border-radius: var(--radius-3);
-		word-break: break-word;
-		min-width: 0;
-		width: fit-content;
-		max-width: min(100%, 72ch);
-	}
-	.user-message {
-		max-width: min(100%, 56ch);
-		padding: var(--size-2) var(--size-3);
-		border-radius: var(--radius-2);
-		background: color-mix(in oklch, var(--gray-10) 72%, transparent);
-		border: 1px solid var(--border-color);
-		color: var(--text-primary);
-		white-space: normal;
-		margin-left: auto;
-
-		.markdown-content p {
-			margin: 0;
-		}
-	}
-	.assistant-message {
-		width: 100%;
-		max-width: 100%;
-		color: var(--gray-3);
-		white-space: normal;
-		margin-right: auto;
-		display: flex;
-		flex-direction: column;
-		gap: var(--size-3);
-
-		&.large-height {
-			min-height: calc(100dvh - 13rem);
-		}
-	}
-	.assistant-part {
-		min-width: 0;
-		flex: 0 0 auto;
-	}
-
-	.assistant-text-part {
-		width: 100%;
-	}
-	.reasoning-part,
-	.tool-call-part {
-		width: 100%;
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-2);
-		background: var(--gray-11);
-		overflow: hidden;
-	}
-	.reasoning-part summary {
-		cursor: pointer;
-		list-style: none;
-		padding: var(--size-2) var(--size-3);
-		color: var(--text-secondary);
-	}
-
-	.reasoning-part summary::-webkit-details-marker {
-		display: none;
-	}
-	.reasoning-part-summary {
-		display: flex;
-		gap: var(--size-2);
-		align-items: baseline;
-		min-width: 0;
-	}
-	.reasoning-part-label,
-	.tool-call-part-name {
-		font-weight: var(--font-weight-6);
-		color: var(--text-primary);
-		white-space: nowrap;
-	}
-	.reasoning-part-preview,
-	.tool-call-part-arg {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--text-secondary);
-	}
-	.tool-call-part {
-		display: flex;
-		align-items: baseline;
-		gap: var(--size-2);
-		padding: var(--size-2) var(--size-3);
-	}
-	.tool-call-part-arg {
-		font-family: var(--font-code);
-		font-size: var(--font-size-0);
-	}
-	.reasoning-part-body {
-		padding: 0 var(--size-3) var(--size-3);
-		line-height: var(--font-lineheight-3);
-		color: var(--text-secondary);
-	}
-`)
-
 func MessageThread(x MessageThreadProps) Node {
 	var contents Node
 	if len(x.Messages) == 0 {
@@ -288,7 +85,7 @@ func MessageThread(x MessageThreadProps) Node {
 	} else {
 		contents = Group{
 			Div(
-				Class("thread-shell"),
+				Class("thread-shell relative flex min-h-0 flex-1 flex-col overflow-hidden"),
 				Data("signals:show-jump-to-bottom", "false"),
 				Data("on:resize__window__debounce.50ms", `
 					if (!$messages) return;
@@ -300,7 +97,7 @@ func MessageThread(x MessageThreadProps) Node {
 				Button(
 					Type("button"),
 					Style("display: none"),
-					Class("jump-to-bottom-btn"),
+					Class("absolute left-1/2 bottom-4 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[color-mix(in_oklch,var(--bg-button)_30%,var(--border-color))] bg-[color-mix(in_oklch,var(--bg-primary)_88%,var(--bg-button))] text-[var(--text-primary)] shadow-[var(--shadow-3)] transition hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:shadow-[var(--shadow-3),0_0_0_3px_color-mix(in_oklch,var(--bg-button)_28%,transparent)] [&_svg]:size-[22px]"),
 					Data("show", "$showJumpToBottom"),
 					Data("on:click", `
 						$messages.scrollTo({ top: $messages.scrollHeight, behavior: 'smooth' });
@@ -314,7 +111,7 @@ func MessageThread(x MessageThreadProps) Node {
 	}
 
 	return Main(
-		Class("message-thread"),
+		Class("message-thread flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--bg-primary)]"),
 		contents,
 		If(x.DoScrollSidebar && len(x.Messages) > 0, MessageScrollRestoreScript()),
 	)
@@ -351,11 +148,11 @@ func MessageList(x MessageThreadProps) Node {
 	if len(x.Messages) == 0 {
 		return Div(
 			ID("messages"),
-			Class("main-body empty-thread"),
+			Class("main-body flex min-h-0 min-w-0 flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 pt-8 justify-end mx-auto w-full max-w-[860px] [overflow-anchor:auto] [scrollbar-color:var(--gray-9)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
 			Div(
-				Class("empty-state"),
-				H1(Class("empty-state-title"), Text("How can I help?")),
-				P(Class("empty-state-subtitle"),
+				Class("flex flex-1 flex-col items-center justify-center gap-3 text-center text-[var(--text-secondary)]"),
+				H1(Class("leading-tight tracking-[-0.04em] text-[var(--text-primary)]"), Text("How can I help?")),
+				P(Class("max-w-[42ch] leading-7"),
 					Text("Start a new conversation with afastchat."),
 				),
 			),
@@ -365,7 +162,7 @@ func MessageList(x MessageThreadProps) Node {
 	return Div(
 		ID("messages"),
 		Data("ref:messages", ""),
-		Class("main-body"),
+		Class("main-body mx-auto flex min-h-0 min-w-0 w-full max-w-[860px] flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 [overflow-anchor:auto] [scrollbar-color:var(--gray-9)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
 		Data("on:scroll__debounce.10ms", `
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
@@ -391,7 +188,7 @@ func MessageGroupNode(x MessageGroup) Node {
 func UserMessage(x UserMessageProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
-		Class("message user-message"),
+		Class("message user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 break-words whitespace-normal rounded-lg border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-10)_72%,transparent)] px-3 py-2 leading-7 text-[var(--text-primary)] [&_.markdown-content_p]:m-0"),
 		MarkdownContent(x.MdContent),
 	)
 }
@@ -400,8 +197,8 @@ func AssistantMessageParts(x AssistantMessagePartsProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
 		Classes{
-			"message assistant-message": true,
-			"large-height":              x.LargeHeight,
+			"message assistant-message mr-auto flex w-full max-w-full shrink-0 flex-col gap-3 whitespace-normal break-words rounded-xl px-4 py-3 leading-7 text-[var(--gray-3)]": true,
+			"min-h-[calc(100dvh-13rem)]": x.LargeHeight,
 		},
 		Map(x.Parts, func(part AssistantPart) Node {
 			return AssistantPartNode(part)
@@ -424,7 +221,7 @@ func AssistantPartNode(x AssistantPart) Node {
 func AssistantTextPart(x AssistantTextPartProps) Node {
 	return Div(
 		ID("part-"+x.ID),
-		Class("assistant-part assistant-text-part"),
+		Class("assistant-part assistant-text-part min-w-0 shrink-0 w-full"),
 		MarkdownContent(x.MdContent),
 	)
 }
@@ -433,24 +230,24 @@ func ToolCallPart(x ToolCallPartProps) Node {
 	name, arg := toolCallDisplay(x.Name, x.Args)
 	return Div(
 		ID("part-"+x.ID),
-		Class("assistant-part tool-call-part"),
-		Span(Class("tool-call-part-name"), Text(name)),
-		Span(Class("tool-call-part-arg"), Text(arg)),
+		Class("assistant-part tool-call-part flex w-full min-w-0 shrink-0 items-baseline gap-2 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--gray-11)] px-3 py-2"),
+		Span(Class("whitespace-nowrap font-semibold text-[var(--text-primary)]"), Text(name)),
+		Span(Class("min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-[var(--font-code)] text-sm text-[var(--text-secondary)]"), Text(arg)),
 	)
 }
 
 func ReasoningPart(x ReasoningPartProps) Node {
 	return Details(
 		ID("part-"+x.ID),
-		Class("assistant-part reasoning-part"),
+		Class("assistant-part reasoning-part w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--gray-11)]"),
 		Data("preserve-attr", "open"),
 		Summary(
-			Class("reasoning-part-summary"),
-			Span(Class("reasoning-part-label"), Text("Reasoning")),
-			Span(Class("reasoning-part-preview"), Text(reasoningPreview(x.Text))),
+			Class("flex min-w-0 cursor-pointer list-none items-baseline gap-2 px-3 py-2 text-[var(--text-secondary)]"),
+			Span(Class("whitespace-nowrap font-semibold text-[var(--text-primary)]"), Text("Reasoning")),
+			Span(Class("min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-secondary)]"), Text(reasoningPreview(x.Text))),
 		),
 		Div(
-			Class("reasoning-part-body"),
+			Class("px-3 pb-3 leading-7 text-[var(--text-secondary)]"),
 			MarkdownContent(x.MdContent),
 		),
 	)

@@ -1,63 +1,10 @@
 package views
 
 import (
-	"strings"
-
 	"afastchat.com/env"
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
-
-type Styles struct {
-	styleString strings.Builder
-}
-
-var styles Styles
-
-func (x *Styles) Style(css string) uint8 {
-	x.styleString.WriteString(css)
-	return 0
-}
-
-func (x *Styles) Node() Node {
-	return StyleEl(Raw(x.styleString.String()))
-}
-
-var _ = styles.Style(`
-	.debug-signals {
-		background: var(--gray-12);
-		position: fixed;
-		bottom: var(--size-2);
-		right: var(--size-5);
-		width: 500px;
-		padding: var(--size-2);
-		overflow: hidden;
-		z-index: 10;
-
-		.debug-signals-header {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: var(--size-2);
-		}
-
-		.debug-signals-toggle {
-			background: transparent;
-			border: 1px solid var(--border-color);
-			border-radius: var(--radius-1);
-			color: var(--text-primary);
-			padding: 0 var(--size-2);
-			cursor: pointer;
-			font: inherit;
-		}
-
-		.signals-text {
-			background: var(--gray-12);
-			white-space: pre;
-			overflow: hidden;
-		}
-	}
-`)
 
 func DebugSignals(env env.Env) Node {
 	if !env.Dev {
@@ -65,15 +12,15 @@ func DebugSignals(env env.Env) Node {
 	}
 
 	return Div(
-		Class("debug-signals"),
+		Class("fixed right-5 bottom-2 z-10 w-[500px] overflow-hidden bg-[var(--gray-12)] p-2"),
 		Data("signals:debug-signals-collapsed", "false"),
 		Data("init", `$debugSignalsCollapsed = getSessionVal('debug_signals_collapsed') !== 'false'`),
 		Div(
-			Class("debug-signals-header"),
+			Class("flex items-center justify-between gap-2"),
 			Small(Text("signals:")),
 			Button(
 				Type("button"),
-				Class("debug-signals-toggle"),
+				Class("cursor-pointer rounded border border-[var(--border-color)] bg-transparent px-2 font-[inherit] text-[var(--text-primary)]"),
 				Data("text", "$debugSignalsCollapsed ? 'show' : 'hide'"),
 				Data("on:click", `
 					$debugSignalsCollapsed = !$debugSignalsCollapsed;
@@ -82,7 +29,7 @@ func DebugSignals(env env.Env) Node {
 			),
 		),
 		Pre(
-			Class("signals-text"),
+			Class("overflow-hidden whitespace-pre bg-[var(--gray-12)]"),
 			Data("show", "!$debugSignalsCollapsed"),
 			Data("json-signals", ""),
 		),

@@ -9,148 +9,26 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.conversation-minimap {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		min-height: 100vh;
-		background: color-mix(in oklch, var(--bg-sidebar) 90%, black);
-		border-left: 1px solid var(--border-color);
-		overflow: hidden;
-	}
-	.minimap-header {
-		display: flex;
-		align-items: center;
-		gap: var(--size-2);
-		padding: var(--size-4) var(--size-3);
-		font-weight: var(--font-weight-6);
-		letter-spacing: -0.02em;
-	}
-	.minimap-icon {
-		color: var(--text-secondary);
-		font-size: var(--font-size-2);
-	}
-	.minimap-list {
-		flex: 1;
-		overflow-y: auto;
-		padding: var(--size-2) var(--size-3) var(--size-6);
-		scrollbar-width: thin;
-		scrollbar-color: var(--gray-9) transparent;
-	}
-	.minimap-track {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--size-3);
-	}
-	.minimap-empty {
-		display: grid;
-		place-items: center;
-		min-height: 40vh;
-		color: var(--text-secondary);
-		text-align: center;
-		line-height: var(--font-lineheight-3);
-	}
-	.minimap-node {
-		position: relative;
-		width: min(100%, 340px);
-	}
-	.minimap-node:not(:last-child)::after {
-		content: "";
-		position: absolute;
-		left: 50%;
-		top: 100%;
-		width: 1px;
-		height: var(--size-3);
-		background: var(--gray-8);
-	}
-	.minimap-card {
-		display: flex;
-		flex-direction: column;
-		gap: var(--size-1);
-		width: 100%;
-		min-height: 0;
-		padding: var(--size-2) var(--size-3);
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-2);
-		background: color-mix(in oklch, var(--gray-11) 70%, transparent);
-		color: var(--text-secondary);
-		font: inherit;
-		font-size: var(--font-sidebar-size);
-		text-align: left;
-		cursor: pointer;
-		box-shadow: var(--shadow-1);
-		transition:
-			background 0.12s var(--ease-3),
-			border-color 0.12s var(--ease-3),
-			box-shadow 0.12s var(--ease-3),
-			color 0.12s var(--ease-3);
-	}
-	.minimap-card:hover,
-	.minimap-card:focus-visible {
-		outline: none;
-		border-color: color-mix(in oklch, var(--bg-button) 35%, var(--border-color));
-		background: color-mix(in oklch, var(--gray-10) 62%, transparent);
-		color: var(--text-primary);
-	}
-	.minimap-card-top {
-		display: flex;
-		align-items: center;
-		gap: var(--size-2);
-		flex-shrink: 0;
-	}
-	.minimap-dot {
-		width: 11px;
-		height: 11px;
-		border-radius: var(--radius-round);
-		background: var(--bg-button);
-		flex-shrink: 0;
-	}
-	.minimap-card.assistant .minimap-dot {
-		background: var(--green-6);
-	}
-	.minimap-role {
-		font-weight: var(--font-weight-6);
-		color: var(--text-primary);
-	}
-	.minimap-preview {
-		display: -webkit-box;
-		overflow: hidden;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		line-height: var(--font-lineheight-1);
-	}
-	@media (max-width: 1180px) {
-		.app {
-			grid-template-columns: 260px minmax(0, 1fr);
-		}
-		.conversation-minimap {
-			display: none;
-		}
-	}
-`)
-
 func MessageMinimap(messages []MessageGroup) Node {
 	items := minimapItems(messages)
 
 	return Aside(
 		ID("conversation-minimap"),
-		Class("conversation-minimap"),
+		Class("conversation-minimap flex min-h-screen w-full flex-col overflow-hidden border-l border-[var(--border-color)] bg-[color-mix(in_oklch,var(--bg-sidebar)_90%,black)] max-[1180px]:hidden"),
 		Div(
-			Class("minimap-header"),
-			Span(Class("minimap-icon"), Text("⌘")),
+			Class("flex items-center gap-2 px-3 py-4 font-semibold tracking-[-0.02em]"),
+			Span(Class("text-base text-[var(--text-secondary)]"), Text("⌘")),
 			Text("Conversation Tree"),
 		),
 		Nav(
-			Class("minimap-list"),
+			Class("minimap-list flex-1 overflow-y-auto px-3 pt-2 pb-6 [scrollbar-color:var(--gray-9)_transparent] [scrollbar-width:thin]"),
 			Attr("aria-label", "Conversation minimap"),
 			If(len(items) == 0,
-				Div(Class("minimap-empty"), Text("Start chatting to grow the tree.")),
+				Div(Class("grid min-h-[40vh] place-items-center text-center leading-7 text-[var(--text-secondary)]"), Text("Start chatting to grow the tree.")),
 			),
 			If(len(items) > 0,
 				Div(
-					Class("minimap-track"),
+					Class("flex flex-col items-center gap-3"),
 					Map(items, minimapItemNode),
 				),
 			),
@@ -182,12 +60,11 @@ func minimapItems(messages []MessageGroup) []minimapItem {
 
 func minimapItemNode(item minimapItem) Node {
 	return Div(
-		Class("minimap-node"),
+		Class("minimap-node relative w-[min(100%,340px)]"),
 		Button(
 			Type("button"),
 			Classes{
-				"minimap-card": true,
-				"assistant":    item.Role == "Assistant",
+				"minimap-card flex min-h-0 w-full cursor-pointer flex-col gap-1 rounded-lg border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-11)_70%,transparent)] px-3 py-2 text-left text-[length:var(--font-sidebar-size)] text-[var(--text-secondary)] shadow-[var(--shadow-1)] transition hover:border-[color-mix(in_oklch,var(--bg-button)_35%,var(--border-color))] hover:bg-[color-mix(in_oklch,var(--gray-10)_62%,transparent)] hover:text-[var(--text-primary)] focus-visible:border-[color-mix(in_oklch,var(--bg-button)_35%,var(--border-color))] focus-visible:bg-[color-mix(in_oklch,var(--gray-10)_62%,transparent)] focus-visible:text-[var(--text-primary)] focus-visible:outline-none": true,
 			},
 			Attr("aria-label", "Scroll to "+item.Role+" message"),
 			Data("on:click", `
@@ -196,11 +73,14 @@ func minimapItemNode(item minimapItem) Node {
 				messages.scrollTop += target.getBoundingClientRect().top - messages.getBoundingClientRect().top;
 			`),
 			Div(
-				Class("minimap-card-top"),
-				Span(Class("minimap-dot")),
-				Span(Class("minimap-role"), Text(item.Role)),
+				Class("flex shrink-0 items-center gap-2"),
+				Span(Classes{
+					"minimap-dot h-[11px] w-[11px] shrink-0 rounded-full bg-[var(--bg-button)]": true,
+					"bg-[var(--green-6)]": item.Role == "Assistant",
+				}),
+				Span(Class("font-semibold text-[var(--text-primary)]"), Text(item.Role)),
 			),
-			Span(Class("minimap-preview"), Text(item.Preview)),
+			Span(Class("line-clamp-2 overflow-hidden leading-tight"), Text(item.Preview)),
 		),
 	)
 }

@@ -5,116 +5,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.landing-page {
-		min-height: 100vh;
-		min-height: 100dvh;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--size-6);
-		background: var(--bg-primary);
-
-		.landing-shell {
-			width: min(100%, 768px);
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: var(--size-8);
-		}
-
-		.landing-brand {
-			color: var(--text-secondary);
-			letter-spacing: 0.1em;
-			text-transform: lowercase;
-		}
-
-		.landing-title {
-			font-weight: var(--font-weight-5);
-			letter-spacing: -0.04em;
-			line-height: 1.1;
-			text-align: center;
-		}
-
-		.landing-input-wrap {
-			width: 100%;
-			max-width: 768px;
-		}
-
-		.landing-input {
-			display: flex;
-			align-items: center;
-			background: var(--bg-input);
-			border: 1px solid var(--border-color);
-			border-radius: var(--radius-3);
-			padding: var(--size-3);
-			color: var(--text-muted);
-			text-decoration: none;
-			transition: border-color 0.2s var(--ease-3);
-
-			&:hover {
-				border-color: color-mix(in oklch, var(--bg-button) 50%, var(--border-color));
-			}
-
-			svg {
-				width: 20px;
-				height: 20px;
-				margin-left: auto;
-				color: var(--text-muted);
-				flex-shrink: 0;
-			}
-		}
-
-		.landing-pills {
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: center;
-			gap: var(--size-3);
-			width: 100%;
-		}
-
-		.landing-pill {
-			display: inline-flex;
-			align-items: center;
-			padding: var(--size-2) var(--size-4);
-			border: 1px solid var(--border-color);
-			border-radius: var(--radius-4);
-			color: var(--text-secondary);
-			text-decoration: none;
-			transition:
-				border-color 0.15s var(--ease-3),
-				color 0.15s var(--ease-3),
-				background-color 0.15s var(--ease-3);
-
-			&:hover {
-				background: var(--bg-hover);
-				border-color: var(--text-muted);
-				color: var(--text-primary);
-			}
-		}
-
-		.landing-actions {
-			display: flex;
-			align-items: center;
-			gap: var(--size-5);
-			margin-top: var(--size-2);
-		}
-
-		.landing-action {
-			color: var(--text-secondary);
-			text-decoration: none;
-			transition: color 0.15s var(--ease-3);
-
-			&:hover {
-				color: var(--text-primary);
-				text-decoration: underline;
-				text-underline-offset: 3px;
-			}
-		}
-	}
-`)
-
 func LandingPage() Node {
 	pills := []string{
 		"Explain a Go concurrency pattern",
@@ -124,36 +14,36 @@ func LandingPage() Node {
 	}
 
 	return Main(
-		Class("landing-page"),
+		Class("flex min-h-dvh flex-col items-center justify-center bg-[var(--bg-primary)] p-6"),
 		Div(
-			Class("landing-shell"),
+			Class("flex w-full max-w-3xl flex-col items-center gap-8"),
 			Div(
-				Class("landing-brand"),
+				Class("lowercase tracking-[0.1em] text-[var(--text-secondary)]"),
 				Text("afastchat"),
 			),
 			H1(
-				Class("landing-title"),
+				Class("text-center text-4xl font-medium leading-tight tracking-[-0.04em]"),
 				Text("What can I help with?"),
 			),
 			Div(
-				Class("landing-input-wrap"),
+				Class("w-full max-w-3xl"),
 				A(
 					Href("/signup"),
-					Class("landing-input"),
+					Class("flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] p-3 text-[var(--text-muted)] no-underline transition-colors hover:border-[color-mix(in_oklch,var(--bg-button)_50%,var(--border-color))] [&_svg]:ml-auto [&_svg]:h-5 [&_svg]:w-5 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]"),
 					Text("Message afastchat"),
 					iconArrowUp(),
 				),
 			),
 			Div(
-				Class("landing-pills"),
+				Class("flex w-full flex-wrap justify-center gap-3"),
 				Map(pills, func(label string) Node {
-					return A(Href("/signup"), Class("landing-pill"), Text(label))
+					return A(Href("/signup"), Class("inline-flex items-center rounded-2xl border border-[var(--border-color)] px-4 py-2 text-[var(--text-secondary)] no-underline transition-colors hover:border-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"), Text(label))
 				}),
 			),
 			Div(
-				Class("landing-actions"),
-				A(Href("/login"), Class("landing-action"), Text("Log in")),
-				A(Href("/signup"), Class("landing-action"), Text("Sign up")),
+				Class("mt-2 flex items-center gap-5"),
+				A(Href("/login"), Class("text-[var(--text-secondary)] no-underline transition-colors hover:text-[var(--text-primary)] hover:underline hover:underline-offset-3"), Text("Log in")),
+				A(Href("/signup"), Class("text-[var(--text-secondary)] no-underline transition-colors hover:text-[var(--text-primary)] hover:underline hover:underline-offset-3"), Text("Sign up")),
 			),
 		),
 	)

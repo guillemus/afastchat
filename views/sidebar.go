@@ -13,150 +13,9 @@ type SidebarProps struct {
 	UserEmail      string
 }
 
-var _ = styles.Style(`
-	.sidebar {
-		width: 260px;
-		min-width: 260px;
-		max-width: 260px;
-		font-size: var(--font-sidebar-size);
-		flex-shrink: 0;
-		min-height: 100vh;
-		background: var(--bg-sidebar);
-		display: flex;
-		flex-direction: column;
-		border-right: 1px solid var(--border-color);
-		overflow: hidden;
-	}
-
-	.sidebar-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--size-4) var(--size-3) var(--size-3);
-	}
-
-	.app-logo {
-		font-weight: var(--font-weight-4);
-		letter-spacing: -0.02em;
-
-		.accent {
-			color: var(--bg-button);
-		}
-	}
-
-	.new-chat-button {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--size-2);
-		margin: 0 var(--size-3) var(--size-3);
-		padding: var(--size-2) var(--size-3);
-		background: var(--bg-button);
-		color: white;
-		border: none;
-		border-radius: var(--radius-2);
-		font-weight: var(--font-weight-4);
-		text-decoration: none;
-		transition: filter 0.15s;
-
-		svg {
-			width: 14px;
-			height: 14px;
-			flex-shrink: 0;
-		}
-
-		&:hover {
-			filter: brightness(1.1);
-		}
-	}
-
-	.thread-search {
-		margin: 0 var(--size-3) var(--size-2);
-		position: relative;
-
-		svg {
-			position: absolute;
-			left: var(--size-2);
-			top: 50%;
-			transform: translateY(-50%);
-			color: var(--text-muted);
-			width: 13px;
-			height: 13px;
-			pointer-events: none;
-		}
-
-		input {
-			width: 100%;
-			padding: var(--size-1) var(--size-2) var(--size-1)
-				calc(var(--size-2) + 13px + var(--size-2));
-			background: transparent;
-			border: 1px solid transparent;
-			border-radius: var(--radius-2);
-			color: var(--text-secondary);
-			font-family: inherit;
-			font-size: inherit;
-			outline: none;
-			transition:
-				border-color 0.15s,
-				background 0.15s;
-
-			&::placeholder {
-				color: var(--text-muted);
-			}
-
-			&:focus {
-				background: var(--bg-input);
-				border-color: var(--border-color);
-			}
-		}
-	}
-
-	.sidebar-footer {
-		padding: var(--size-3);
-		border-top: 1px solid var(--border-color);
-		display: flex;
-		align-items: center;
-		gap: var(--size-2);
-
-		form {
-			margin-left: auto;
-		}
-	}
-
-	.user-avatar {
-		width: 26px;
-		height: 26px;
-		border-radius: var(--radius-round);
-		background: var(--bg-button);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-weight: var(--font-weight-4);
-		color: white;
-		flex-shrink: 0;
-	}
-
-	.logout-button {
-		background: transparent;
-		border: 1px solid var(--border-color);
-		color: var(--text-secondary);
-		border-radius: var(--radius-2);
-		padding: 0 var(--size-2);
-		min-height: 32px;
-		font-family: inherit;
-		font-size: inherit;
-		cursor: pointer;
-
-		&:hover {
-			color: var(--text-primary);
-			background: var(--bg-hover);
-		}
-	}
-`)
-
 func Sidebar(x SidebarProps) Node {
 	return Aside(
-		Class("sidebar"),
+		Class("sidebar flex min-h-screen w-[260px] min-w-[260px] max-w-[260px] shrink-0 flex-col overflow-hidden border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] text-[length:var(--font-sidebar-size)]"),
 		Data("signals:thread-id", fmt.Sprintf("'%s'", x.ActiveThreadID)),
 		If(x.ActiveThreadID != "",
 			Data("init", fmt.Sprintf("@get('/threads/%s/events')", x.ActiveThreadID)),
@@ -171,23 +30,23 @@ func Sidebar(x SidebarProps) Node {
 }
 
 func SidebarHeader() Node {
-	return Div(Class("sidebar-header"), AppLogo())
+	return Div(Class("flex items-center justify-between px-3 pt-4 pb-3"), AppLogo())
 }
 
 func AppLogo() Node {
 	return Span(
-		Class("app-logo"),
+		Class("font-normal tracking-[-0.02em]"),
 		Text("afastchat"),
-		Span(Class("accent"), Text(".com")),
+		Span(Class("text-[var(--bg-button)]"), Text(".com")),
 	)
 }
 
 func NewChatButton() Node {
-	return A(Href("/"), Class("new-chat-button"), iconPlus(), Text("New Chat"))
+	return A(Href("/"), Class("mx-3 mb-3 flex items-center justify-center gap-2 rounded-lg border-0 bg-[var(--bg-button)] px-3 py-2 font-normal text-white no-underline transition hover:brightness-110 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"), iconPlus(), Text("New Chat"))
 }
 
 func ThreadSearch() Node {
-	return Div(Class("thread-search"),
+	return Div(Class("relative mx-3 mb-2 [&_svg]:pointer-events-none [&_svg]:absolute [&_svg]:left-2 [&_svg]:top-1/2 [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:-translate-y-1/2 [&_svg]:text-[var(--text-muted)] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-transparent [&_input]:bg-transparent [&_input]:py-1 [&_input]:pr-2 [&_input]:pl-[calc(var(--spacing)*2+13px+var(--spacing)*2)] [&_input]:font-[inherit] [&_input]:text-[inherit] [&_input]:text-[var(--text-secondary)] [&_input]:outline-none [&_input]:transition-colors [&_input:focus]:border-[var(--border-color)] [&_input:focus]:bg-[var(--bg-input)] [&_input::placeholder]:text-[var(--text-muted)]"),
 		iconSearch(),
 		Input(
 			Type("text"),
@@ -201,14 +60,14 @@ func ThreadSearch() Node {
 
 func SidebarFooter(email string) Node {
 	return Div(
-		Class("sidebar-footer"),
+		Class("flex items-center gap-2 border-t border-[var(--border-color)] p-3 [&_form]:ml-auto"),
 		UserAvatar(email),
 		Form(Method("post"), Action("/logout"), LogoutButton()),
 	)
 }
 
 func UserAvatar(email string) Node {
-	return Div(Class("user-avatar"), Text(userInitial(email)))
+	return Div(Class("flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--bg-button)] font-normal text-white"), Text(userInitial(email)))
 }
 
 func userInitial(email string) string {
@@ -219,5 +78,5 @@ func userInitial(email string) string {
 }
 
 func LogoutButton() Node {
-	return Button(Type("submit"), Class("logout-button"), Text("Log out"))
+	return Button(Type("submit"), Class("min-h-8 cursor-pointer rounded-lg border border-[var(--border-color)] bg-transparent px-2 font-[inherit] text-[inherit] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"), Text("Log out"))
 }

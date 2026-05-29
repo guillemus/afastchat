@@ -12,3 +12,4 @@ coverage.out
 *.test
 *.out
 scripts/
+public/styles.css

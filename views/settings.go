@@ -9,101 +9,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.settings-page {
-		flex: 1;
-		overflow-y: auto;
-		padding: var(--size-8);
-		background: var(--bg-primary);
-	}
-	.settings-shell {
-		max-width: 760px;
-		margin: 0 auto;
-	}
-	.settings-title {
-		font-size: var(--font-size-5);
-		font-weight: var(--font-weight-5);
-		letter-spacing: -0.03em;
-		margin-bottom: var(--size-5);
-	}
-	.settings-card {
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-3);
-		background: color-mix(in oklch, var(--gray-11) 55%, transparent);
-		padding: var(--size-5);
-		margin-bottom: var(--size-3);
-	}
-	.settings-card-title {
-		font-size: var(--font-size-2);
-		font-weight: var(--font-weight-5);
-		margin-bottom: var(--size-3);
-	}
-	.settings-copy {
-		color: var(--text-secondary);
-		line-height: var(--font-lineheight-3);
-		margin-bottom: var(--size-4);
-	}
-	.settings-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--size-4);
-		padding: var(--size-2) 0;
-		color: var(--text-secondary);
-	}
-	.settings-value {
-		color: var(--text-primary);
-		font-weight: var(--font-weight-5);
-	}
-	.settings-action {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-height: 36px;
-		padding: 0 var(--size-3);
-		border-radius: var(--radius-2);
-		background: var(--bg-button);
-		color: white;
-		border: 0;
-		font: inherit;
-		text-decoration: none;
-		cursor: pointer;
-	}
-	.settings-form {
-		display: flex;
-		align-items: center;
-		gap: var(--size-2);
-		margin-top: var(--size-3);
-	}
-	.settings-input-wrap {
-		position: relative;
-	}
-	.settings-input-prefix {
-		position: absolute;
-		left: var(--size-2);
-		top: 50%;
-		translate: 0 -50%;
-		color: var(--text-secondary);
-		pointer-events: none;
-	}
-	.settings-input {
-		width: 140px;
-		min-height: 36px;
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-2);
-		background: var(--bg-input);
-		color: var(--text-primary);
-		font: inherit;
-		padding: 0 var(--size-2) 0 var(--size-5);
-	}
-	.sidebar-footer-link {
-		display: flex;
-		align-items: center;
-		min-width: 0;
-		text-decoration: none;
-	}
-`)
-
 type SettingsData struct {
 	Threads            []Thread
 	UserEmail          string
@@ -112,14 +17,14 @@ type SettingsData struct {
 }
 
 func SettingsPage(data SettingsData) Node {
-	return Main(Class("settings-page"),
-		Div(Class("settings-shell"),
-			H1(Class("settings-title"), Text("Settings")),
-			Section(Class("settings-card"),
-				H2(Class("settings-card-title"), Text("Account")),
-				Div(Class("settings-row"),
+	return Main(Class("flex-1 overflow-y-auto bg-[var(--bg-primary)] p-8"),
+		Div(Class("mx-auto max-w-[760px]"),
+			H1(Class("mb-5 text-3xl font-medium tracking-[-0.03em]"), Text("Settings")),
+			Section(Class("mb-3 rounded-xl border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-11)_55%,transparent)] p-5"),
+				H2(Class("mb-3 text-base font-medium"), Text("Account")),
+				Div(Class("flex items-center justify-between gap-4 py-2 text-[var(--text-secondary)]"),
 					Span(Text("Email")),
-					Span(Class("settings-value"), Text(data.UserEmail)),
+					Span(Class("font-medium text-[var(--text-primary)]"), Text(data.UserEmail)),
 				),
 			),
 			If(data.HasLifetimeLicense, BillingCard(data)),
@@ -129,38 +34,38 @@ func SettingsPage(data SettingsData) Node {
 }
 
 func BillingCard(data SettingsData) Node {
-	return Section(Class("settings-card"),
-		H2(Class("settings-card-title"), Text("Billing")),
-		Div(Class("settings-row"),
+	return Section(Class("mb-3 rounded-xl border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-11)_55%,transparent)] p-5"),
+		H2(Class("mb-3 text-base font-medium"), Text("Billing")),
+		Div(Class("flex items-center justify-between gap-4 py-2 text-[var(--text-secondary)]"),
 			Span(Text("Plan")),
-			Span(Class("settings-value"), Text(planLabel(data.HasLifetimeLicense))),
+			Span(Class("font-medium text-[var(--text-primary)]"), Text(planLabel(data.HasLifetimeLicense))),
 		),
-		Div(Class("settings-row"),
+		Div(Class("flex items-center justify-between gap-4 py-2 text-[var(--text-secondary)]"),
 			Span(Text("Usage balance")),
-			Span(Class("settings-value"), Text(data.BalanceCents.Format())),
+			Span(Class("font-medium text-[var(--text-primary)]"), Text(data.BalanceCents.Format())),
 		),
-		Div(Class("settings-form"),
+		Div(Class("mt-3 flex items-center gap-2"),
 			Data("signals:amount-dollars", `"5"`),
-			Label(Class("settings-input-wrap"),
-				Span(Class("settings-input-prefix"), Text("$")),
-				Input(Class("settings-input"), Type("text"), Value("5"), Attr("inputmode", "numeric"), Pattern("[0-9]*"), Data("bind:amount-dollars", "")),
+			Label(Class("relative"),
+				Span(Class("pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]"), Text("$")),
+				Input(Class("min-h-9 w-[140px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-2 pl-5 font-[inherit] text-[var(--text-primary)]"), Type("text"), Value("5"), Attr("inputmode", "numeric"), Pattern("[0-9]*"), Data("bind:amount-dollars", "")),
 			),
-			Button(Type("button"), Class("settings-action"), Data("on:click", `@post('/settings/checkout/balance')`), Text("Add usage credit")),
+			Button(Type("button"), Class("inline-flex min-h-9 cursor-pointer items-center justify-center rounded-lg border-0 bg-[var(--bg-button)] px-3 font-[inherit] text-white no-underline"), Data("on:click", `@post('/settings/checkout/balance')`), Text("Add usage credit")),
 		),
 	)
 }
 
 func PaywallCard() Node {
-	return Section(Class("settings-card"),
-		H2(Class("settings-card-title"), Text("Unlock A Fast Chat")),
-		P(Class("settings-copy"),
+	return Section(Class("mb-3 rounded-xl border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-11)_55%,transparent)] p-5"),
+		H2(Class("mb-3 text-base font-medium"), Text("Unlock A Fast Chat")),
+		P(Class("mb-4 leading-7 text-[var(--text-secondary)]"),
 			Text(fmt.Sprintf(
 				"Lifetime access is %s and includes %s of usage credit.",
 				polar.ProductProPriceCents.Format(), polar.ProductProIncludedCreditCents.Format(),
 			)),
 		),
 		Form(Method("post"), Action("/settings/checkout/pro"),
-			Button(Type("submit"), Class("settings-action"), Text("Buy lifetime access")),
+			Button(Type("submit"), Class("inline-flex min-h-9 cursor-pointer items-center justify-center rounded-lg border-0 bg-[var(--bg-button)] px-3 font-[inherit] text-white no-underline"), Text("Buy lifetime access")),
 		),
 	)
 }
@@ -172,12 +77,12 @@ type CheckoutThankYouData struct {
 }
 
 func CheckoutThankYouPage(data CheckoutThankYouData) Node {
-	return Main(Class("settings-page"),
-		Div(Class("settings-shell"),
-			Section(Class("settings-card"),
-				H1(Class("settings-title"), Text(thankYouTitle(data.Confirmed))),
-				P(Class("settings-copy"), Text(thankYouCopy(data))),
-				A(Class("settings-action"), Href("/"), Text("Start chatting")),
+	return Main(Class("flex-1 overflow-y-auto bg-[var(--bg-primary)] p-8"),
+		Div(Class("mx-auto max-w-[760px]"),
+			Section(Class("mb-3 rounded-xl border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-11)_55%,transparent)] p-5"),
+				H1(Class("mb-5 text-3xl font-medium tracking-[-0.03em]"), Text(thankYouTitle(data.Confirmed))),
+				P(Class("mb-4 leading-7 text-[var(--text-secondary)]"), Text(thankYouCopy(data))),
+				A(Class("inline-flex min-h-9 cursor-pointer items-center justify-center rounded-lg border-0 bg-[var(--bg-button)] px-3 font-[inherit] text-white no-underline"), Href("/"), Text("Start chatting")),
 			),
 		),
 	)

@@ -8,97 +8,12 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-var _ = styles.Style(`
-	.thread-list-item {
-		display: flex;
-		align-items: center;
-		gap: var(--size-2);
-		padding: var(--size-1) var(--size-2);
-		color: var(--text-secondary);
-		border-radius: var(--radius-2);
-		text-decoration: none;
-		transition:
-			background 0.12s,
-			color 0.12s;
-
-		&:hover {
-			background: var(--bg-hover);
-			color: var(--text-primary);
-		}
-
-		&.active {
-			background: color-mix(in oklch, var(--bg-button) 18%, transparent);
-			color: var(--text-primary);
-		}
-
-		&:hover .thread-archive-button {
-			opacity: 1;
-		}
-	}
-
-
-	.thread-list-item-title {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		min-width: 0;
-		flex: 1;
-	}
-
-	@keyframes thread-streaming-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	.thread-streaming-indicator {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
-		color: var(--bg-button);
-
-		svg {
-			width: 14px;
-			height: 14px;
-			transform-origin: center;
-			animation: thread-streaming-spin 0.8s linear infinite;
-		}
-	}
-
-	.thread-archive-button {
-		display: flex;
-		opacity: 0;
-		align-items: center;
-		justify-content: center;
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		padding: var(--size-1);
-		border-radius: var(--radius-1);
-		flex-shrink: 0;
-
-		svg {
-			width: 14px;
-			height: 14px;
-		}
-
-		&:hover {
-			color: var(--text-primary);
-			background: var(--bg-hover);
-		}
-	}
-`)
-
 func ThreadListItem(thread Thread, isActive bool) Node {
 	return A(
 		ID("thread-"+thread.ID),
 		Classes{
-			"thread-list-item": true,
-			"active":           isActive,
+			"thread-list-item group flex items-center gap-2 rounded-lg px-2 py-1 text-[var(--text-secondary)] no-underline transition-colors duration-100 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]": true,
+			"bg-[color-mix(in_oklch,var(--bg-button)_18%,transparent)] text-[var(--text-primary)]":                                                                                                                     isActive,
 		},
 		Href(fmt.Sprintf("/threads/%s", thread.ID)),
 		ThreadListItemTitle(thread.Title),
@@ -108,17 +23,17 @@ func ThreadListItem(thread Thread, isActive bool) Node {
 }
 
 func ThreadListItemTitle(title string) Node {
-	return Span(Class("thread-list-item-title"), Text(title))
+	return Span(Class("min-w-0 flex-1 truncate"), Text(title))
 }
 
 func ThreadStreamingIndicator() Node {
-	return Span(Class("thread-streaming-indicator"), iconSpinner())
+	return Span(Class("flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[var(--bg-button)] [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:origin-center [&_svg]:animate-[thread-streaming-spin_0.8s_linear_infinite]"), iconSpinner())
 }
 
 func ThreadArchiveButton(threadID string) Node {
 	return Button(
 		Type("button"),
-		Class("thread-archive-button"),
+		Class("flex shrink-0 cursor-pointer items-center justify-center rounded p-1 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] [&_svg]:h-3.5 [&_svg]:w-3.5"),
 		Data("on:click", fmt.Sprintf(`
 			evt.preventDefault();
 			evt.stopPropagation();
