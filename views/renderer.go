@@ -80,7 +80,7 @@ func (x *Renderer) layout(body Node) Node {
 }
 
 func (x *Renderer) appLayout(body ...Node) Node {
-	return x.layout(Div(Class("grid h-dvh w-full grid-cols-[260px_minmax(0,1fr)_420px] overflow-hidden max-[1180px]:grid-cols-[260px_minmax(0,1fr)]"),
+	return x.layout(Div(Class("grid h-dvh w-full grid-cols-[260px_minmax(0,1fr)] overflow-hidden"),
 		Group(body),
 	))
 }
@@ -95,7 +95,6 @@ func (x *Renderer) RenderIndexPage(w io.Writer, data IndexData) {
 	renderNode(w, x.appLayout(
 		Sidebar(SidebarProps{data.Threads, "", data.UserEmail}),
 		NewEmptyMessageThread(),
-		MessageMinimap(nil),
 	))
 }
 
@@ -108,7 +107,6 @@ func (x *Renderer) RenderThreadPage(w io.Writer, data ThreadData, doScrollSideba
 			DoScrollSidebar: doScrollSidebar,
 			IsStreaming:     data.Streaming,
 		}),
-		MessageMinimap(data.Messages),
 	))
 }
 

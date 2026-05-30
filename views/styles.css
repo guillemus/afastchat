@@ -278,16 +278,6 @@ body {
     color: #a3a3a3;
 }
 
-.minimap-node:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 100%;
-    width: 1px;
-    height: 0.75rem;
-    background: #525252;
-}
-
 .reasoning-part summary::-webkit-details-marker {
     display: none;
 }

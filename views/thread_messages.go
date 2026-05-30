@@ -135,7 +135,6 @@ var EmptyMessageState = Static(Div(
 
 func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
 	ssePatch(sse, MessageList(MessageThreadProps{Messages: messages}))
-	ssePatch(sse, MessageMinimap(messages))
 	if scrollMessages {
 		sseExecJS(sse, `
 			let el = document.querySelector('#messages');
