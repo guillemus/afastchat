@@ -4,8 +4,9 @@ import (
 	. "maragu.dev/gomponents"
 )
 
-func iconPlus() Node {
+func iconPlus(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -17,8 +18,9 @@ func iconPlus() Node {
 	)
 }
 
-func iconSearch() Node {
+func iconSearch(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -29,8 +31,9 @@ func iconSearch() Node {
 	)
 }
 
-func iconChat() Node {
+func iconChat(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -42,8 +45,9 @@ func iconChat() Node {
 	)
 }
 
-func iconArchive() Node {
+func iconArchive(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -58,8 +62,9 @@ func iconArchive() Node {
 	)
 }
 
-func iconSpinner() Node {
+func iconSpinner(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -78,8 +83,9 @@ func iconSpinner() Node {
 	)
 }
 
-func iconArrowUp() Node {
+func iconArrowUp(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -92,8 +98,9 @@ func iconArrowUp() Node {
 	)
 }
 
-func iconArrowDown() Node {
+func iconArrowDown(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "none"),
@@ -106,8 +113,9 @@ func iconArrowDown() Node {
 	)
 }
 
-func iconSquare() Node {
+func iconSquare(class string) Node {
 	return El("svg",
+		Attr("class", class),
 		Attr("xmlns", "http://www.w3.org/2000/svg"),
 		Attr("viewBox", "0 0 24 24"),
 		Attr("fill", "currentColor"),

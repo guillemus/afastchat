@@ -138,6 +138,10 @@ body {
     margin-bottom: 0;
 }
 
+.user-message .markdown-content p {
+    margin: 0;
+}
+
 .markdown-content ul,
 .markdown-content ol {
     padding-left: var(--size-5);

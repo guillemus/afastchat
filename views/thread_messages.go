@@ -97,13 +97,13 @@ func MessageThread(x MessageThreadProps) Node {
 				Button(
 					Type("button"),
 					Style("display: none"),
-					Class("absolute left-1/2 bottom-4 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[color-mix(in_oklch,var(--bg-button)_30%,var(--border-color))] bg-[color-mix(in_oklch,var(--bg-primary)_88%,var(--bg-button))] text-[var(--text-primary)] shadow-[var(--shadow-3)] transition hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:shadow-[var(--shadow-3),0_0_0_3px_color-mix(in_oklch,var(--bg-button)_28%,transparent)] [&_svg]:size-[22px]"),
+					Class("absolute left-1/2 bottom-4 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[color-mix(in_oklch,var(--bg-button)_30%,var(--border-color))] bg-[color-mix(in_oklch,var(--bg-primary)_88%,var(--bg-button))] text-[var(--text-primary)] shadow-[var(--shadow-3)] transition hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:shadow-[var(--shadow-3),0_0_0_3px_color-mix(in_oklch,var(--bg-button)_28%,transparent)]"),
 					Data("show", "$showJumpToBottom"),
 					Data("on:click", `
 						$messages.scrollTo({ top: $messages.scrollHeight, behavior: 'smooth' });
 						$showJumpToBottom = false;
 					`),
-					iconArrowDown(),
+					iconArrowDown("size-[22px]"),
 				),
 			),
 			existingThreadChatInput(x.ThreadID, x.IsStreaming),
@@ -188,7 +188,7 @@ func MessageGroupNode(x MessageGroup) Node {
 func UserMessage(x UserMessageProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
-		Class("message user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 break-words whitespace-normal rounded-lg border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-10)_72%,transparent)] px-3 py-2 leading-7 text-[var(--text-primary)] [&_.markdown-content_p]:m-0"),
+		Class("message user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 break-words whitespace-normal rounded-lg border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-10)_72%,transparent)] px-3 py-2 leading-7 text-[var(--text-primary)]"),
 		MarkdownContent(x.MdContent),
 	)
 }

@@ -29,9 +29,9 @@ func LandingPage() Node {
 				Class("w-full max-w-3xl"),
 				A(
 					Href("/signup"),
-					Class("flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] p-3 text-[var(--text-muted)] no-underline transition-colors hover:border-[color-mix(in_oklch,var(--bg-button)_50%,var(--border-color))] [&_svg]:ml-auto [&_svg]:h-5 [&_svg]:w-5 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]"),
+					Class("flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] p-3 text-[var(--text-muted)] no-underline transition-colors hover:border-[color-mix(in_oklch,var(--bg-button)_50%,var(--border-color))]"),
 					Text("Message afastchat"),
-					iconArrowUp(),
+					iconArrowUp("ml-auto h-5 w-5 shrink-0 text-[var(--text-muted)]"),
 				),
 			),
 			Div(

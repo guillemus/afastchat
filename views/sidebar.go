@@ -42,13 +42,14 @@ func AppLogo() Node {
 }
 
 func NewChatButton() Node {
-	return A(Href("/"), Class("mx-3 mb-3 flex items-center justify-center gap-2 rounded-lg border-0 bg-[var(--bg-button)] px-3 py-2 font-normal text-white no-underline transition hover:brightness-110 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"), iconPlus(), Text("New Chat"))
+	return A(Href("/"), Class("mx-3 mb-3 flex items-center justify-center gap-2 rounded-lg border-0 bg-[var(--bg-button)] px-3 py-2 font-normal text-white no-underline transition hover:brightness-110"), iconPlus("h-3.5 w-3.5 shrink-0"), Text("New Chat"))
 }
 
 func ThreadSearch() Node {
-	return Div(Class("relative mx-3 mb-2 [&_svg]:pointer-events-none [&_svg]:absolute [&_svg]:left-2 [&_svg]:top-1/2 [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:-translate-y-1/2 [&_svg]:text-[var(--text-muted)] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-transparent [&_input]:bg-transparent [&_input]:py-1 [&_input]:pr-2 [&_input]:pl-[calc(var(--spacing)*2+13px+var(--spacing)*2)] [&_input]:font-[inherit] [&_input]:text-[inherit] [&_input]:text-[var(--text-secondary)] [&_input]:outline-none [&_input]:transition-colors [&_input:focus]:border-[var(--border-color)] [&_input:focus]:bg-[var(--bg-input)] [&_input::placeholder]:text-[var(--text-muted)]"),
-		iconSearch(),
+	return Div(Class("relative mx-3 mb-2"),
+		iconSearch("pointer-events-none absolute left-2 top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-[var(--text-muted)]"),
 		Input(
+			Class("w-full rounded-lg border border-transparent bg-transparent py-1 pr-2 pl-[calc(var(--spacing)*2+13px+var(--spacing)*2)] font-[inherit] text-[inherit] text-[var(--text-secondary)] outline-none transition-colors focus:border-[var(--border-color)] focus:bg-[var(--bg-input)] placeholder:text-[var(--text-muted)]"),
 			Type("text"),
 			Name("thread-search"),
 			Placeholder("Search threads..."),
@@ -60,9 +61,9 @@ func ThreadSearch() Node {
 
 func SidebarFooter(email string) Node {
 	return Div(
-		Class("flex items-center gap-2 border-t border-[var(--border-color)] p-3 [&_form]:ml-auto"),
+		Class("flex items-center gap-2 border-t border-[var(--border-color)] p-3"),
 		UserAvatar(email),
-		Form(Method("post"), Action("/logout"), LogoutButton()),
+		Form(Class("ml-auto"), Method("post"), Action("/logout"), LogoutButton()),
 	)
 }
 
