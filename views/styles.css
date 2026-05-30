@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @source "./**/*.go";
 
 @font-face {
@@ -279,7 +279,7 @@ body {
 }
 
 .minimap-node:not(:last-child)::after {
-    content: "";
+    content: '';
     position: absolute;
     left: 50%;
     top: 100%;

@@ -4,17 +4,20 @@ import (
 	"fmt"
 
 	. "maragu.dev/gomponents"
-	. "maragu.dev/gomponents/components"
 	. "maragu.dev/gomponents/html"
 )
 
 func ThreadListItem(thread Thread, isActive bool) Node {
+	classes := "thread-list-item group flex items-center gap-2 rounded-lg px-2 py-1 no-underline transition-colors duration-100 hover:bg-neutral-900 hover:text-neutral-100"
+	if isActive {
+		classes += " bg-neutral-900 text-neutral-100"
+	} else {
+		classes += " text-neutral-400"
+	}
+
 	return A(
 		ID("thread-"+thread.ID),
-		Classes{
-			"thread-list-item group flex items-center gap-2 rounded-lg px-2 py-1 text-neutral-400 no-underline transition-colors duration-100 hover:bg-neutral-900 hover:text-neutral-100": true,
-			"bg-[color-mix(in_oklch,#f97316_18%,transparent)] text-neutral-100": isActive,
-		},
+		Class(classes),
 		Href(fmt.Sprintf("/threads/%s", thread.ID)),
 		ThreadListItemTitle(thread.Title),
 		If(thread.IsStreaming, ThreadStreamingIndicator()),
