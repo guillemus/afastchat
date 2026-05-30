@@ -5,7 +5,7 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func LandingPage() Node {
+var LandingPage = Static(func() Node {
 	pills := []string{
 		"Explain a Go concurrency pattern",
 		"Debug an error in my code",
@@ -47,4 +47,4 @@ func LandingPage() Node {
 			),
 		),
 	)
-}
+}())

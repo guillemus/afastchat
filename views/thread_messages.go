@@ -113,19 +113,25 @@ func MessageThread(x MessageThreadProps) Node {
 	return Main(
 		Class("message-thread flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-neutral-950"),
 		contents,
-		If(x.DoScrollSidebar && len(x.Messages) > 0, MessageScrollRestoreScript()),
+		If(x.DoScrollSidebar && len(x.Messages) > 0, MessageScrollRestoreScript),
 	)
 }
 
-func MessageScrollRestoreScript() Node {
-	// Keep this after all message-thread layout-affecting nodes, especially chat input.
-	// ScrollTop is clamped to the current max scroll; restoring before input is parsed
-	// uses a too-tall message list, then input shrinks it and leaves scroll above bottom.
-	return Script(Raw(`{
-		let el = document.querySelector('#messages');
-		el.scrollTop = el.scrollHeight;
-	}`))
-}
+// Keep this after all message-thread layout-affecting nodes, especially chat input.
+// ScrollTop is clamped to the current max scroll; restoring before input is parsed
+// uses a too-tall message list, then input shrinks it and leaves scroll above bottom.
+var MessageScrollRestoreScript = Static(Script(Raw(`{
+	let el = document.querySelector('#messages');
+	el.scrollTop = el.scrollHeight;
+}`)))
+
+var EmptyMessageState = Static(Div(
+	Class("flex flex-1 flex-col items-center justify-center gap-3 text-center text-neutral-400"),
+	H1(Class("leading-tight tracking-[-0.04em] text-neutral-100"), Text("How can I help?")),
+	P(Class("max-w-[42ch] leading-7"),
+		Text("Start a new conversation with afastchat."),
+	),
+))
 
 func PatchThreadMessageList(sse *datastar.ServerSentEventGenerator, messages []MessageGroup, scrollMessages bool) {
 	ssePatch(sse, MessageList(MessageThreadProps{Messages: messages}))
@@ -149,13 +155,7 @@ func MessageList(x MessageThreadProps) Node {
 		return Div(
 			ID("messages"),
 			Class("main-body flex min-h-0 min-w-0 flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 pt-8 justify-end mx-auto w-full max-w-[860px] [overflow-anchor:auto] [scrollbar-color:theme(colors.neutral.700)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
-			Div(
-				Class("flex flex-1 flex-col items-center justify-center gap-3 text-center text-neutral-400"),
-				H1(Class("leading-tight tracking-[-0.04em] text-neutral-100"), Text("How can I help?")),
-				P(Class("max-w-[42ch] leading-7"),
-					Text("Start a new conversation with afastchat."),
-				),
-			),
+			EmptyMessageState,
 		)
 	}
 

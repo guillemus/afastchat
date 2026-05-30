@@ -25,7 +25,7 @@ func Sidebar(x SidebarProps) Node {
 		ThreadSearch(),
 		ThreadList(x.Threads, x.ActiveThreadID),
 		SidebarFooter(x.UserEmail),
-		ThreadListScrollRestoreScript(),
+		ThreadListScrollRestoreScript,
 	)
 }
 

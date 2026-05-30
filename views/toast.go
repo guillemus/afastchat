@@ -7,10 +7,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-func ToastRegion() Node {
-	return Div(ID("toast-region"), Class("toast-region fixed right-5 bottom-5 z-10"))
-}
-
 type ToastProps struct {
 	Title   string
 	Message string
@@ -42,6 +38,8 @@ func Toast(data ToastProps) Node {
 func PatchErrorToast(sse *datastar.ServerSentEventGenerator, title, message string) {
 	PatchToast(sse, ToastProps{Title: title, Message: message})
 }
+
+var ToastRegion = Static(Div(ID("toast-region"), Class("toast-region fixed right-5 bottom-5 z-10")))
 
 func PatchToast(sse *datastar.ServerSentEventGenerator, data ToastProps) {
 	ssePatch(sse, Div(ID("toast-region"), Class("toast-region fixed right-5 bottom-5 z-10"), Toast(data)))

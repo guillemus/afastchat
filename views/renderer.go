@@ -48,30 +48,33 @@ type ThreadData struct {
 	UserEmail string
 }
 
+var DocumentHead = Static(Group{
+	Link(Rel("preload"), Href("/public/fonts/figtree-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
+	Link(Rel("preload"), Href("/public/fonts/jetbrains-mono-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
+	Link(Rel("stylesheet"), Href("https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css")),
+	Script(Type("module"), Src("https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js")),
+	Script(Type("speculationrules"), Raw(`{
+		"prefetch": [{
+			"where": { "href_matches": "/*" },
+			"eagerness": "moderate"
+		}]
+	}`)),
+	// We do it inline so that client functions are available ASAP. Useful for scroll position restoration while rendering.
+	JS,
+})
+
 func (x *Renderer) layout(body Node) Node {
 	return HTML5(HTML5Props{
 		// Title:       "afastchat",
-		Description: "",
-		Language:    "en",
+		Language: "en",
 		Head: []Node{
-			Link(Rel("preload"), Href("/public/fonts/figtree-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
-			Link(Rel("preload"), Href("/public/fonts/jetbrains-mono-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
-			Link(Rel("stylesheet"), Href("https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
-			Raw(`<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"></script>`),
-			Script(Type("speculationrules"), Raw(`{
-				"prefetch": [{
-					"where": { "href_matches": "/*" },
-					"eagerness": "moderate"
-				}]
-			}`)),
-			// We do it inline so that the functions are available ASAP.
-			JS,
+			DocumentHead,
 		},
 		Body: []Node{
 			DebugSignals(x.env),
 			body,
-			ToastRegion(),
+			ToastRegion,
 		},
 	})
 }
@@ -121,7 +124,7 @@ func (x *Renderer) RenderCheckoutThankYouPage(w io.Writer, data CheckoutThankYou
 }
 
 func (x *Renderer) RenderLandingPage(w io.Writer) {
-	renderNode(w, x.guestLayout(LandingPage()))
+	renderNode(w, x.guestLayout(LandingPage))
 }
 
 func (x *Renderer) RenderLoginPage(w io.Writer, data LoginPageData) {
