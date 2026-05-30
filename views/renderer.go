@@ -56,7 +56,6 @@ func (x *Renderer) layout(body Node) Node {
 		Head: []Node{
 			Link(Rel("preload"), Href("/public/fonts/figtree-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
 			Link(Rel("preload"), Href("/public/fonts/jetbrains-mono-latin-var.woff2"), As("font"), Type("font/woff2"), Attr("crossorigin")),
-			Link(Rel("stylesheet"), Href("https://unpkg.com/open-props@1.7.23/open-props.min.css")),
 			Link(Rel("stylesheet"), Href("https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css")),
 			Link(Rel("stylesheet"), Href("/public/styles.css?v="+x.assetVersion)),
 			Raw(`<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"></script>`),

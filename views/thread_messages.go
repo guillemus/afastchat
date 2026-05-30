@@ -97,7 +97,7 @@ func MessageThread(x MessageThreadProps) Node {
 				Button(
 					Type("button"),
 					Style("display: none"),
-					Class("absolute left-1/2 bottom-4 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[color-mix(in_oklch,var(--bg-button)_30%,var(--border-color))] bg-[color-mix(in_oklch,var(--bg-primary)_88%,var(--bg-button))] text-[var(--text-primary)] shadow-[var(--shadow-3)] transition hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:shadow-[var(--shadow-3),0_0_0_3px_color-mix(in_oklch,var(--bg-button)_28%,transparent)]"),
+					Class("absolute left-1/2 bottom-4 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[color-mix(in_oklch,#f97316_30%,#262626)] bg-[color-mix(in_oklch,#0a0a0a_88%,#f97316)] text-neutral-100 shadow-[0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)] transition hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:shadow-[0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1),0_0_0_3px_color-mix(in_oklch,#f97316_28%,transparent)]"),
 					Data("show", "$showJumpToBottom"),
 					Data("on:click", `
 						$messages.scrollTo({ top: $messages.scrollHeight, behavior: 'smooth' });
@@ -111,7 +111,7 @@ func MessageThread(x MessageThreadProps) Node {
 	}
 
 	return Main(
-		Class("message-thread flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--bg-primary)]"),
+		Class("message-thread flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-neutral-950"),
 		contents,
 		If(x.DoScrollSidebar && len(x.Messages) > 0, MessageScrollRestoreScript()),
 	)
@@ -148,10 +148,10 @@ func MessageList(x MessageThreadProps) Node {
 	if len(x.Messages) == 0 {
 		return Div(
 			ID("messages"),
-			Class("main-body flex min-h-0 min-w-0 flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 pt-8 justify-end mx-auto w-full max-w-[860px] [overflow-anchor:auto] [scrollbar-color:var(--gray-9)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
+			Class("main-body flex min-h-0 min-w-0 flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 pt-8 justify-end mx-auto w-full max-w-[860px] [overflow-anchor:auto] [scrollbar-color:theme(colors.neutral.700)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
 			Div(
-				Class("flex flex-1 flex-col items-center justify-center gap-3 text-center text-[var(--text-secondary)]"),
-				H1(Class("leading-tight tracking-[-0.04em] text-[var(--text-primary)]"), Text("How can I help?")),
+				Class("flex flex-1 flex-col items-center justify-center gap-3 text-center text-neutral-400"),
+				H1(Class("leading-tight tracking-[-0.04em] text-neutral-100"), Text("How can I help?")),
 				P(Class("max-w-[42ch] leading-7"),
 					Text("Start a new conversation with afastchat."),
 				),
@@ -162,7 +162,7 @@ func MessageList(x MessageThreadProps) Node {
 	return Div(
 		ID("messages"),
 		Data("ref:messages", ""),
-		Class("main-body mx-auto flex min-h-0 min-w-0 w-full max-w-[860px] flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 [overflow-anchor:auto] [scrollbar-color:var(--gray-9)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
+		Class("main-body mx-auto flex min-h-0 min-w-0 w-full max-w-[860px] flex-1 flex-col items-stretch gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-5 [overflow-anchor:auto] [scrollbar-color:theme(colors.neutral.700)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]"),
 		Data("on:scroll__debounce.10ms", `
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
@@ -188,7 +188,7 @@ func MessageGroupNode(x MessageGroup) Node {
 func UserMessage(x UserMessageProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
-		Class("message user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 break-words whitespace-normal rounded-lg border border-[var(--border-color)] bg-[color-mix(in_oklch,var(--gray-10)_72%,transparent)] px-3 py-2 leading-7 text-[var(--text-primary)]"),
+		Class("message user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 break-words whitespace-normal rounded-lg border border-neutral-800 bg-[color-mix(in_oklch,#262626_72%,transparent)] px-3 py-2 leading-7 text-neutral-100"),
 		MarkdownContent(x.MdContent),
 	)
 }
@@ -197,7 +197,7 @@ func AssistantMessageParts(x AssistantMessagePartsProps) Node {
 	return Div(
 		ID("msg-"+x.ID),
 		Classes{
-			"message assistant-message mr-auto flex w-full max-w-full shrink-0 flex-col gap-3 whitespace-normal break-words rounded-xl px-4 py-3 leading-7 text-[var(--gray-3)]": true,
+			"message assistant-message mr-auto flex w-full max-w-full shrink-0 flex-col gap-3 whitespace-normal break-words rounded-xl px-4 py-3 leading-7 text-neutral-200": true,
 			"min-h-[calc(100dvh-13rem)]": x.LargeHeight,
 		},
 		Map(x.Parts, func(part AssistantPart) Node {
@@ -230,24 +230,24 @@ func ToolCallPart(x ToolCallPartProps) Node {
 	name, arg := toolCallDisplay(x.Name, x.Args)
 	return Div(
 		ID("part-"+x.ID),
-		Class("assistant-part tool-call-part flex w-full min-w-0 shrink-0 items-baseline gap-2 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--gray-11)] px-3 py-2"),
-		Span(Class("whitespace-nowrap font-semibold text-[var(--text-primary)]"), Text(name)),
-		Span(Class("min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-[var(--font-code)] text-sm text-[var(--text-secondary)]"), Text(arg)),
+		Class("assistant-part tool-call-part flex w-full min-w-0 shrink-0 items-baseline gap-2 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2"),
+		Span(Class("whitespace-nowrap font-semibold text-neutral-100"), Text(name)),
+		Span(Class("min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-sm text-neutral-400"), Text(arg)),
 	)
 }
 
 func ReasoningPart(x ReasoningPartProps) Node {
 	return Details(
 		ID("part-"+x.ID),
-		Class("assistant-part reasoning-part w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--gray-11)]"),
+		Class("assistant-part reasoning-part w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900"),
 		Data("preserve-attr", "open"),
 		Summary(
-			Class("flex min-w-0 cursor-pointer list-none items-baseline gap-2 px-3 py-2 text-[var(--text-secondary)]"),
-			Span(Class("whitespace-nowrap font-semibold text-[var(--text-primary)]"), Text("Reasoning")),
-			Span(Class("min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-secondary)]"), Text(reasoningPreview(x.Text))),
+			Class("flex min-w-0 cursor-pointer list-none items-baseline gap-2 px-3 py-2 text-neutral-400"),
+			Span(Class("whitespace-nowrap font-semibold text-neutral-100"), Text("Reasoning")),
+			Span(Class("min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-400"), Text(reasoningPreview(x.Text))),
 		),
 		Div(
-			Class("px-3 pb-3 leading-7 text-[var(--text-secondary)]"),
+			Class("px-3 pb-3 leading-7 text-neutral-400"),
 			MarkdownContent(x.MdContent),
 		),
 	)

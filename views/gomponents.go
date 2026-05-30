@@ -12,7 +12,7 @@ func DebugSignals(env env.Env) Node {
 	}
 
 	return Div(
-		Class("fixed right-5 bottom-2 z-10 w-[500px] overflow-hidden bg-[var(--gray-12)] p-2"),
+		Class("fixed right-5 bottom-2 z-10 w-[500px] overflow-hidden bg-neutral-950 p-2"),
 		Data("signals:debug-signals-collapsed", "false"),
 		Data("init", `$debugSignalsCollapsed = getSessionVal('debug_signals_collapsed') !== 'false'`),
 		Div(
@@ -20,7 +20,7 @@ func DebugSignals(env env.Env) Node {
 			Small(Text("signals:")),
 			Button(
 				Type("button"),
-				Class("cursor-pointer rounded border border-[var(--border-color)] bg-transparent px-2 font-[inherit] text-[var(--text-primary)]"),
+				Class("cursor-pointer rounded border border-neutral-800 bg-transparent px-2 font-[inherit] text-neutral-100"),
 				Data("text", "$debugSignalsCollapsed ? 'show' : 'hide'"),
 				Data("on:click", `
 					$debugSignalsCollapsed = !$debugSignalsCollapsed;
@@ -29,7 +29,7 @@ func DebugSignals(env env.Env) Node {
 			),
 		),
 		Pre(
-			Class("overflow-hidden whitespace-pre bg-[var(--gray-12)]"),
+			Class("overflow-hidden whitespace-pre bg-neutral-950"),
 			Data("show", "!$debugSignalsCollapsed"),
 			Data("json-signals", ""),
 		),

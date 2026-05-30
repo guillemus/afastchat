@@ -1,6 +1,9 @@
 dev:
 	bunx concurrently -k -n go,css "air" "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --watch"
 
+typecheck-scripts:
+    bun run typecheck
+
 build-assets:
 	bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --minify
 

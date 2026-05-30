@@ -7,7 +7,7 @@ import (
 
 func ThreadList(threads []Thread, activeThreadID string) Node {
 	return Div(
-		Class("thread-list flex-1 overflow-y-auto overscroll-contain px-2 py-1 [scrollbar-color:var(--gray-9)_transparent] [scrollbar-width:thin]"),
+		Class("thread-list flex-1 overflow-y-auto overscroll-contain px-2 py-1 [scrollbar-color:theme(colors.neutral.700)_transparent] [scrollbar-width:thin]"),
 		Data("on:scroll__debounce.10ms", `
 			setSessionVal('thread_list_scroll', String(el.scrollTop));
 		`),
@@ -29,7 +29,7 @@ func ThreadListScrollRestoreScript() Node {
 }
 
 func ThreadSectionLabel(label string) Node {
-	return Div(ID("thread-section-recent"), Class("mb-1 px-2 py-1 text-xs font-normal uppercase tracking-[0.08em] text-[var(--text-muted)]"), Text(label))
+	return Div(ID("thread-section-recent"), Class("mb-1 px-2 py-1 text-xs font-normal uppercase tracking-[0.08em] text-neutral-500"), Text(label))
 }
 
 func ThreadItems(threads []Thread, activeThreadID string) Node {

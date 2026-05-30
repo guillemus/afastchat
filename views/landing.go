@@ -14,11 +14,11 @@ func LandingPage() Node {
 	}
 
 	return Main(
-		Class("flex min-h-dvh flex-col items-center justify-center bg-[var(--bg-primary)] p-6"),
+		Class("flex min-h-dvh flex-col items-center justify-center bg-neutral-950 p-6"),
 		Div(
 			Class("flex w-full max-w-3xl flex-col items-center gap-8"),
 			Div(
-				Class("lowercase tracking-[0.1em] text-[var(--text-secondary)]"),
+				Class("lowercase tracking-[0.1em] text-neutral-400"),
 				Text("afastchat"),
 			),
 			H1(
@@ -29,21 +29,21 @@ func LandingPage() Node {
 				Class("w-full max-w-3xl"),
 				A(
 					Href("/signup"),
-					Class("flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] p-3 text-[var(--text-muted)] no-underline transition-colors hover:border-[color-mix(in_oklch,var(--bg-button)_50%,var(--border-color))]"),
+					Class("flex items-center rounded-xl border border-neutral-800 bg-neutral-900 p-3 text-neutral-500 no-underline transition-colors hover:border-[color-mix(in_oklch,#f97316_50%,#262626)]"),
 					Text("Message afastchat"),
-					iconArrowUp("ml-auto h-5 w-5 shrink-0 text-[var(--text-muted)]"),
+					iconArrowUp("ml-auto h-5 w-5 shrink-0 text-neutral-500"),
 				),
 			),
 			Div(
 				Class("flex w-full flex-wrap justify-center gap-3"),
 				Map(pills, func(label string) Node {
-					return A(Href("/signup"), Class("inline-flex items-center rounded-2xl border border-[var(--border-color)] px-4 py-2 text-[var(--text-secondary)] no-underline transition-colors hover:border-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"), Text(label))
+					return A(Href("/signup"), Class("inline-flex items-center rounded-2xl border border-neutral-800 px-4 py-2 text-neutral-400 no-underline transition-colors hover:border-neutral-500 hover:bg-neutral-900 hover:text-neutral-100"), Text(label))
 				}),
 			),
 			Div(
 				Class("mt-2 flex items-center gap-5"),
-				A(Href("/login"), Class("text-[var(--text-secondary)] no-underline transition-colors hover:text-[var(--text-primary)] hover:underline hover:underline-offset-3"), Text("Log in")),
-				A(Href("/signup"), Class("text-[var(--text-secondary)] no-underline transition-colors hover:text-[var(--text-primary)] hover:underline hover:underline-offset-3"), Text("Sign up")),
+				A(Href("/login"), Class("text-neutral-400 no-underline transition-colors hover:text-neutral-100 hover:underline hover:underline-offset-3"), Text("Log in")),
+				A(Href("/signup"), Class("text-neutral-400 no-underline transition-colors hover:text-neutral-100 hover:underline hover:underline-offset-3"), Text("Sign up")),
 			),
 		),
 	)
