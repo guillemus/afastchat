@@ -1,0 +1,287 @@
+package views
+
+import (
+	"afastchat.com/agents"
+	"afastchat.com/views/ui"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+templ MessageThread(props MessageThreadProps) {
+	<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-canvas">
+		if len(props.Messages) == 0 {
+			@MessageList(props)
+		} else {
+			<div
+				class="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+				data-signals:_show-jump-to-bottom="false"
+				data-on:resize__window__debounce.50ms="
+					if (!$_messages) return;
+					const overflow = $_messages.scrollHeight - $_messages.clientHeight;
+					const distanceFromBottom = overflow - $_messages.scrollTop;
+					$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+				"
+			>
+				@MessageList(props)
+				<button
+					type="button"
+					aria-label="Jump to latest message"
+					style="display: none"
+					class="
+						absolute bottom-4 left-1/2 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center
+						justify-center rounded-full border border-accent/30 bg-surface text-ink shadow-popover
+						transition hover:-translate-y-px hover:brightness-110
+						focus-visible:outline-2 focus-visible:outline-accent
+					"
+					data-show="$_showJumpToBottom"
+					data-on:click="
+						$_messages.scrollTo({ top: $_messages.scrollHeight, behavior: 'smooth' });
+						$_showJumpToBottom = false;
+					"
+				>
+					@ui.ArrowDownIcon()
+				</button>
+			</div>
+		}
+		@chatInput(props.ThreadID, props.IsStreaming)
+		if props.DoScrollSidebar && len(props.Messages) > 0 {
+			@messageScrollRestore()
+		}
+	</main>
+}
+
+templ messageScrollRestore() {
+	<script>
+		{
+			const el = document.querySelector('#messages')
+			el.scrollTop = el.scrollHeight
+		}
+	</script>
+}
+
+const messageListClass = `
+	mx-auto flex min-h-0 w-full max-w-[860px] min-w-0 flex-1 flex-col items-stretch gap-3
+	overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-5 [overflow-anchor:auto]
+	[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable]
+	[scrollbar-width:thin]
+`
+
+templ MessageList(props MessageThreadProps) {
+	if len(props.Messages) == 0 {
+		<div id="messages" class={ messageListClass, "justify-end pt-8" }>
+			<div
+				class="flex flex-1 flex-col items-center justify-center gap-3 text-center text-ink-secondary"
+			>
+				<h1 class="leading-tight tracking-[-0.04em] text-ink">How can I help?</h1>
+				<p class="max-w-[42ch] leading-7">Start a new conversation with afastchat.</p>
+			</div>
+		</div>
+	} else {
+		<div
+			id="messages"
+			data-ref:_messages
+			class={ messageListClass }
+			data-on:scroll__debounce.10ms="
+				const overflow = el.scrollHeight - el.clientHeight;
+				const distanceFromBottom = overflow - el.scrollTop;
+				$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+			"
+		>
+			for _, message := range props.Messages {
+				@messageGroup(message)
+			}
+		</div>
+	}
+}
+
+templ messageGroup(group MessageGroup) {
+	switch group := group.(type) {
+		case UserMessageProps:
+			@userMessage(group)
+		case AssistantMessagePartsProps:
+			@assistantMessage(group)
+	}
+}
+
+templ userMessage(props UserMessageProps) {
+	<div
+		id={ "msg-" + props.ID }
+		class="
+			user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 rounded-lg border
+			border-line bg-surface-raised/70 px-3 py-2 leading-7 break-words whitespace-normal text-ink
+		"
+	>
+		@markdownContent(props.MdContent)
+	</div>
+}
+
+templ assistantMessage(props AssistantMessagePartsProps) {
+	<div
+		id={ "msg-" + props.ID }
+		class={
+			"mr-auto flex w-full max-w-full shrink-0 flex-col gap-3 rounded-xl px-4 py-3 leading-7",
+			"break-words whitespace-normal text-ink",
+			templ.KV("min-h-[calc(100dvh-13rem)]", props.LargeHeight),
+		}
+	>
+		for _, part := range props.Parts {
+			@assistantPart(part)
+		}
+	</div>
+}
+
+templ assistantPart(part AssistantPart) {
+	switch part := part.(type) {
+		case AssistantTextPartProps:
+			<div id={ "part-" + part.ID } class="w-full min-w-0 shrink-0">
+				@markdownContent(part.MdContent)
+			</div>
+		case ToolCallPartProps:
+			@toolCallPart(part)
+		case ReasoningPartProps:
+			@reasoningPart(part)
+	}
+}
+
+templ markdownContent(html string) {
+	<div class="markdown-content">
+		@templ.Raw(html)
+	</div>
+}
+
+templ toolCallPart(props ToolCallPartProps) {
+	{{ name, arg := toolCallDisplay(props.Name, props.Args) }}
+	<div
+		id={ "part-" + props.ID }
+		class="
+			flex w-full min-w-0 shrink-0 items-baseline gap-2 overflow-hidden rounded-lg border
+			border-line bg-surface px-3 py-2
+		"
+	>
+		<span class="font-semibold whitespace-nowrap text-ink">{ name }</span>
+		<span
+			class="min-w-0 overflow-hidden font-mono text-compact text-ellipsis whitespace-nowrap text-ink-secondary"
+		>
+			{ arg }
+		</span>
+	</div>
+}
+
+templ reasoningPart(props ReasoningPartProps) {
+	<details
+		id={ "part-" + props.ID }
+		class="reasoning-part w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-line bg-surface"
+		data-preserve-attr="open"
+	>
+		<summary
+			class="flex min-w-0 cursor-pointer list-none items-baseline gap-2 px-3 py-2 text-ink-secondary"
+		>
+			<span class="font-semibold whitespace-nowrap text-ink">Reasoning</span>
+			<span class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-ink-secondary">
+				{ strings.Join(strings.Fields(props.Text), " ") }
+			</span>
+		</summary>
+		<div class="px-3 pb-3 leading-7 text-ink-secondary">
+			@markdownContent(props.MdContent)
+		</div>
+	</details>
+}
+
+func toolCallDisplay(name, args string) (string, string) {
+	switch name {
+	case "web_search":
+		var a agents.WebSearchArgs
+		_ = json.Unmarshal([]byte(args), &a)
+		return "Searching web", a.Query
+	case "web_search_recent":
+		var a agents.WebSearchRecentArgs
+		_ = json.Unmarshal([]byte(args), &a)
+		if a.DaysBack == 0 {
+			return "Searching recent web", a.Query
+		}
+		return "Searching recent web", a.Query + " · " + strconv.Itoa(a.DaysBack) + " days"
+	case "web_read":
+		var a agents.WebReadArgs
+		_ = json.Unmarshal([]byte(args), &a)
+		if len(a.URLs) == 1 {
+			return "Reading web page", a.URLs[0]
+		}
+		if len(a.URLs) > 1 {
+			return "Reading web pages", strconv.Itoa(len(a.URLs)) + " URLs"
+		}
+		return "Reading web page", ""
+	default:
+		return name, ""
+	}
+}
+
+templ chatInput(threadID string, isStreaming bool) {
+	<div
+		class="mx-auto w-full max-w-3xl shrink-0 px-6 pt-2 pb-5"
+		if threadID != "" {
+			data-signals:thread-id={ fmt.Sprintf("'%s'", threadID) }
+		}
+		data-signals:_is-streaming={ strconv.FormatBool(isStreaming) }
+		data-signals:message="''"
+		data-computed:_can-submit="$message.trim() !== '' && !$_isStreaming"
+	>
+		<div
+			class="chat-input-box flex items-center rounded-xl border border-line bg-surface p-3"
+			data-class:is-sending="$_sendingMessage"
+		>
+			<textarea
+				class="
+					field-sizing-content max-h-[180px] min-h-8 w-full resize-none border-0 bg-transparent
+					py-[calc((32px-1lh)/2)] leading-[1.5] text-ink outline-none placeholder:text-muted
+					[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
+				"
+				autofocus
+				name="message"
+				placeholder="Ask anything"
+				data-indicator:_sending-message
+				data-bind:message
+				data-on:keydown="
+					if (evt.key !== 'Enter' || evt.shiftKey) return;
+					evt.preventDefault();
+					if (!$_canSubmit) return;
+					@post('/chat/send');
+				"
+			></textarea>
+			<div class="flex justify-start self-start">
+				@ui.Button(ui.ButtonProps{
+					Size:  ui.Icon,
+					Label: "Send message",
+					Attrs: templ.Attributes{
+						"style":              hiddenStyle(isStreaming),
+						"disabled":           true,
+						"data-show":          "!$_isStreaming",
+						"data-attr:disabled": "!$_canSubmit",
+						"data-on:click":      "@post('/chat/send')",
+					},
+				}) {
+					@ui.ArrowUpIcon()
+				}
+				@ui.Button(ui.ButtonProps{
+					Size:  ui.Icon,
+					Label: "Stop response",
+					Attrs: templ.Attributes{
+						"style":         hiddenStyle(!isStreaming),
+						"data-show":     "$_isStreaming",
+						"data-on:click": "@post('/chat/stop')",
+					},
+				}) {
+					@ui.SquareIcon()
+				}
+			</div>
+		</div>
+	</div>
+}
+
+func hiddenStyle(hidden bool) string {
+	if hidden {
+		return "display: none"
+	}
+	return ""
+}

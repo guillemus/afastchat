@@ -1,0 +1,32 @@
+package ui
+
+type InputSize uint8
+
+const (
+	InputDefault InputSize = iota
+	InputSmall
+)
+
+type InputProps struct {
+	Size  InputSize
+	Class string
+	Attrs templ.Attributes
+}
+
+func inputClass(props InputProps) string {
+	base := `
+		w-full min-w-0 rounded-md border border-line bg-canvas text-ink outline-none
+		placeholder:text-muted focus:border-accent
+	`
+
+	size := "px-3 py-2"
+	if props.Size == InputSmall {
+		size = "h-8 px-2 text-label"
+	}
+
+	return base + " " + size + " " + props.Class
+}
+
+templ Input(props InputProps) {
+	<input class={ inputClass(props) } { props.Attrs... }/>
+}

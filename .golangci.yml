@@ -1,0 +1,28 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - exhaustive
+    - ineffassign
+    - unused
+    - nilerr
+    - bodyclose
+    - copyloopvar
+    - modernize
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    staticcheck:
+      checks:
+        - all
+        - "-ST1000" # Missing package comments
+        - "-ST1001" # Dot imports
+        - "-ST1003" # Poorly chosen identifier
+        - "-ST1016" # Receiver name consistency
+        - "-ST1020" # Documentation comment on exported func
+        - "-ST1021" # Documentation comment on exported type
+        - "-ST1022" # Documentation comment on exported var
+        - "-ST1005" # Error strings should not end with punctuation

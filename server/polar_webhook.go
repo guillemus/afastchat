@@ -33,7 +33,7 @@ func (x *Server) handlePolarWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secret := base64.StdEncoding.EncodeToString([]byte(x.env.PolarWebhookSecret))
+	secret := base64.StdEncoding.EncodeToString([]byte(x.cfg.PolarWebhookSecret))
 	wh, err := standardwebhooks.NewWebhook(secret)
 	if err != nil {
 		http.Error(w, "", http.StatusInternalServerError)

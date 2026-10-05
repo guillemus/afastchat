@@ -1,9 +1,9 @@
 {
-    "dependencies": {},
     "devDependencies": {
-        "@tailwindcss/cli": "4.1.17",
-        "prettier": "3.8.1",
-        "tailwindcss": "4.1.17",
-        "typescript": "6.0.2"
+        "@tailwindcss/cli": "4.3.3",
+        "esbuild": "^0.28.1",
+        "prettier": "3.9.6",
+        "tailwindcss": "4.3.3",
+        "typescript": "^7.0.2"
     }
 }

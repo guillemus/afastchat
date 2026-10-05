@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#MISE description="Follow production application logs"
+set -euo pipefail
+
+if (($# == 0)); then
+    set -- -n 100
+fi
+
+ssh hetzner-box sudo journalctl -u afastchat --no-pager "$@"

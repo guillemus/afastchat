@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@source "./**/*.go";
+@source "./**/*.templ";
 
 @font-face {
     font-family: 'Figtree';
@@ -47,9 +47,56 @@
         U+2C60-2C7F, U+A720-A7FF;
 }
 
-@theme {
+@theme static {
     --font-sans: 'Figtree', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+
+    --text-meta: 11px;
+    --text-meta--line-height: 16px;
+    --text-label: 12px;
+    --text-label--line-height: 18px;
+    --text-compact: 13px;
+    --text-compact--line-height: 20px;
+    --text-ui: 14px;
+    --text-ui--line-height: 1.5;
+    --text-body: 15px;
+    --text-body--line-height: 1.5;
+    --text-ui-emphasis: 16px;
+    --text-ui-emphasis--line-height: 1.5;
+    --text-title: 22px;
+    --text-title--line-height: 1.25;
+    --text-heading: 30px;
+    --text-heading--line-height: 1.2;
+    --text-display: 36px;
+    --text-display--line-height: 1.1;
+
+    --color-backdrop: #0a0a0a;
+    --color-canvas: #0a0a0a;
+    --color-sidebar: #0c0a09;
+    --color-surface: #171717;
+    --color-surface-raised: #262626;
+    --color-fill: rgb(255 255 255 / 6%);
+    --color-fill-strong: rgb(255 255 255 / 10%);
+
+    --color-line-subtle: #1f1f1f;
+    --color-line: #262626;
+    --color-line-strong: #525252;
+
+    --color-ink: #f5f5f5;
+    --color-ink-secondary: #a3a3a3;
+    --color-muted: #737373;
+
+    --color-accent: #f97316;
+    --color-accent-hover: #fb8a3c;
+    --color-danger: #f39a8b;
+    --color-danger-fill: oklch(57.7% 0.245 27.325);
+    --color-danger-fill-hover: oklch(63.7% 0.237 25.331);
+    --color-danger-surface: rgb(69 10 10 / 35%);
+    --color-danger-line: rgb(185 28 28 / 30%);
+
+    --shadow-popover: 0 12px 32px rgb(0 0 0 / 30%);
+
+    --animate-spin-fast: spin 0.8s linear infinite;
 }
 
 html,
@@ -58,7 +105,7 @@ body {
 }
 
 body {
-    @apply overflow-hidden bg-neutral-950 font-sans text-[0.9375rem] text-neutral-100;
+    @apply overflow-hidden bg-canvas font-sans text-body text-ink;
 }
 
 .hidden {
@@ -76,12 +123,6 @@ body {
     }
     50% {
         box-shadow: 0 0 0 4px color-mix(in oklch, #f97316 30%, transparent);
-    }
-}
-
-@keyframes thread-streaming-spin {
-    to {
-        transform: rotate(360deg);
     }
 }
 

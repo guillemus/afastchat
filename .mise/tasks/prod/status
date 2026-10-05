@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Show production service status"
+set -euo pipefail
+
+ssh hetzner-box 'sudo systemctl --no-pager --full status afastchat'

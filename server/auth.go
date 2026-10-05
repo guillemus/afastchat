@@ -10,6 +10,7 @@ import (
 
 	"afastchat.com/db"
 	"afastchat.com/views"
+	"afastchat.com/views/ui"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -68,10 +69,10 @@ func (x *Server) requireAuth(next http.Handler) http.Handler {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/login", http.StatusSeeOther)
 			} else if isDatastar(r) {
-				toastShow(w, r, views.ToastProps{
-					Title:   "Sign in required",
+				x.patchToast(w, r, ui.Toast{
+					Kind:    ui.ToastWarning,
 					Message: "Sign in, then try that again.",
-					Action:  &views.ToastAction{Label: "Sign in", Href: "/login"},
+					Link:    ui.ToastLink{Label: "Sign in", Href: "/login"},
 				})
 			} else {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -97,10 +98,10 @@ func (x *Server) requireLifetimeLicense(next http.Handler) http.Handler {
 			if r.Method == http.MethodGet && isHTMLNavigation(r) {
 				http.Redirect(w, r, "/settings", http.StatusSeeOther)
 			} else if isDatastar(r) {
-				toastShow(w, r, views.ToastProps{
-					Title:   "Lifetime access required",
+				x.patchToast(w, r, ui.Toast{
+					Kind:    ui.ToastWarning,
 					Message: "Unlock A Fast Chat, then try that again.",
-					Action:  &views.ToastAction{Label: "Open settings", Href: "/settings"},
+					Link:    ui.ToastLink{Label: "Open settings", Href: "/settings"},
 				})
 			} else {
 				http.Error(w, "payment required", http.StatusPaymentRequired)
@@ -132,7 +133,7 @@ func (x *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderLoginPage(w, views.LoginPageData{})
+	x.render(w, r, views.LoginPage(views.AuthPageData{}))
 }
 
 func (x *Server) handleSignupPage(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +148,7 @@ func (x *Server) handleSignupPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderSignupPage(w, views.SignupPageData{})
+	x.render(w, r, views.SignupPage(views.AuthPageData{}))
 }
 
 func (x *Server) createSession(r *http.Request, userID string) error {
@@ -166,53 +167,53 @@ func (x *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	if x.authRateLimited(w, r, email) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		x.renderer.RenderLoginPage(w, views.LoginPageData{
+		x.render(w, r, views.LoginPage(views.AuthPageData{
 			Email: email,
 			Error: tooManyAttemptsMessage,
-		})
+		}))
 		return
 	}
 
 	if !isValidEmail(email) || len(password) < minimumPasswordLength {
-		x.renderer.RenderLoginPage(w, views.LoginPageData{
+		x.render(w, r, views.LoginPage(views.AuthPageData{
 			Email: email,
 			Error: invalidLoginInputMessage,
-		})
+		}))
 		return
 	}
 
 	user, err := x.db.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			x.renderer.RenderLoginPage(w, views.LoginPageData{
+			x.render(w, r, views.LoginPage(views.AuthPageData{
 				Email: email,
 				Error: invalidCredentialsMessage,
-			})
+			}))
 			return
 		}
 		slog.Error("login: get user by email", "email", email, "err", err)
-		x.renderer.RenderLoginPage(w, views.LoginPageData{
+		x.render(w, r, views.LoginPage(views.AuthPageData{
 			Email: email,
 			Error: internalLoginErrorMessage,
-		})
+		}))
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
-		x.renderer.RenderLoginPage(w, views.LoginPageData{
+		x.render(w, r, views.LoginPage(views.AuthPageData{
 			Email: email,
 			Error: invalidCredentialsMessage,
-		})
+		}))
 		return
 	}
 
 	if err := x.createSession(r, user.ID); err != nil {
 		slog.Error("login: create session", "user_id", user.ID, "err", err)
-		x.renderer.RenderLoginPage(w, views.LoginPageData{
+		x.render(w, r, views.LoginPage(views.AuthPageData{
 			Email: email,
 			Error: internalLoginErrorMessage,
-		})
+		}))
 		return
 	}
 
@@ -226,54 +227,54 @@ func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
 
 	if x.authRateLimited(w, r, email) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		x.renderer.RenderSignupPage(w, views.SignupPageData{
+		x.render(w, r, views.SignupPage(views.AuthPageData{
 			Email: email,
 			Error: tooManyAttemptsMessage,
-		})
+		}))
 		return
 	}
 
 	if !isValidEmail(email) || len(password) < minimumPasswordLength {
-		x.renderer.RenderSignupPage(w, views.SignupPageData{
+		x.render(w, r, views.SignupPage(views.AuthPageData{
 			Email: email,
 			Error: invalidSignupInputMessage,
-		})
+		}))
 		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		slog.Error("signup: hash password", "err", err)
-		x.renderer.RenderSignupPage(w, views.SignupPageData{
+		x.render(w, r, views.SignupPage(views.AuthPageData{
 			Email: email,
 			Error: internalLoginErrorMessage,
-		})
+		}))
 		return
 	}
 
 	user, err := x.db.CreateUser(ctx, email, string(hash))
 	if err != nil {
 		if errors.Is(err, db.ErrDuplicateEmail) {
-			x.renderer.RenderSignupPage(w, views.SignupPageData{
+			x.render(w, r, views.SignupPage(views.AuthPageData{
 				Email: email,
 				Error: emailTakenMessage,
-			})
+			}))
 			return
 		}
 		slog.Error("signup: create user", "email", email, "err", err)
-		x.renderer.RenderSignupPage(w, views.SignupPageData{
+		x.render(w, r, views.SignupPage(views.AuthPageData{
 			Email: email,
 			Error: internalLoginErrorMessage,
-		})
+		}))
 		return
 	}
 
 	if err := x.createSession(r, user.ID); err != nil {
 		slog.Error("signup: create session", "user_id", user.ID, "err", err)
-		x.renderer.RenderSignupPage(w, views.SignupPageData{
+		x.render(w, r, views.SignupPage(views.AuthPageData{
 			Email: email,
 			Error: internalLoginErrorMessage,
-		})
+		}))
 		return
 	}
 

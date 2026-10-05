@@ -1,0 +1,56 @@
+package views
+
+import "afastchat.com/views/ui"
+
+var landingPills = []string{
+	"Explain a Go concurrency pattern",
+	"Debug an error in my code",
+	"Write a SQL migration",
+	"Brainstorm system design ideas",
+}
+
+templ landing() {
+	<main class="flex min-h-dvh flex-col items-center justify-center bg-canvas p-6">
+		<div class="flex w-full max-w-3xl flex-col items-center gap-8">
+			<div class="tracking-[0.1em] text-ink-secondary lowercase">afastchat</div>
+			<h1 class="text-center text-display leading-tight font-medium tracking-[-0.04em]">
+				What can I help with?
+			</h1>
+			<div class="w-full max-w-3xl">
+				<a
+					href="/signup"
+					class="
+						flex items-center rounded-xl border border-line bg-surface p-3 text-muted no-underline
+						transition-colors hover:border-accent/50
+						[&_svg]:ml-auto [&_svg]:size-5 [&_svg]:shrink-0
+					"
+				>
+					Message afastchat
+					@ui.ArrowUpIcon()
+				</a>
+			</div>
+			<div class="flex w-full flex-wrap justify-center gap-3">
+				for _, label := range landingPills {
+					<a
+						href="/signup"
+						class="
+							inline-flex items-center rounded-2xl border border-line px-4 py-2 text-ink-secondary
+							no-underline transition-colors hover:border-line-strong hover:bg-surface hover:text-ink
+						"
+					>
+						{ label }
+					</a>
+				}
+			</div>
+			<div class="mt-2 flex items-center gap-5">
+				<a href="/login" class={ landingLinkClass }>Log in</a>
+				<a href="/signup" class={ landingLinkClass }>Sign up</a>
+			</div>
+		</div>
+	</main>
+}
+
+const landingLinkClass = `
+	text-ink-secondary no-underline transition-colors
+	hover:text-ink hover:underline hover:underline-offset-3
+`

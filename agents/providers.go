@@ -7,10 +7,12 @@ type Tool struct {
 	Strict      bool
 }
 
+//sumtype:decl
+type StreamEvent interface {
+	isStreamEvent()
+}
+
 type (
-	StreamEvent interface {
-		isStreamEvent()
-	}
 	AssistantDelta struct {
 		Delta string
 	}

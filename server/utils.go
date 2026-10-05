@@ -3,9 +3,12 @@ package server
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"afastchat.com/db"
 	"afastchat.com/views"
+	"afastchat.com/views/ui"
+	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -111,12 +114,22 @@ func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGro
 	return out
 }
 
-func toastShowError(w http.ResponseWriter, r *http.Request, title, message string) {
-	sse := datastar.NewSSE(w, r)
-	views.PatchErrorToast(sse, title, message)
+func (x *Server) render(w http.ResponseWriter, r *http.Request, component templ.Component) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if err := component.Render(r.Context(), w); err != nil {
+		slog.Error("render component", "err", err)
+	}
 }
 
-func toastShow(w http.ResponseWriter, r *http.Request, toast views.ToastProps) {
+func (x *Server) patchToast(w http.ResponseWriter, r *http.Request, toast ui.Toast) {
 	sse := datastar.NewSSE(w, r)
-	views.PatchToast(sse, toast)
+	patchToastOnSSE(sse, toast)
+}
+
+func patchToastOnSSE(sse *datastar.ServerSentEventGenerator, toast ui.Toast) {
+	toast.ID = time.Now().UnixNano()
+	toast.Visible = true
+
+	views.PatchSignals(sse, map[string]any{"_toast": toast})
 }

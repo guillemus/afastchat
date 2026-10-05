@@ -1,0 +1,91 @@
+package views
+
+import "afastchat.com/views/ui"
+
+templ appLayout() {
+	@ui.Document("afastchat") {
+		<div class="grid h-dvh w-full grid-cols-[260px_minmax(0,1fr)] overflow-hidden">
+			{ children... }
+		</div>
+	}
+}
+
+templ guestLayout() {
+	@ui.Document("afastchat") {
+		<div class="min-h-dvh">
+			{ children... }
+		</div>
+	}
+}
+
+templ IndexPage(data IndexData) {
+	@appLayout() {
+		@Sidebar(SidebarProps{Threads: data.Threads, UserEmail: data.UserEmail})
+		@MessageThread(MessageThreadProps{})
+	}
+}
+
+templ ThreadPage(data ThreadData, doScrollSidebar bool) {
+	@appLayout() {
+		@Sidebar(SidebarProps{
+			Threads:        data.Threads,
+			ActiveThreadID: data.Thread.ID,
+			UserEmail:      data.UserEmail,
+		})
+		@MessageThread(MessageThreadProps{
+			Messages:        data.Messages,
+			ThreadID:        data.Thread.ID,
+			DoScrollSidebar: doScrollSidebar,
+			IsStreaming:     data.Streaming,
+		})
+	}
+}
+
+templ SettingsPage(data SettingsData) {
+	@appLayout() {
+		@Sidebar(SidebarProps{Threads: data.Threads, UserEmail: data.UserEmail})
+		@settings(data)
+	}
+}
+
+templ CheckoutThankYouPage(data CheckoutThankYouData) {
+	@guestLayout() {
+		@checkoutThankYou(data)
+	}
+}
+
+templ LandingPage() {
+	@guestLayout() {
+		@landing()
+	}
+}
+
+templ LoginPage(data AuthPageData) {
+	@guestLayout() {
+		@authForm(authFormProps{
+			Eyebrow:             "Welcome back",
+			Title:               "Log in",
+			Description:         "Use your email and password to open afastchat.",
+			Action:              "/login",
+			PasswordPlaceholder: "Password",
+			AltPrompt:           "Need an account?",
+			AltLabel:            "Sign up",
+			AltHref:             "/signup",
+		}, data)
+	}
+}
+
+templ SignupPage(data AuthPageData) {
+	@guestLayout() {
+		@authForm(authFormProps{
+			Eyebrow:             "Create account",
+			Title:               "Sign up",
+			Description:         "Create your account with email and password.",
+			Action:              "/signup",
+			PasswordPlaceholder: "At least 8 characters",
+			AltPrompt:           "Already have an account?",
+			AltLabel:            "Log in",
+			AltHref:             "/login",
+		}, data)
+	}
+}

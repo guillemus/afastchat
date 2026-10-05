@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"afastchat.com/config"
 	"afastchat.com/db"
-	"afastchat.com/env"
 	"afastchat.com/polar"
 	"afastchat.com/views"
+	"afastchat.com/views/ui"
 
 	"github.com/polarsource/polar-go/models/components"
 	"github.com/starfederation/datastar-go/datastar"
@@ -18,7 +19,7 @@ import (
 func (x *Server) handleProCheckout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	baseURL := env.AppURL(x.env)
+	baseURL := config.AppURL()
 	successURL := baseURL + "/settings/thank-you?checkout_id={CHECKOUT_ID}"
 	returnURL := baseURL + "/settings"
 
@@ -63,12 +64,18 @@ func (x *Server) handleBalanceCheckout(w http.ResponseWriter, r *http.Request) {
 	user := mustGetUser(r)
 	var sig BalanceCheckoutSignals
 	if err := datastar.ReadSignals(r, &sig); err != nil {
-		toastShowError(w, r, "Unable to read amount", "Refresh the page and enter a whole dollar amount.")
+		x.patchToast(w, r, ui.Toast{
+			Kind:    ui.ToastError,
+			Message: "Unable to read the amount. Refresh the page and try again.",
+		})
 		return
 	}
 	dollars, err := strconv.ParseInt(sig.AmountDollars, 10, 64)
 	if err != nil {
-		toastShowError(w, r, "Enter a whole dollar amount", "Use dollars only, with no cents or decimals.")
+		x.patchToast(w, r, ui.Toast{
+			Kind:    ui.ToastWarning,
+			Message: "Enter a whole dollar amount, with no cents or decimals.",
+		})
 		return
 	}
 	amount := dollars * 100
@@ -78,11 +85,11 @@ func (x *Server) handleBalanceCheckout(w http.ResponseWriter, r *http.Request) {
 			"Enter an amount between %s and %s.",
 			polar.ProductBalanceMinimumCents.Format(), polar.ProductBalanceMaximumCents.Format(),
 		)
-		toastShowError(w, r, "Amount out of range", msg)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastWarning, Message: msg})
 		return
 	}
 
-	baseURL := env.AppURL(x.env)
+	baseURL := config.AppURL()
 	successURL := baseURL + "/settings/thank-you?checkout_id={CHECKOUT_ID}"
 	returnURL := baseURL + "/settings"
 
@@ -101,9 +108,10 @@ func (x *Server) handleBalanceCheckout(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("create balance checkout", "err", err)
-		toastShowError(w, r,
-			"Unable to add usage credit",
-			"We couldn't start checkout. No payment was created. Try again.")
+		x.patchToast(w, r, ui.Toast{
+			Kind:    ui.ToastError,
+			Message: "We couldn't start checkout. No payment was created. Try again.",
+		})
 		return
 	}
 
@@ -117,9 +125,10 @@ func (x *Server) handleBalanceCheckout(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("record balance checkout", "err", err)
-		toastShowError(w, r,
-			"Unable to add usage credit",
-			"We couldn't save the checkout on our side. Do not pay from this checkout link; try again.")
+		x.patchToast(w, r, ui.Toast{
+			Kind:    ui.ToastError,
+			Message: "We couldn't save the checkout on our side. Do not pay from this checkout link; try again.",
+		})
 		return
 	}
 
@@ -183,9 +192,9 @@ func (x *Server) handleCheckoutThankYou(w http.ResponseWriter, r *http.Request) 
 		confirmed = true
 	}
 
-	x.renderer.RenderCheckoutThankYouPage(w, views.CheckoutThankYouData{
+	x.render(w, r, views.CheckoutThankYouPage(views.CheckoutThankYouData{
 		Confirmed:   confirmed,
 		PaymentType: string(paymentType),
 		CreditCents: creditCents,
-	})
+	}))
 }

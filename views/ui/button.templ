@@ -1,0 +1,113 @@
+package ui
+
+type ButtonVariant uint8
+
+const (
+	Primary ButtonVariant = iota
+	Secondary
+	Ghost
+	Text
+	Danger
+	Inverse
+)
+
+type ButtonSize uint8
+
+const (
+	Default ButtonSize = iota
+	Small
+	Icon
+)
+
+type ButtonProps struct {
+	Variant ButtonVariant
+	Size    ButtonSize
+	Label   string
+	Class   string
+	Attrs   templ.Attributes
+}
+
+func buttonClass(props ButtonProps) string {
+	base := `
+		inline-flex flex-none items-center justify-center gap-2 rounded-md border
+		text-center text-ui leading-5 font-semibold no-underline cursor-pointer transition-colors
+		motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2
+		focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50
+		aria-busy:cursor-wait [hidden]:hidden [&_svg]:size-4 [&_svg]:shrink-0
+	`
+
+	size := "min-h-11 px-4 py-2.5"
+	switch props.Size {
+	case Small:
+		size = "min-h-8 px-3 py-1"
+	case Icon:
+		size = "size-8 p-0"
+	}
+
+	variant := `
+		border-transparent bg-accent text-white
+		enabled:hover:bg-accent-hover [&:is(a):hover]:bg-accent-hover
+	`
+	switch props.Variant {
+	case Secondary:
+		variant = `
+			border-line bg-surface text-ink
+			enabled:hover:bg-surface-raised [&:is(a):hover]:bg-surface-raised
+		`
+	case Ghost:
+		variant = `
+			border-transparent bg-transparent text-muted enabled:hover:bg-fill
+			enabled:hover:text-ink [&:is(a):hover]:bg-fill [&:is(a):hover]:text-ink
+			aria-pressed:bg-fill-strong aria-pressed:text-ink
+			aria-expanded:bg-fill-strong aria-expanded:text-ink
+			aria-selected:bg-fill-strong aria-selected:text-ink
+		`
+	case Text:
+		variant = `
+			border-transparent bg-transparent text-accent
+			enabled:hover:underline [&:is(a):hover]:underline
+		`
+	case Inverse:
+		variant = `
+			border-transparent bg-ink text-canvas
+			enabled:hover:bg-white [&:is(a):hover]:bg-white
+		`
+	case Danger:
+		variant = `
+			border-transparent bg-danger-fill text-white
+			enabled:hover:bg-danger-fill-hover [&:is(a):hover]:bg-danger-fill-hover
+		`
+	}
+
+	return base + " " + size + " " + variant + " " + props.Class
+}
+
+templ Button(props ButtonProps) {
+	<button
+		if _, ok := props.Attrs["type"]; !ok {
+			type="button"
+		}
+		if props.Label != "" {
+			aria-label={ props.Label }
+		}
+		class={ buttonClass(props) }
+		{ props.Attrs... }
+	>
+		{ children... }
+	</button>
+}
+
+templ ButtonLink(href string, props ButtonProps) {
+	<a
+		if href != "" {
+			href={ href }
+		}
+		if props.Label != "" {
+			aria-label={ props.Label }
+		}
+		class={ buttonClass(props) }
+		{ props.Attrs... }
+	>
+		{ children... }
+	</a>
+}

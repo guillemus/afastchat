@@ -1,0 +1,94 @@
+package ui
+
+type ToastKind string
+
+const (
+	ToastDefault ToastKind = "default"
+	ToastInfo    ToastKind = "info"
+	ToastWarning ToastKind = "warning"
+	ToastError   ToastKind = "error"
+)
+
+type ToastLink struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
+}
+
+type Toast struct {
+	ID      int64     `json:"id"`
+	Visible bool      `json:"visible"`
+	Kind    ToastKind `json:"kind"`
+	Message string    `json:"message"`
+	Link    ToastLink `json:"link"`
+}
+
+const defaultToastSignals = `{id:0,visible:false,kind:"default",message:"",link:{label:"",href:""}}`
+
+const toastEffectJS = `
+	const toastID = $_toast.id;
+	if ($_toast.visible) {
+		setTimeout(() => {
+			if ($_toast.id === toastID) {
+				$_toast.visible = false;
+			}
+		}, 4000);
+	}
+`
+
+const toastStyleJS = `
+    $_toast.visible
+        ? 'opacity: 1; pointer-events: auto'
+        : 'opacity: 0; pointer-events: none'
+`
+
+templ ToastView() {
+	<div
+		id="toast"
+		style="opacity: 0; pointer-events: none"
+		role="status"
+		aria-live="polite"
+		data-attr:inert="!$_toast.visible"
+		data-effect={ toastEffectJS }
+		data-attr:style={ toastStyleJS }
+		class="
+			fixed right-5 bottom-5 z-50 flex min-h-16 min-w-[280px] max-w-[420px] items-center gap-4
+			rounded-xl border border-line bg-surface px-4 py-3.5 text-ink-secondary shadow-popover
+			transition-opacity duration-100
+		"
+	>
+		<span
+			data-show="$_toast.kind !== 'default'"
+			class="flex size-5 flex-none items-center justify-center text-ink"
+		>
+			<span data-show="$_toast.kind === 'info'">
+				@CircleCheckIcon()
+			</span>
+			<span data-show="$_toast.kind === 'warning'">
+				@TriangleAlertIcon()
+			</span>
+			<span
+				data-show="$_toast.kind === 'error'"
+				class="text-danger"
+			>
+				@OctagonXIcon()
+			</span>
+		</span>
+		<span class="min-w-0 flex-1 leading-6">
+			<span data-text="$_toast.message"></span>
+			<a
+				class="ml-1 font-medium text-ink underline underline-offset-2"
+				data-show="$_toast.link.label"
+				data-attr:href="$_toast.link.href"
+				data-text="$_toast.link.label"
+			></a>
+		</span>
+		@Button(ButtonProps{
+			Variant: Ghost,
+			Size:    Icon,
+			Label:   "Close",
+			Attrs:   templ.Attributes{"data-on:click": "$_toast.visible = false"},
+		}) {
+			@XIcon()
+		}
+	</div>
+}

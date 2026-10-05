@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"afastchat.com/config"
 	"afastchat.com/db"
-	"afastchat.com/env"
 	"afastchat.com/exa"
 
 	"github.com/zendev-sh/goai"
@@ -29,11 +29,11 @@ type Agent struct {
 	exaClient  *exa.Client
 }
 
-func NewAgent(env env.Env) *Agent {
+func NewAgent(cfg config.Config) *Agent {
 	return &Agent{
-		model:      fireworks.Chat(chatModel, fireworks.WithAPIKey(env.FireworksAPIKey)),
-		titleModel: openai.Chat(titleModel, openai.WithAPIKey(env.OpenAIAPIKey)),
-		exaClient:  exa.NewClient(env.ExaAPIKey),
+		model:      fireworks.Chat(chatModel, fireworks.WithAPIKey(cfg.FireworksAPIKey)),
+		titleModel: openai.Chat(titleModel, openai.WithAPIKey(cfg.OpenAIAPIKey)),
+		exaClient:  exa.NewClient(cfg.ExaAPIKey),
 	}
 }
 
@@ -63,6 +63,7 @@ func MapDBMessages(dbMessages []db.Message) []provider.Message {
 			})
 		case db.ToolOutput:
 			messages = append(messages, goai.ToolMessage(it.ToolCallID, it.ToolName, it.Content))
+		case db.AssistantReasoning:
 		}
 	}
 
@@ -145,6 +146,7 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 				if streamErr == nil {
 					streamErr = chunk.Error
 				}
+			case provider.ChunkToolCallDelta, provider.ChunkToolCallStreamStart, provider.ChunkToolResult:
 			case provider.ChunkFinish:
 				if chunk.StoppedBy == provider.StopCauseMaxSteps && streamErr == nil {
 					streamErr = fmt.Errorf("too many tool rounds")
@@ -169,7 +171,6 @@ func (x *Agent) tools() []goai.Tool {
 		if err != nil {
 			panic(fmt.Sprintf("marshal tool schema %q: %v", tool.Name, err))
 		}
-		tool := tool
 		result = append(result, goai.Tool{
 			Name:        tool.Name,
 			Description: tool.Description,

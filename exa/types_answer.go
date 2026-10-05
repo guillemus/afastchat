@@ -52,9 +52,6 @@ type AnswerResponse struct {
 
 	// Cost information for the request
 	CostDollars *CostDollars `json:"costDollars,omitempty"`
-
-	// Partial answer chunk when streaming is enabled
-	StreamingAnswer string `json:"answer,omitempty"`
 }
 
 // AnswerCitation represents a citation in an answer response

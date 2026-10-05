@@ -7,23 +7,20 @@ import (
 	"time"
 
 	"afastchat.com"
+	"afastchat.com/config"
 	"afastchat.com/db"
-	"afastchat.com/env"
 	"afastchat.com/polar"
-	"afastchat.com/views"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/asaskevich/EventBus"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 )
 
 type Server struct {
-	env                   env.Env
+	cfg                   config.Config
 	bus                   EventBus.Bus
 	router                chi.Router
-	renderer              *views.Renderer
 	db                    *db.Pool
 	polar                 *polar.Polar
 	sessions              *scs.SessionManager
@@ -33,8 +30,8 @@ type Server struct {
 	port                  string
 }
 
-func StartServer(env env.Env) {
-	conn, err := db.Connect(env.DBPath)
+func StartServer(cfg config.Config) {
+	conn, err := db.Connect(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
@@ -46,33 +43,26 @@ func StartServer(env env.Env) {
 	sessionManager.Cookie.Name = "afastchat_session"
 	sessionManager.Cookie.HttpOnly = true
 	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
-	sessionManager.Cookie.Secure = !env.Dev
+	sessionManager.Cookie.Secure = !config.Dev
 
 	s := &Server{
-		env:                   env,
+		cfg:                   cfg,
 		bus:                   EventBus.New(),
 		router:                chi.NewRouter(),
-		renderer:              views.NewRenderer(env),
 		db:                    conn,
-		polar:                 polar.New(env.PolarAPIKey),
+		polar:                 polar.New(cfg.PolarAPIKey),
 		sessions:              sessionManager,
 		crossOriginProtection: newCrossOriginProtection(),
 		authIPLimiter:         newAuthRateLimiter(),
 		authEmailLimiter:      newAuthRateLimiter(),
-		port:                  env.Port,
+		port:                  cfg.Port,
 	}
 
-	s.router.Use(newSecureMiddleware(env.Dev).Handler)
+	s.router.Use(newSecureMiddleware(config.Dev).Handler)
 	s.router.Use(s.crossOriginProtection.Handler)
 	s.router.Use(s.sessions.LoadAndSave)
 
-	// Avoid stale assets during local development.
-	s.router.
-		With(middleware.Maybe(
-			middleware.NoCache,
-			func(*http.Request) bool { return env.Dev },
-		)).
-		Get("/public/*", afastchat.GetPublicHandler(env).ServeHTTP)
+	s.router.Handle("/public/*", afastchat.PublicHandler())
 
 	s.router.Post("/webhooks/polar", s.handlePolarWebhook)
 

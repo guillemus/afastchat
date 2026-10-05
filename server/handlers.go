@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
 	"afastchat.com/agents"
 	"afastchat.com/db"
 	"afastchat.com/views"
+	"afastchat.com/views/ui"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/starfederation/datastar-go/datastar"
@@ -25,10 +27,10 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderIndexPage(w, views.IndexData{
+	x.render(w, r, views.IndexPage(views.IndexData{
 		Threads:   mapViewThreads(threads),
 		UserEmail: user.Email,
-	})
+	}))
 }
 
 func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -51,12 +53,12 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderSettingsPage(w, views.SettingsData{
+	x.render(w, r, views.SettingsPage(views.SettingsData{
 		Threads:            mapViewThreads(threads),
 		UserEmail:          user.Email,
 		HasLifetimeLicense: hasLifetimeLicense,
 		BalanceCents:       balance,
-	})
+	}))
 }
 
 func (x *Server) getDisplayMessages(ctx context.Context, userID, threadID string, largeHeight bool) ([]views.MessageGroup, error) {
@@ -107,7 +109,7 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.renderer.RenderThreadPage(w, threadPage, true)
+	x.render(w, r, views.ThreadPage(threadPage, true))
 }
 
 func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +118,7 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	threadID := chi.URLParam(r, "id")
 	if err := x.db.ArchiveThread(ctx, user.ID, threadID); err != nil {
 		slog.Error("archive thread", "err", err)
-		toastShowError(w, r, "Unable to archive chat", "We couldn't archive this chat. Try again.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't archive this chat. Try again."})
 		return
 	}
 
@@ -141,13 +143,13 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read search signals", "err", err)
-		toastShowError(w, r, "Unable to search chats", "Refresh the page, then try searching again.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to search chats. Refresh the page, then try again."})
 		return
 	}
 	threads, err := x.db.ListThreads(ctx, user.ID)
 	if err != nil {
 		slog.Error("list threads for search", "err", err)
-		toastShowError(w, r, "Unable to search chats", "We couldn't search your chats. Try again.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't search your chats. Try again."})
 		return
 	}
 
@@ -172,20 +174,20 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read send message signals", "err", err)
-		toastShowError(w, r, "Unable to send message", "Refresh the page, then try again.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Refresh the page, then try again."})
 		return
 	}
 	balance, err := x.db.GetBillingBalanceCents(ctx, user.ID)
 	if err != nil {
 		slog.Error("get billing balance before send", "err", err)
-		toastShowError(w, r, "Unable to send message", "Try again in a moment.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Try again in a moment."})
 		return
 	}
 	if balance <= 0 {
-		toastShow(w, r, views.ToastProps{
-			Title:   "Usage balance empty",
-			Message: "Add credit in Settings to keep chatting.",
-			Action:  &views.ToastAction{Label: "Add credit", Href: "/settings"},
+		x.patchToast(w, r, ui.Toast{
+			Kind:    ui.ToastWarning,
+			Message: "Your usage balance is empty.",
+			Link:    ui.ToastLink{Label: "Add credit", Href: "/settings"},
 		})
 		return
 	}
@@ -198,7 +200,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		id, err := x.db.InitThread(ctx, user.ID, "New Chat", "You are a helpful assistant")
 		if err != nil {
 			slog.Error("create thread before send", "err", err)
-			toastShowError(w, r, "Unable to send message", "Try again.")
+			x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Try again."})
 			return
 		}
 
@@ -217,11 +219,11 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		_, err := x.db.GetThread(ctx, sig.ThreadID, user.ID)
 		if errors.Is(err, db.ErrNotFound) {
-			toastShowError(w, r, "Chat not found", "This chat may have been removed. Go home and choose another chat.")
+			x.patchToast(w, r, ui.Toast{Kind: ui.ToastWarning, Message: "Chat not found. It may have been removed."})
 			return
 		} else if err != nil {
 			slog.Error("get thread before send", "err", err)
-			toastShowError(w, r, "Unable to send message", "Try again.")
+			x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Try again."})
 			return
 		}
 
@@ -306,7 +308,7 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 }
 
 func (x *Server) streamAgentMessages(ctx context.Context, userID, threadID string, messages []db.Message, logger *slog.Logger) {
-	agent := agents.NewAgent(x.env)
+	agent := agents.NewAgent(x.cfg)
 
 	for tokenEvt, err := range agent.Stream(ctx, messages) {
 		if err != nil {
@@ -376,16 +378,16 @@ func (x *Server) streamAgentMessages(ctx context.Context, userID, threadID strin
 }
 
 func lastAssistantMessageID(messages []db.Message) string {
-	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Type == db.AssistantMessage {
-			return messages[i].ID
+	for _, message := range slices.Backward(messages) {
+		if message.Type == db.AssistantMessage {
+			return message.ID
 		}
 	}
 	return ""
 }
 
 func (x *Server) updateThreadTitle(ctx context.Context, userID, threadID string, userMessage string) {
-	agent := agents.NewAgent(x.env)
+	agent := agents.NewAgent(x.cfg)
 	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
 
 	err := x.db.UpdateThreadTitle(ctx, userID, threadID, title)
@@ -422,14 +424,17 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 		threadPage, err := x.getThreadPage(ctx, user, threadID)
 		if err != nil {
 			slog.Error("load thread event page", "err", err)
-			views.PatchErrorToast(sse, "Unable to load updates", "Refresh the page to reconnect this chat.")
+			patchToastOnSSE(sse, ui.Toast{
+				Kind:    ui.ToastError,
+				Message: "Unable to load updates. Refresh the page to reconnect this chat.",
+			})
 			return
 		}
 
-		var sb strings.Builder
-
-		x.renderer.RenderThreadPage(&sb, threadPage, false)
-		sse.PatchElements(sb.String())
+		if err := sse.PatchElementTempl(views.ThreadPage(threadPage, false)); err != nil {
+			slog.Error("patch thread page", "err", err)
+			return
+		}
 	}
 
 msgloop:
@@ -485,12 +490,12 @@ func (x *Server) handleStopStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read stop streaming signals", "err", err)
-		toastShowError(w, r, "Unable to stop response", "Refresh the page, then try again.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to stop the response. Refresh the page, then try again."})
 		return
 	}
 	if _, err := x.db.GetThread(ctx, sig.ThreadID, user.ID); err != nil {
 		slog.Error("get thread before stop", "err", err)
-		toastShowError(w, r, "Unable to stop response", "We couldn't stop this response. Try again.")
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't stop this response. Try again."})
 		return
 	}
 

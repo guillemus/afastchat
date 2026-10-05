@@ -1,22 +1,60 @@
+[env]
+_.file = {
+  # ~/.config/afastchat.com/.env
+  path = "{{env.HOME}}/.config/afastchat.com/.env",
+}
+OPENAI_API_KEY = { required = true }
+FIREWORKS_API_KEY = { required = true }
+EXA_AI_API_KEY = { required = true }
+POLAR_ACCESS_TOKEN = { required = true }
+POLAR_WEBHOOK_SECRET = { required = true }
+
 [tools]
+go = "1.27.1"
 watchexec = "latest"
 
+[tasks.templ-generate]
+run = "templ generate"
+
+[tasks.scc]
+description = "Count project source lines, excluding generated templ files"
+dir = "{{ config_root }}"
+run = 'scc --count-as templ:html --not-match "_templ\.go$" .'
+
 [tasks.default]
-run = "mise run --output=prefix dev:go ::: dev:css"
+run = "mise run --output=prefix dev:go ::: dev:css ::: dev:js"
 
 [tasks."dev:go"]
-run = "exec watchexec -r -e go,sql -- go run ./cmd/server"
+run = "exec watchexec -r -e go -e templ -e sql -- templ generate '&&' go run ./cmd/server"
 
 [tasks."dev:css"]
 run = "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --watch=always"
 
-[tasks.typecheck-scripts]
-run = "bun run typecheck"
+[tasks."dev:js"]
+run = """
+bunx esbuild ./views/scripts/index.ts \
+  --bundle \
+  --format=esm \
+  '--external:/public/*' \
+  --minify \
+  --target=es2022 \
+  --sourcemap \
+  --outdir=./public \
+  --watch=forever
+"""
 
 [tasks.build-assets]
-run = "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --minify"
+run = [
+  "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --minify",
+  "bunx esbuild ./views/scripts/index.ts --bundle --format=esm '--external:/public/*' --minify --target=es2022 --outdir=./public",
+]
+
+[tasks.build]
+depends = ["build-assets", "templ-generate"]
+run = "go build -o ./bin/server ./cmd/server"
 
 [tasks.migrate]
+description = "Apply db/schema.sql to the local sqlite database"
 run = '''
 atlas schema apply \
   --to "file://db/schema.sql" \
@@ -25,23 +63,32 @@ atlas schema apply \
   --auto-approve
 '''
 
-[tasks.build-linux]
-depends = ["build-assets"]
-run = '''
-mkdir -p dist
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o dist/afastchat ./cmd/server
-'''
+[tasks.connect]
+run = "exec sqlite3 tmp/app.db"
 
-[tasks.rsync-linux]
-depends = ["build-linux"]
-run = '''
-rsync -avz dist/afastchat hetzner-box:/srv/afastchat/afastchat
-ssh hetzner-box 'chown afastchat:afastchat /srv/afastchat/afastchat && chmod +x /srv/afastchat/afastchat'
-'''
+[tasks."db:sql"]
+usage = 'arg "<sql>"'
+run = "exec sqlite3 -bail tmp/app.db \"$usage_sql\""
 
-[tasks.deploy]
-depends = ["rsync-linux"]
-run = "ssh hetzner-box 'sudo systemctl restart afastchat && systemctl is-active afastchat && systemctl --no-pager --lines=20 status afastchat'"
+[tasks.format]
+run = [
+  "templ fmt .",
+  "go fmt ./...",
+  "bunx prettier --write 'views/**/*.ts' views/styles.css",
+]
 
-[tasks.format-templates]
-run = "bunx prettier -w templates"
+[tasks."lint:golangci"]
+run = "golangci-lint run ./..."
+
+[tasks."lint:sumtype"]
+run = "go run github.com/alecthomas/go-check-sumtype/cmd/go-check-sumtype@v0.5.0 ./..."
+
+[tasks.lint]
+# sumtype must examine all packages at once, so must be run independently
+depends = ["lint:golangci", "lint:sumtype", "lint:styles"]
+
+[tasks.test]
+run = "go test ./..."
+
+[tasks.tscheck]
+run = "bunx tsc --noEmit"

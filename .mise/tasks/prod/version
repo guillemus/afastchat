@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="Show the commit of the binary running in production"
+set -euo pipefail
+
+version=$(ssh hetzner-box '
+    set -eu
+    exe=/proc/$(systemctl show -p MainPID --value afastchat)/exe
+    if ! sudo grep -q "with uncommitted changes" "$exe"; then
+        echo "The running binary predates the version command. Deploy once to enable it." >&2
+        exit 1
+    fi
+    sudo "$exe" version
+')
+echo "$version"
+
+commit=$(awk '$1 == "commit" { print $2 }' <<<"$version")
+if git cat-file -e "$commit^{commit}" 2>/dev/null; then
+    echo
+    git log -1 --format='%h %s (%cr)' "$commit"
+    echo "$(git rev-list --count "$commit..HEAD") commits behind local HEAD"
+fi

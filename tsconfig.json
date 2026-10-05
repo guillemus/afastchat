@@ -1,28 +1,19 @@
 {
     "compilerOptions": {
-        "target": "ES2022",
-        "lib": ["ES2022", "DOM", "DOM.Iterable"],
-        "module": "ES2022",
-        "moduleResolution": "bundler",
-        "allowJs": true,
-        "checkJs": true,
+        "allowJs": false,
+        "isolatedModules": true,
+        "lib": ["DOM", "DOM.Iterable", "ESNext"],
+        "module": "ESNext",
+        "moduleDetection": "force",
+        "moduleResolution": "Bundler",
+        "paths": {
+            "/public/datastar-rocket-v1.0.4.js": ["./views/scripts/types/datastar-rocket.d.ts"]
+        },
         "noEmit": true,
+        "noUncheckedIndexedAccess": true,
         "strict": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictBindCallApply": true,
-        "strictPropertyInitialization": true,
-        "noImplicitThis": true,
-        "alwaysStrict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
+        "target": "ES2022",
         "types": []
     },
-    "include": ["public/**/*.d.ts", "public/**/*.js", "views/**/*.d.ts", "views/**/*.js"],
-    "exclude": ["node_modules", "public/datastar.js"]
+    "include": ["views/scripts/**/*.ts"]
 }

@@ -1,0 +1,112 @@
+package ui
+
+import "afastchat.com/config"
+
+templ Document(title string) {
+	<!DOCTYPE html>
+	<html lang="en" class="bg-canvas text-ink scheme-dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title }</title>
+			<link
+				rel="preload"
+				href="/public/fonts/figtree-latin-var.woff2"
+				as="font"
+				type="font/woff2"
+				crossorigin
+			/>
+			<link
+				rel="preload"
+				href="/public/fonts/jetbrains-mono-latin-var.woff2"
+				as="font"
+				type="font/woff2"
+				crossorigin
+			/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
+			<link rel="stylesheet" href={ "/public/styles.css?v=" + config.AssetVersion }/>
+			<link rel="modulepreload" href="/public/datastar-rocket-v1.0.4.js"/>
+			<script type="module" src={ "/public/index.js?v=" + config.AssetVersion }></script>
+			<script type="speculationrules">
+				{ "prefetch": [{ "source": "document", "eagerness": "moderate" }] }
+			</script>
+		</head>
+		<body
+			data-signals:_toast={ defaultToastSignals }
+			data-signals:_live_updates_disconnected="false"
+			data-on:datastar-fetch="
+				if (evt.detail.type === 'error' && evt.detail.argsRaw.status === '502') {
+					if (!$_live_updates_disconnected) {
+						$_live_updates_disconnected = true;
+						$_toast = {
+							id: Date.now(),
+							visible: true,
+							kind: 'warning',
+							message: 'Live updates disconnected. Reconnecting…',
+							link: { label: '', href: '' }
+						};
+					}
+				} else if (
+					$_live_updates_disconnected &&
+					evt.detail.type.startsWith('datastar-patch-')
+				) {
+					$_live_updates_disconnected = false;
+					$_toast = {
+						id: Date.now(),
+						visible: true,
+						kind: 'info',
+						message: 'Live updates reconnected.',
+						link: { label: '', href: '' }
+					};
+				}
+			"
+		>
+			@ToastView()
+			{ children... }
+			if config.Dev {
+				@DebugSignals()
+			}
+		</body>
+	</html>
+}
+
+templ DebugSignals() {
+	<div
+		style="display: none"
+		class="
+			fixed right-5 top-2 z-[2147483647] flex max-h-[calc(100vh-1rem)] w-[500px] flex-col
+			overflow-hidden bg-backdrop p-2
+		"
+		data-signals={ "{_sig_debug_signals_visible: (localStorage.getItem('debug_signals_visible') ?? 'false') === 'true'}" }
+		data-on:keydown__window="
+			if (event.ctrlKey && event.key === 'f') {
+				event.preventDefault();
+				$_sig_debug_signals_visible = !$_sig_debug_signals_visible;
+			}
+		"
+		data-effect="localStorage.setItem('debug_signals_visible', $_sig_debug_signals_visible)"
+		data-show="$_sig_debug_signals_visible"
+	>
+		<div class="flex flex-none items-center justify-between gap-2">
+			<small>signals:</small>
+			@Button(ButtonProps{
+				Variant: Text,
+				Size:    Small,
+				Attrs: templ.Attributes{
+					"aria-live": "polite",
+					"data-on:click": `
+					const signals = el.parentElement.nextElementSibling.textContent;
+					navigator.clipboard.writeText('client datastar signals state: ' + signals).then(() => {
+						el.textContent = 'Copied';
+					}, () => {
+						el.textContent = 'Copy failed';
+					});
+				`,
+				},
+			}) {
+				Copy
+			}
+		</div>
+		<pre class="min-h-0 overflow-auto whitespace-pre bg-backdrop" data-json-signals></pre>
+	</div>
+}

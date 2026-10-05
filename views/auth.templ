@@ -1,0 +1,80 @@
+package views
+
+import "afastchat.com/views/ui"
+
+type authFormProps struct {
+	Eyebrow             string
+	Title               string
+	Description         string
+	Action              string
+	PasswordPlaceholder string
+	AltPrompt           string
+	AltLabel            string
+	AltHref             string
+}
+
+templ authForm(props authFormProps, data AuthPageData) {
+	<main class="grid min-h-dvh place-items-center p-4">
+		<div class="w-full max-w-[25rem]">
+			<div class="flex flex-col gap-4 rounded-xl border border-line bg-sidebar p-7 shadow-popover">
+				<p class="text-label leading-none font-semibold tracking-[0.12em] text-muted uppercase">
+					{ props.Eyebrow }
+				</p>
+				<h1 class="text-display leading-none font-bold tracking-[-0.04em] text-ink">
+					{ props.Title }
+				</h1>
+				<p class="max-w-[21rem] text-ui-emphasis leading-7 text-ink-secondary">
+					{ props.Description }
+				</p>
+				if data.Error != "" {
+					<p
+						role="alert"
+						class="rounded-lg border border-danger-line bg-danger-surface px-3 py-2 text-danger"
+					>
+						{ data.Error }
+					</p>
+				}
+				<form class="flex flex-col gap-4" method="post" action={ templ.SafeURL(props.Action) }>
+					<div class="grid gap-2">
+						<label class="font-semibold text-ink-secondary" for="email">Email</label>
+						@ui.Input(ui.InputProps{
+							Class: "min-h-12 text-ui-emphasis",
+							Attrs: templ.Attributes{
+								"type":        "email",
+								"id":          "email",
+								"name":        "email",
+								"placeholder": "you@example.com",
+								"value":       data.Email,
+								"required":    true,
+								"autofocus":   true,
+							},
+						})
+					</div>
+					<div class="grid gap-2">
+						<label class="font-semibold text-ink-secondary" for="password">Password</label>
+						@ui.Input(ui.InputProps{
+							Class: "min-h-12 text-ui-emphasis",
+							Attrs: templ.Attributes{
+								"type":        "password",
+								"id":          "password",
+								"name":        "password",
+								"placeholder": props.PasswordPlaceholder,
+								"required":    true,
+							},
+						})
+					</div>
+					@ui.Button(ui.ButtonProps{
+						Class: "w-full",
+						Attrs: templ.Attributes{"type": "submit"},
+					}) {
+						{ props.Title }
+					}
+				</form>
+				<p class="text-center text-ink-secondary">
+					{ props.AltPrompt }
+					<a class="font-semibold text-ink" href={ templ.SafeURL(props.AltHref) }>{ props.AltLabel }</a>
+				</p>
+			</div>
+		</div>
+	</main>
+}

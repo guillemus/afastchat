@@ -1,0 +1,146 @@
+package views
+
+import (
+	"afastchat.com/views/ui"
+	"fmt"
+)
+
+type SidebarProps struct {
+	Threads        []Thread
+	ActiveThreadID string
+	UserEmail      string
+}
+
+templ Sidebar(props SidebarProps) {
+	<aside
+		class="
+			flex min-h-screen w-[260px] max-w-[260px] min-w-[260px] shrink-0 flex-col overflow-hidden
+			border-r border-line bg-sidebar text-ui
+		"
+		data-signals:thread-id={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
+		if props.ActiveThreadID != "" {
+			data-init={ fmt.Sprintf("@get('/threads/%s/events')", props.ActiveThreadID) }
+		}
+	>
+		<div class="flex items-center justify-between px-3 pt-4 pb-3">
+			<span class="font-normal tracking-[-0.02em]">
+				afastchat<span class="text-accent">.com</span>
+			</span>
+		</div>
+		@ui.ButtonLink("/", ui.ButtonProps{Size: ui.Small, Class: "mx-3 mb-3 font-normal"}) {
+			@ui.PlusIcon()
+			New Chat
+		}
+		<div class="relative mx-3 mb-2">
+			<span
+				class="pointer-events-none absolute top-1/2 left-2 flex -translate-y-1/2 text-muted"
+			>
+				@ui.SearchIcon()
+			</span>
+			<input
+				class="
+					w-full rounded-lg border border-transparent bg-transparent py-1 pr-2
+					pl-[calc(var(--spacing)*2+13px+var(--spacing)*2)] text-ink-secondary outline-none
+					transition-colors placeholder:text-muted focus:border-line focus:bg-surface
+				"
+				type="text"
+				name="thread-search"
+				placeholder="Search threads..."
+				data-bind:thread-search
+				data-on:input__debounce.150ms="@get('/threads/search')"
+			/>
+		</div>
+		@ThreadList(props.Threads, props.ActiveThreadID)
+		<div class="flex items-center gap-2 border-t border-line p-3">
+			<div
+				class="
+					flex size-[26px] shrink-0 items-center justify-center rounded-full bg-accent
+					font-normal text-white
+				"
+			>
+				{ userInitial(props.UserEmail) }
+			</div>
+			<form class="ml-auto" method="post" action="/logout">
+				@ui.Button(ui.ButtonProps{
+					Variant: ui.Secondary,
+					Size:    ui.Small,
+					Attrs:   templ.Attributes{"type": "submit"},
+				}) {
+					Log out
+				}
+			</form>
+		</div>
+		@threadListScrollRestore()
+	</aside>
+}
+
+func userInitial(email string) string {
+	if email == "" {
+		return "?"
+	}
+	return string([]rune(email)[0])
+}
+
+templ ThreadList(threads []Thread, activeThreadID string) {
+	<div
+		class="
+			thread-list flex-1 overflow-y-auto overscroll-contain px-2 py-1
+			[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
+		"
+		data-on:scroll__debounce.10ms="sessionStorage.setItem('thread_list_scroll', String(el.scrollTop))"
+	>
+		@ThreadItems(threads, activeThreadID)
+	</div>
+}
+
+templ threadListScrollRestore() {
+	<script>
+		{
+			const el = document.querySelector('.thread-list')
+			el.scrollTop = Number.parseFloat(sessionStorage.getItem('thread_list_scroll')) || 0
+		}
+	</script>
+}
+
+templ ThreadItems(threads []Thread, activeThreadID string) {
+	<div id="thread-items">
+		for _, thread := range threads {
+			@ThreadListItem(thread, thread.ID == activeThreadID)
+		}
+	</div>
+}
+
+templ ThreadListItem(thread Thread, isActive bool) {
+	<a
+		id={ "thread-" + thread.ID }
+		class={
+			"group flex items-center gap-2 rounded-lg px-2 py-1 no-underline transition-colors duration-100",
+			"hover:bg-surface hover:text-ink",
+			templ.KV("bg-surface text-ink", isActive),
+			templ.KV("text-ink-secondary", !isActive),
+		}
+		href={ templ.SafeURL("/threads/" + thread.ID) }
+	>
+		<span class="min-w-0 flex-1 truncate">{ thread.Title }</span>
+		if thread.IsStreaming {
+			<span class="flex size-3.5 shrink-0 items-center justify-center text-accent">
+				@ui.SpinnerIcon()
+			</span>
+		}
+		<button
+			type="button"
+			aria-label="Archive chat"
+			class="
+				flex shrink-0 cursor-pointer items-center justify-center rounded p-1 text-muted opacity-0
+				group-hover:opacity-100 hover:bg-surface-raised hover:text-ink
+			"
+			data-on:click={ fmt.Sprintf(`
+				evt.preventDefault();
+				evt.stopPropagation();
+				@post('/threads/%s/archive');
+			`, thread.ID) }
+		>
+			@ui.ArchiveIcon()
+		</button>
+	</a>
+}
