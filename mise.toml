@@ -1,0 +1,47 @@
+[tools]
+watchexec = "latest"
+
+[tasks.default]
+run = "mise run --output=prefix dev:go ::: dev:css"
+
+[tasks."dev:go"]
+run = "exec watchexec -r -e go,sql -- go run ./cmd/server"
+
+[tasks."dev:css"]
+run = "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --watch=always"
+
+[tasks.typecheck-scripts]
+run = "bun run typecheck"
+
+[tasks.build-assets]
+run = "bunx @tailwindcss/cli -i ./views/styles.css -o ./public/styles.css --minify"
+
+[tasks.migrate]
+run = '''
+atlas schema apply \
+  --to "file://db/schema.sql" \
+  --url "sqlite://tmp/app.db" \
+  --dev-url "sqlite://dev?mode=memory" \
+  --auto-approve
+'''
+
+[tasks.build-linux]
+depends = ["build-assets"]
+run = '''
+mkdir -p dist
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o dist/afastchat ./cmd/server
+'''
+
+[tasks.rsync-linux]
+depends = ["build-linux"]
+run = '''
+rsync -avz dist/afastchat hetzner-box:/srv/afastchat/afastchat
+ssh hetzner-box 'chown afastchat:afastchat /srv/afastchat/afastchat && chmod +x /srv/afastchat/afastchat'
+'''
+
+[tasks.deploy]
+depends = ["rsync-linux"]
+run = "ssh hetzner-box 'sudo systemctl restart afastchat && systemctl is-active afastchat && systemctl --no-pager --lines=20 status afastchat'"
+
+[tasks.format-templates]
+run = "bunx prettier -w templates"
