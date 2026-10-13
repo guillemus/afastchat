@@ -200,6 +200,9 @@ func workStatus(turn []db.Message, refs []db.SourceRef) views.Status {
 			}
 		}
 	case db.AssistantMessage:
+		if strings.TrimSpace(last.Content) == "" {
+			break
+		}
 		return views.Status{
 			Key: last.ID, Icon: views.StatusThinking, Verb: "Working", Words: tailWords(last.Content, 160),
 		}

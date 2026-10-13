@@ -11,7 +11,10 @@ import (
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 )
 
@@ -32,7 +35,36 @@ var md = goldmark.New(
 			highlighting.WithWrapperRenderer(renderCodeBlockWrapper),
 		),
 	),
+	goldmark.WithParserOptions(parser.WithInlineParsers(util.Prioritized(&inlineMathParser{}, -1))),
 )
+
+type inlineMathParser struct {
+	katex.Parser
+}
+
+func (p *inlineMathParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
+	line, segment := block.PeekLine()
+	if (len(line) > 1 && line[1] == '$') || isInlineMath(line) {
+		return p.Parser.Parse(parent, block, pc)
+	}
+	block.Advance(1)
+	return ast.NewTextSegment(text.NewSegment(segment.Start, segment.Start+1))
+}
+
+func isInlineMath(line []byte) bool {
+	if len(line) < 3 || util.IsSpace(line[1]) {
+		return false
+	}
+	for i := 1; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			i++
+		case '$':
+			return !util.IsSpace(line[i-1]) && (i+1 >= len(line) || line[i+1] < '0' || line[i+1] > '9')
+		}
+	}
+	return false
+}
 
 func renderCodeBlockWrapper(w util.BufWriter, c highlighting.CodeBlockContext, entering bool) {
 	if !entering {
