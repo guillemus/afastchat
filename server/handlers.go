@@ -28,8 +28,8 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x.render(w, r, views.IndexPage(views.IndexData{
-		Threads:   mapViewThreads(threads),
-		UserEmail: user.Email,
+		Threads: mapViewThreads(threads),
+		Viewer:  viewerFromUser(user),
 	}))
 }
 
@@ -50,7 +50,7 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	x.render(w, r, views.SettingsPage(views.SettingsData{
 		Threads:             mapViewThreads(threads),
-		UserEmail:           user.Email,
+		Viewer:              viewerFromUser(user),
 		OpenRouterConnected: connected,
 		OpenRouterFailed:    r.URL.Query().Get("openrouter_failed") == "1",
 	}))
@@ -89,13 +89,15 @@ func (x *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (x *Server) getDisplayMessages(ctx context.Context, userID, threadID string, largeHeight bool) ([]views.MessageGroup, error) {
+func (x *Server) getDisplayMessages(
+	ctx context.Context, userID, threadID string, largeHeight, streaming bool,
+) ([]views.MessageGroup, error) {
 	messages, err := x.db.GetMessagesByThread(ctx, userID, threadID)
 	if err != nil {
 		return nil, fmt.Errorf("get messages: %w", err)
 	}
 
-	return mapViewMessages(messages, largeHeight), nil
+	return mapViewMessages(messages, streaming, largeHeight), nil
 }
 
 func (x *Server) getThreadPage(
@@ -108,7 +110,7 @@ func (x *Server) getThreadPage(
 		return td, err
 	}
 
-	messages, err := x.getDisplayMessages(ctx, user.ID, threadID, thread.IsStreaming)
+	messages, err := x.getDisplayMessages(ctx, user.ID, threadID, thread.IsStreaming, thread.IsStreaming)
 	if err != nil {
 		return td, err
 	}
@@ -123,7 +125,7 @@ func (x *Server) getThreadPage(
 		Thread:    viewThreadFromDbThread(thread),
 		Messages:  messages,
 		Streaming: thread.IsStreaming,
-		UserEmail: user.Email,
+		Viewer:    viewerFromUser(user),
 	}, nil
 }
 
@@ -181,7 +183,7 @@ func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := sig.ThreadSearch
+	query := strings.ToLower(strings.TrimSpace(sig.ThreadSearch))
 	filtered := make([]db.Thread, 0, len(threads))
 	for _, it := range threads {
 		if strings.Contains(strings.ToLower(it.Title), query) {
@@ -325,6 +327,7 @@ func (x *Server) streamAgentMessages(
 	ctx context.Context, apiKey, userID, threadID string, messages []db.Message, logger *slog.Logger,
 ) {
 	agent := agents.NewAgent(apiKey)
+	sources := turnSources{}
 
 	for tokenEvt, err := range agent.Stream(ctx, messages) {
 		if err != nil {
@@ -361,6 +364,8 @@ func (x *Server) streamAgentMessages(
 				ToolCallID: evt.CallID,
 				ToolName:   evt.Name,
 			})
+		case agents.Source:
+			messages, err = sources.add(ctx, x.db, userID, threadID, messages, evt)
 		case agents.UsageDelta:
 			logger.Debug("received usage",
 				"provider", evt.Usage.Provider,
@@ -465,7 +470,7 @@ msgloop:
 				continue msgloop
 			}
 
-			messages, err := x.getDisplayMessages(ctx, user.ID, threadID, true)
+			messages, err := x.getDisplayMessages(ctx, user.ID, threadID, true, thread.IsStreaming)
 			if err != nil {
 				slog.Error("error getting messages", "err", err)
 				continue msgloop
@@ -491,7 +496,10 @@ msgloop:
 				continue msgloop
 			}
 
-			views.PatchThreadItem(sse, viewThreadFromDbThread(thread))
+			views.PatchThreadItem(sse, viewThreadFromDbThread(thread), thread.ID == threadID)
+			if thread.ID == threadID {
+				views.PatchThreadHeader(sse, viewThreadFromDbThread(thread))
+			}
 		case <-ctx.Done():
 			break msgloop
 		}
@@ -516,4 +524,59 @@ func (x *Server) handleStopStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 
 	publishThreadStop(x.bus, sig.ThreadID)
+}
+
+func viewerFromUser(user db.User) views.Viewer {
+	return views.Viewer{Name: user.DisplayName, Email: user.Email}
+}
+
+func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	threadID := chi.URLParam(r, "id")
+	var sig struct {
+		RenameTitle string `json:"renameTitle"`
+	}
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read rename signals", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to rename this chat. Refresh the page, then try again."})
+		return
+	}
+
+	title := strings.TrimSpace(sig.RenameTitle)
+	if title == "" {
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastWarning, Message: "Enter a name for this chat."})
+		return
+	}
+
+	if err := x.db.UpdateThreadTitle(ctx, user.ID, threadID, title); err != nil {
+		slog.Error("rename thread", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't rename this chat. Try again."})
+		return
+	}
+
+	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+
+	sse := datastar.NewSSE(w, r)
+	if err := sse.ExecuteScript(`document.getElementById('rename-thread-dialog')?.close()`); err != nil {
+		slog.Error("close rename dialog", "err", err)
+	}
+}
+
+func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	threadID := chi.URLParam(r, "id")
+
+	publishThreadStop(x.bus, threadID)
+	if err := x.db.DeleteThread(ctx, user.ID, threadID); err != nil {
+		slog.Error("delete thread", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't delete this chat. Try again."})
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+	if err := sse.Redirect("/"); err != nil {
+		slog.Error("redirect after thread deletion", "err", err)
+	}
 }

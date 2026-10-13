@@ -4,8 +4,39 @@ import "afastchat.com/views/ui"
 
 templ appLayout() {
 	@ui.Document("afastchat") {
-		<div class="grid h-dvh w-full grid-cols-[260px_minmax(0,1fr)] overflow-hidden">
+		<div
+			class="app-shell h-dvh w-full overflow-hidden"
+			data-signals:_sidebar-collapsed="localStorage.getItem('sidebar_collapsed') === 'true'"
+			data-effect="localStorage.setItem('sidebar_collapsed', $_sidebarCollapsed)"
+			data-attr:data-collapsed="$_sidebarCollapsed"
+		>
+			<script>
+				document.currentScript.parentElement.toggleAttribute(
+					'data-collapsed',
+					localStorage.getItem('sidebar_collapsed') === 'true',
+				)
+			</script>
 			{ children... }
+			<button
+				type="button"
+				aria-controls="sidebar"
+				class="
+					fixed top-2.75 left-4 z-20 grid size-6.5 cursor-pointer place-items-center rounded-md
+					text-muted transition-colors hover:bg-fill-strong hover:text-ink
+				"
+				data-attr:aria-expanded="String(!$_sidebarCollapsed)"
+				data-attr:aria-label="$_sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
+				data-attr:title="$_sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
+				data-on:click="
+					const shell = el.closest('.app-shell');
+					shell.setAttribute('data-animating', '');
+					clearTimeout(shell.sidebarAnimation);
+					shell.sidebarAnimation = setTimeout(() => shell.removeAttribute('data-animating'), 250);
+					$_sidebarCollapsed = !$_sidebarCollapsed;
+				"
+			>
+				@ui.PanelLeftIcon()
+			</button>
 		</div>
 	}
 }
@@ -20,7 +51,7 @@ templ guestLayout() {
 
 templ IndexPage(data IndexData) {
 	@appLayout() {
-		@Sidebar(SidebarProps{Threads: data.Threads, UserEmail: data.UserEmail})
+		@Sidebar(SidebarProps{Threads: data.Threads, Viewer: data.Viewer})
 		@MessageThread(MessageThreadProps{})
 	}
 }
@@ -30,11 +61,11 @@ templ ThreadPage(data ThreadData, doScrollSidebar bool) {
 		@Sidebar(SidebarProps{
 			Threads:        data.Threads,
 			ActiveThreadID: data.Thread.ID,
-			UserEmail:      data.UserEmail,
+			Viewer:         data.Viewer,
 		})
 		@MessageThread(MessageThreadProps{
 			Messages:        data.Messages,
-			ThreadID:        data.Thread.ID,
+			Thread:          data.Thread,
 			DoScrollSidebar: doScrollSidebar,
 			IsStreaming:     data.Streaming,
 		})
@@ -43,7 +74,7 @@ templ ThreadPage(data ThreadData, doScrollSidebar bool) {
 
 templ SettingsPage(data SettingsData) {
 	@appLayout() {
-		@Sidebar(SidebarProps{Threads: data.Threads, UserEmail: data.UserEmail})
+		@Sidebar(SidebarProps{Threads: data.Threads, Viewer: data.Viewer})
 		@settings(data)
 	}
 }

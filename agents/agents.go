@@ -58,7 +58,7 @@ func MapDBMessages(dbMessages []db.Message) []provider.Message {
 			})
 		case db.ToolOutput:
 			messages = append(messages, goai.ToolMessage(it.ToolCallID, it.ToolName, it.Content))
-		case db.AssistantReasoning:
+		case db.AssistantReasoning, db.AssistantSources:
 		}
 	}
 
@@ -67,6 +67,8 @@ func MapDBMessages(dbMessages []db.Message) []provider.Message {
 
 var sysPrompt = strings.TrimSpace(`
 You are a helpful assistant. Before each tool call, briefly tell the user what you are about to do in one short sentence.
+
+When you use web sources, cite them inline as markdown links placed right after the claim they support. Do not add a separate sources list at the end; the app shows one.
 
 When writing math, use LaTeX inside $...$ for inline math and $$...$$ for display math. Do not put LaTeX math in code blocks unless the user asks for source syntax.
 `)
@@ -95,6 +97,11 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 		for chunk := range stream.Stream() {
 			switch chunk.Type {
 			case provider.ChunkText:
+				if source, ok := chunk.Metadata["source"].(provider.Source); ok && source.URL != "" {
+					if !yield(Source{URL: source.URL, Title: source.Title}, nil) {
+						return
+					}
+				}
 				if chunk.Text != "" && !yield(AssistantDelta{Delta: chunk.Text}, nil) {
 					return
 				}

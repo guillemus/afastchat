@@ -33,6 +33,7 @@ func viewThreadFromDbThread(thread db.Thread) views.Thread {
 		ID:          thread.ID,
 		IsStreaming: thread.IsStreaming,
 		Title:       thread.Title,
+		CreatedAt:   thread.CreatedAt,
 	}
 }
 
@@ -41,76 +42,6 @@ func mapViewThreads(threads []db.Thread) []views.Thread {
 	for _, thread := range threads {
 		out = append(out, viewThreadFromDbThread(thread))
 	}
-	return out
-}
-
-func mapViewMessages(messages []db.Message, largeHeight bool) []views.MessageGroup {
-	out := make([]views.MessageGroup, 0, len(messages))
-	var assistant *views.AssistantMessagePartsProps
-
-	for _, it := range messages {
-		switch it.Type {
-		case db.SystemMessage, db.ToolOutput:
-			continue
-		case db.UserMessage:
-			if assistant != nil {
-				out = append(out, *assistant)
-				assistant = nil
-			}
-			out = append(out, views.UserMessageProps{
-				ID:        it.ID,
-				MdContent: renderMarkdown(it.Content),
-			})
-		case db.AssistantMessage:
-			if assistant == nil {
-				assistant = &views.AssistantMessagePartsProps{
-					ID: it.ID,
-				}
-			}
-			assistant.Parts = append(assistant.Parts, views.AssistantTextPartProps{
-				ID:        it.ID,
-				MdContent: renderMarkdown(it.Content),
-			})
-		case db.AssistantReasoning:
-			if assistant == nil {
-				assistant = &views.AssistantMessagePartsProps{
-					ID: it.ID,
-				}
-			}
-			assistant.Parts = append(assistant.Parts, views.ReasoningPartProps{
-				ID:        it.ID,
-				Text:      it.Content,
-				MdContent: renderMarkdown(it.Content),
-			})
-		case db.AssistantToolCall:
-			if assistant == nil {
-				assistant = &views.AssistantMessagePartsProps{
-					ID: it.ID,
-				}
-			}
-			assistant.Parts = append(assistant.Parts, views.ToolCallPartProps{
-				ID:   it.ID,
-				Name: it.ToolName,
-				Args: it.Content,
-			})
-		}
-	}
-
-	if assistant != nil {
-		out = append(out, *assistant)
-		assistant = nil
-	}
-
-	if largeHeight {
-		for i := len(out) - 1; i >= 0; i-- {
-			if msg, ok := out[i].(views.AssistantMessagePartsProps); ok {
-				msg.LargeHeight = true
-				out[i] = msg
-				break
-			}
-		}
-	}
-
 	return out
 }
 

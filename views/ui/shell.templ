@@ -11,7 +11,7 @@ templ Document(title string) {
 			<title>{ title }</title>
 			<link
 				rel="preload"
-				href="/public/fonts/figtree-latin-var.woff2"
+				href="/public/fonts/funnel-display-latin-var.woff2"
 				as="font"
 				type="font/woff2"
 				crossorigin
@@ -74,7 +74,7 @@ templ DebugSignals() {
 	<div
 		style="display: none"
 		class="
-			fixed right-5 top-2 z-[2147483647] flex max-h-[calc(100vh-1rem)] w-[500px] flex-col
+			fixed right-5 top-2 z-2147483647 flex max-h-[calc(100vh-(--spacing(4)))] w-125 flex-col
 			overflow-hidden bg-backdrop p-2
 		"
 		data-signals={ "{_sig_debug_signals_visible: (localStorage.getItem('debug_signals_visible') ?? 'false') === 'true'}" }

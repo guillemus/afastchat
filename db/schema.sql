@@ -60,6 +60,7 @@ CREATE TABLE messages (
     -- assistant_reasoning: assistant reasoning trace.
     -- assistant_tool_call: assistant tool request.
     -- tool_output: tool result.
+    -- assistant_sources: JSON array of {url, title} web sources cited in the turn.
     type TEXT NOT NULL,
     -- Per thread message order. Used for stable conversation rendering.
     seq INTEGER NOT NULL,

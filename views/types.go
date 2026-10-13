@@ -1,14 +1,22 @@
 package views
 
+import "time"
+
 type Thread struct {
 	ID          string
 	IsStreaming bool
 	Title       string
+	CreatedAt   time.Time
+}
+
+type Viewer struct {
+	Name  string
+	Email string
 }
 
 type IndexData struct {
-	Threads   []Thread
-	UserEmail string
+	Threads []Thread
+	Viewer  Viewer
 }
 
 type ThreadData struct {
@@ -16,12 +24,12 @@ type ThreadData struct {
 	Thread    Thread
 	Messages  []MessageGroup
 	Streaming bool
-	UserEmail string
+	Viewer    Viewer
 }
 
 type SettingsData struct {
 	Threads             []Thread
-	UserEmail           string
+	Viewer              Viewer
 	OpenRouterConnected bool
 	OpenRouterFailed    bool
 }
@@ -34,12 +42,44 @@ type MessageGroup interface {
 type UserMessageProps struct {
 	ID        string
 	MdContent string
+	CreatedAt time.Time
 }
 
 type AssistantMessagePartsProps struct {
 	ID          string
 	LargeHeight bool
-	Parts       []AssistantPart
+	Working     bool
+	Streaming   bool
+	StartedAt   time.Time
+	WorkSeconds int
+	Work        []AssistantPart
+	AnswerHTML  string
+	Sources     []Source
+	Status      Status
+}
+
+type Source struct {
+	Number int
+	URL    string
+	Title  string
+	Domain string
+}
+
+type StatusIcon uint8
+
+const (
+	StatusNoIcon StatusIcon = iota
+	StatusThinking
+	StatusSearching
+	StatusReading
+)
+
+type Status struct {
+	Key    string
+	Icon   StatusIcon
+	Verb   string
+	Target string
+	Words  string
 }
 
 func (UserMessageProps) isMessageGroup()           {}
@@ -63,17 +103,25 @@ type ToolCallPartProps struct {
 
 type ReasoningPartProps struct {
 	ID        string
-	Text      string
 	MdContent string
+	Seconds   int
+}
+
+type SourceReadPartProps struct {
+	ID     string
+	Title  string
+	Domain string
+	URL    string
 }
 
 func (AssistantTextPartProps) isAssistantPart() {}
 func (ToolCallPartProps) isAssistantPart()      {}
 func (ReasoningPartProps) isAssistantPart()     {}
+func (SourceReadPartProps) isAssistantPart()    {}
 
 type MessageThreadProps struct {
 	Messages        []MessageGroup
-	ThreadID        string
+	Thread          Thread
 	DoScrollSidebar bool
 	IsStreaming     bool
 }

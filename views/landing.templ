@@ -2,54 +2,67 @@ package views
 
 import "afastchat.com/views/ui"
 
-var landingPills = []string{
-	"Explain a Go concurrency pattern",
-	"Debug an error in my code",
-	"Write a SQL migration",
-	"Brainstorm system design ideas",
+var landingPrompts = []string{
+	"Compare SQLite and Postgres for a small SaaS",
+	"What changed in the latest Go release?",
+	"Explain how Server-Sent Events work",
+	"Write a SQL migration that adds an index",
 }
 
 templ landing() {
-	<main class="flex min-h-dvh flex-col items-center justify-center bg-canvas p-6">
-		<div class="flex w-full max-w-3xl flex-col items-center gap-8">
-			<div class="tracking-[0.1em] text-ink-secondary lowercase">afastchat</div>
-			<h1 class="text-center text-display leading-tight font-medium tracking-[-0.04em]">
-				What can I help with?
+	<div class="relative flex min-h-dvh flex-col bg-canvas">
+		<header class="flex h-15 flex-none items-center px-7">
+			<a href="/" class="flex h-7.5 items-center gap-2 no-underline">
+				@ui.LogoMark()
+				<b class="text-ui font-semibold tracking-tighter text-ink">afastchat</b>
+			</a>
+			<a
+				href="/login"
+				class="
+					bg-raised-button ml-auto inline-flex h-8 items-center rounded-lg border border-line px-3.5
+					font-medium text-ink no-underline shadow-button transition-colors hover:border-line-strong
+				"
+			>
+				Log in
+			</a>
+		</header>
+		<main class="flex flex-1 flex-col items-center justify-center px-6 pb-15">
+			<h1 class="text-center text-hero font-medium text-ink">
+				A very fast AI chat. <span class="text-ink-secondary">Built for the web.</span>
 			</h1>
-			<div class="w-full max-w-3xl">
-				<a
-					href="/login"
-					class="
-						flex items-center rounded-xl border border-line bg-surface p-3 text-muted no-underline
-						transition-colors hover:border-accent/50
-						[&_svg]:ml-auto [&_svg]:size-5 [&_svg]:shrink-0
-					"
-				>
-					Message afastchat
-					@ui.ArrowUpIcon()
-				</a>
-			</div>
-			<div class="flex w-full flex-wrap justify-center gap-3">
-				for _, label := range landingPills {
+			<p class="mt-3.5 text-center text-ui-emphasis tracking-tight text-ink-secondary">
+				Server-rendered, streamed in real time, and searches the live web when it needs to.
+			</p>
+			<a
+				href="/login"
+				class="
+					bg-dock mt-8.5 flex w-full max-w-landing items-end gap-2 rounded-dock border border-line py-2
+					pr-2 pl-1 no-underline shadow-dock transition-colors hover:border-line-strong
+				"
+			>
+				<span class="flex-1 px-3 py-1.5 text-body leading-5 text-muted">Ask anything</span>
+				<span class="grid size-8 flex-none place-items-center rounded-full bg-surface-strong text-muted">
+					@ui.ArrowUpSmallIcon()
+				</span>
+			</a>
+			<div class="mt-5.5 grid w-full max-w-landing grid-cols-1 gap-2 sm:grid-cols-[1.1fr_1fr]">
+				for _, prompt := range landingPrompts {
 					<a
 						href="/login"
 						class="
-							inline-flex items-center rounded-2xl border border-line px-4 py-2 text-ink-secondary
-							no-underline transition-colors hover:border-line-strong hover:bg-surface hover:text-ink
+							flex h-10.5 items-center gap-2.5 overflow-hidden rounded-card border border-line-subtle px-3.5
+							whitespace-nowrap text-ink-secondary no-underline transition-colors
+							hover:border-line hover:bg-surface hover:text-ink-body [&_svg]:text-muted
 						"
 					>
-						{ label }
+						@ui.SearchSmallIcon()
+						<span class="min-w-0 truncate">{ prompt }</span>
 					</a>
 				}
 			</div>
-			<div class="mt-2 flex items-center gap-5">
-				<a href="/login" class={ landingLinkClass }>Log in</a>
-			</div>
-		</div>
-	</main>
+			<p class="mt-7.5 text-center text-label tracking-wide text-muted">
+				Streams in real time · searches the live web · runs on your OpenRouter account
+			</p>
+		</main>
+	</div>
 }
-
-const landingLinkClass = `
-	text-ink-secondary no-underline transition-colors
-	hover:text-ink hover:underline hover:underline-offset-3
-`

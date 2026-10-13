@@ -23,7 +23,13 @@ const (
 	AssistantReasoning MessageType = "assistant_reasoning"
 	AssistantToolCall  MessageType = "assistant_tool_call"
 	ToolOutput         MessageType = "tool_output"
+	AssistantSources   MessageType = "assistant_sources"
 )
+
+type SourceRef struct {
+	URL   string `json:"url"`
+	Title string `json:"title"`
+}
 
 type Message struct {
 	ID                 string

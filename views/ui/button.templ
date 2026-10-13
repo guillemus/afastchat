@@ -45,14 +45,14 @@ func buttonClass(props ButtonProps) string {
 	}
 
 	variant := `
-		border-transparent bg-accent text-white
+		border-transparent bg-accent text-on-accent
 		enabled:hover:bg-accent-hover [&:is(a):hover]:bg-accent-hover
 	`
 	switch props.Variant {
 	case Secondary:
 		variant = `
-			border-line bg-surface text-ink
-			enabled:hover:bg-surface-raised [&:is(a):hover]:bg-surface-raised
+			bg-raised-button border-line text-ink shadow-button
+			enabled:hover:border-line-strong [&:is(a):hover]:border-line-strong
 		`
 	case Ghost:
 		variant = `

@@ -6,8 +6,8 @@ const deleteAccountDialogID = "delete-account-dialog"
 
 templ settings(data SettingsData) {
 	<main class="flex-1 overflow-y-auto bg-canvas p-8">
-		<div class="mx-auto max-w-[760px]">
-			<h1 class="text-heading font-medium tracking-[-0.03em]">Settings</h1>
+		<div class="mx-auto max-w-settings">
+			<h1 class="text-heading font-medium">Settings</h1>
 			@settingsAccount(data)
 			@settingsOpenRouter(data)
 			@settingsDanger()
@@ -40,13 +40,16 @@ templ settingsAccount(data SettingsData) {
 			@settingsRow() {
 				<span
 					class="
-						grid size-10 flex-none place-items-center rounded-full bg-accent text-ui-emphasis
-						text-white
+						grid size-10 flex-none place-items-center rounded-full bg-surface-strong text-ui
+						font-semibold text-ink shadow-active
 					"
 					aria-hidden="true"
-				>{ userInitial(data.UserEmail) }</span>
-				<div class="flex min-w-0 flex-1 font-medium">
-					@ui.Sensitive(data.UserEmail)
+				>{ initials(data.Viewer) }</span>
+				<div class="min-w-0 flex-1">
+					<p class="truncate font-medium text-ink">{ data.Viewer.Name }</p>
+					<div class="flex min-w-0 text-compact text-muted">
+						@ui.Sensitive(data.Viewer.Email)
+					</div>
 				</div>
 				<span class="flex items-center gap-1.5 text-compact text-muted [&_svg]:size-3.5">
 					@ui.GoogleIcon()

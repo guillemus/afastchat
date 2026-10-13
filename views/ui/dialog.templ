@@ -5,7 +5,7 @@ templ Dialog(id string, attrs templ.Attributes) {
 		id={ id }
 		data-preserve-attr="open"
 		class="
-			m-auto w-[min(430px,calc(100%_-_32px))] rounded-lg border border-line bg-surface-raised p-6
+			m-auto w-[min(var(--container-dialog),100%-(--spacing(8)))] rounded-lg border border-line bg-surface-raised p-6
 			text-ink shadow-popover backdrop:bg-backdrop/70
 		"
 		{ attrs... }

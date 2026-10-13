@@ -86,9 +86,11 @@ func StartServer(cfg config.Config) {
 	s.router.Use(newSecureMiddleware(config.Dev).Handler)
 	s.router.Use(s.crossOriginProtection.Handler)
 	s.router.Use(s.sessions.LoadAndSave)
+	s.router.Use(withTimeZone)
 
 	s.router.Handle("/public/*", afastchat.PublicHandler())
 
+	s.router.Get("/", s.handleRoot)
 	s.router.Get("/login", s.handleLoginPage)
 	s.router.Post("/auth/google", s.handleGoogleLogin)
 	s.router.Get("/auth/google/callback", s.handleGoogleCallback)
@@ -105,13 +107,14 @@ func StartServer(cfg config.Config) {
 		r.Post("/logout", s.handleLogout)
 		r.Get("/threads/{id}/events", s.handleThreadEvents)
 		r.Post("/threads/{id}/archive", s.handleArchiveThread)
+		r.Post("/threads/{id}/rename", s.handleRenameThread)
+		r.Post("/threads/{id}/delete", s.handleDeleteThread)
 		r.Get("/threads/search", s.handleSearchThreads)
 		r.Post("/chat/stop", s.handleStopStreaming)
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireOpenRouter)
 
-			r.Get("/", s.handleIndex)
 			r.Get("/threads/{id}", s.handleThread)
 			r.Post("/chat/send", s.handleSendMessage)
 		})

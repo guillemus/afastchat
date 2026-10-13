@@ -33,6 +33,10 @@ type (
 	UsageDelta struct {
 		Usage Usage
 	}
+	Source struct {
+		URL   string
+		Title string
+	}
 )
 
 func (AssistantDelta) isStreamEvent() {}
@@ -40,3 +44,4 @@ func (ReasoningDelta) isStreamEvent() {}
 func (Toolcall) isStreamEvent()       {}
 func (ToolOutput) isStreamEvent()     {}
 func (UsageDelta) isStreamEvent()     {}
+func (Source) isStreamEvent()         {}

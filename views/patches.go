@@ -15,8 +15,12 @@ func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, acti
 	patchTempl(sse, ThreadItems(threads, activeThreadID))
 }
 
-func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread) {
-	patchTempl(sse, ThreadListItem(thread, true))
+func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread, isActive bool) {
+	patchTempl(sse, ThreadListItem(thread, isActive))
+}
+
+func PatchThreadHeader(sse *datastar.ServerSentEventGenerator, thread Thread) {
+	patchTempl(sse, ThreadHeader(thread))
 }
 
 func PatchThreadMessageList(

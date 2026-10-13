@@ -71,11 +71,21 @@ func (x *Pool) ArchiveThread(ctx context.Context, userID, id string) error {
 }
 
 func (x *Pool) DeleteThread(ctx context.Context, userID, id string) error {
-	return x.exec(ctx, "delete thread", `
-		DELETE FROM threads
-		WHERE id = :id AND user_id = :user_id
-		RETURNING id
-	`, map[string]any{":id": id, ":user_id": userID})
+	return x.WithConn(ctx, func(conn *sqlite.Conn) (err error) {
+		defer sqlitex.Save(conn)(&err)
+
+		named := map[string]any{":id": id, ":user_id": userID}
+		for _, query := range []string{
+			`DELETE FROM usage WHERE thread_id = :id AND user_id = :user_id`,
+			`DELETE FROM messages WHERE thread_id = (SELECT id FROM threads WHERE id = :id AND user_id = :user_id)`,
+			`DELETE FROM threads WHERE id = :id AND user_id = :user_id`,
+		} {
+			if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{Named: named}); err != nil {
+				return fmt.Errorf("delete thread: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
 func (x *Pool) SetThreadStreaming(ctx context.Context, userID, id string, isStreaming bool) error {

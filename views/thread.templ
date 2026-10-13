@@ -2,16 +2,27 @@ package views
 
 import (
 	"afastchat.com/views/ui"
-	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
+	"time"
+)
+
+const (
+	threadMenuID         = "thread-menu"
+	renameThreadDialogID = "rename-thread-dialog"
+	deleteThreadDialogID = "delete-thread-dialog"
 )
 
 templ MessageThread(props MessageThreadProps) {
 	<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-canvas">
+		@ThreadHeader(props.Thread)
 		if len(props.Messages) == 0 {
-			@MessageList(props)
+			<div class="flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-20">
+				<h2 class="mb-5.5 text-headline font-medium text-ink">What's on your mind?</h2>
+				<div class="w-full max-w-thread">
+					@chatInput(props.Thread.ID, props.IsStreaming)
+				</div>
+			</div>
 		} else {
 			<div
 				class="relative flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -29,10 +40,9 @@ templ MessageThread(props MessageThreadProps) {
 					aria-label="Jump to latest message"
 					style="display: none"
 					class="
-						absolute bottom-4 left-1/2 z-10 flex size-11 -translate-x-1/2 cursor-pointer items-center
-						justify-center rounded-full border border-accent/30 bg-surface text-ink shadow-popover
-						transition hover:-translate-y-px hover:brightness-110
-						focus-visible:outline-2 focus-visible:outline-accent
+						absolute bottom-4 left-1/2 z-10 grid size-9 -translate-x-1/2 cursor-pointer place-items-center
+						rounded-full border border-line bg-surface-raised text-ink shadow-popover transition
+						hover:-translate-y-px hover:border-line-strong focus-visible:outline-2 focus-visible:outline-accent
 					"
 					data-show="$_showJumpToBottom"
 					data-on:click="
@@ -43,12 +53,139 @@ templ MessageThread(props MessageThreadProps) {
 					@ui.ArrowDownIcon()
 				</button>
 			</div>
+			<div class="flex-none px-6 pb-5">
+				<div class="mx-auto max-w-thread">
+					@chatInput(props.Thread.ID, props.IsStreaming)
+				</div>
+			</div>
 		}
-		@chatInput(props.ThreadID, props.IsStreaming)
+		if props.Thread.ID != "" {
+			@threadMenu(props.Thread)
+		}
 		if props.DoScrollSidebar && len(props.Messages) > 0 {
 			@messageScrollRestore()
 		}
 	</main>
+}
+
+templ ThreadHeader(thread Thread) {
+	<header
+		id="thread-header"
+		class="thread-header flex h-12 flex-none items-center gap-2.5 border-b border-line-subtle pr-5"
+	>
+		if thread.ID != "" {
+			<h1 class="min-w-0 truncate text-compact font-medium tracking-tight text-ink">{ thread.Title }</h1>
+			<button
+				type="button"
+				aria-label="Chat options"
+				popovertarget={ threadMenuID }
+				class="
+					ml-auto grid size-6.5 flex-none cursor-pointer place-items-center rounded-md text-muted
+					transition-colors hover:bg-fill-strong hover:text-ink
+				"
+			>
+				@ui.MoreIcon()
+			</button>
+		}
+	</header>
+}
+
+const threadMenuItemClass = `
+	flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-ink-body
+	transition-colors hover:bg-fill-strong hover:text-ink [&_svg]:text-muted
+`
+
+templ threadMenu(thread Thread) {
+	<div
+		id={ threadMenuID }
+		popover
+		class="
+			fixed inset-auto top-11 right-5 m-0 w-44 rounded-lg border border-line bg-surface-raised p-1
+			text-compact text-ink shadow-popover
+		"
+	>
+		<button
+			type="button"
+			class={ threadMenuItemClass }
+			commandfor={ renameThreadDialogID }
+			command="show-modal"
+			data-title={ thread.Title }
+			data-on:click={ fmt.Sprintf("$renameTitle = el.dataset.title; document.getElementById('%s').hidePopover()", threadMenuID) }
+		>
+			@ui.PencilIcon()
+			Rename
+		</button>
+		<button
+			type="button"
+			class={ threadMenuItemClass }
+			data-on:click={ fmt.Sprintf("document.getElementById('%s').hidePopover(); @post('/threads/%s/archive')", threadMenuID, thread.ID) }
+		>
+			@ui.ArchiveSmallIcon()
+			Archive
+		</button>
+		<button
+			type="button"
+			class={ threadMenuItemClass, "text-danger! [&_svg]:text-danger!" }
+			commandfor={ deleteThreadDialogID }
+			command="show-modal"
+			data-on:click={ fmt.Sprintf("document.getElementById('%s').hidePopover()", threadMenuID) }
+		>
+			@ui.TrashIcon()
+			Delete
+		</button>
+	</div>
+	@ui.Dialog(renameThreadDialogID, templ.Attributes{"data-signals:rename-title": "''"}) {
+		<h2 class="text-ui-emphasis font-semibold">Rename chat</h2>
+		@ui.Input(ui.InputProps{
+			Class: "mt-4",
+			Attrs: templ.Attributes{
+				"type":               "text",
+				"aria-label":         "Chat name",
+				"data-bind":          "renameTitle",
+				"data-on:keydown":    fmt.Sprintf("evt.key === 'Enter' && @post('/threads/%s/rename')", thread.ID),
+				"data-indicator":     "_renamePending",
+				"data-attr:disabled": "$_renamePending",
+			},
+		})
+		<div class="mt-6 flex justify-end gap-2">
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Ghost,
+				Attrs:   templ.Attributes{"commandfor": renameThreadDialogID, "command": "close"},
+			}) {
+				Cancel
+			}
+			@ui.Button(ui.ButtonProps{
+				Attrs: templ.Attributes{
+					"data-attr:disabled": "$_renamePending",
+					"data-on:click":      fmt.Sprintf("@post('/threads/%s/rename')", thread.ID),
+				},
+			}) {
+				Save
+			}
+		</div>
+	}
+	@ui.Dialog(deleteThreadDialogID, nil) {
+		<h2 class="text-ui-emphasis font-semibold">Delete this chat?</h2>
+		<p class="mt-2 leading-6 text-muted">The chat and all its messages are deleted. This can't be undone.</p>
+		<div class="mt-6 flex justify-end gap-2">
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Ghost,
+				Attrs:   templ.Attributes{"commandfor": deleteThreadDialogID, "command": "close"},
+			}) {
+				Cancel
+			}
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Danger,
+				Attrs: templ.Attributes{
+					"data-indicator:_delete_thread_pending": true,
+					"data-attr:disabled":                    "$_delete_thread_pending",
+					"data-on:click":                         fmt.Sprintf("@post('/threads/%s/delete')", thread.ID),
+				},
+			}) {
+				Delete
+			}
+		</div>
+	}
 }
 
 templ messageScrollRestore() {
@@ -60,39 +197,26 @@ templ messageScrollRestore() {
 	</script>
 }
 
-const messageListClass = `
-	mx-auto flex min-h-0 w-full max-w-[860px] min-w-0 flex-1 flex-col items-stretch gap-3
-	overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-5 [overflow-anchor:auto]
-	[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable]
-	[scrollbar-width:thin]
-`
-
 templ MessageList(props MessageThreadProps) {
-	if len(props.Messages) == 0 {
-		<div id="messages" class={ messageListClass, "justify-end pt-8" }>
-			<div
-				class="flex flex-1 flex-col items-center justify-center gap-3 text-center text-ink-secondary"
-			>
-				<h1 class="leading-tight tracking-[-0.04em] text-ink">How can I help?</h1>
-				<p class="max-w-[42ch] leading-7">Start a new conversation with afastchat.</p>
-			</div>
-		</div>
-	} else {
-		<div
-			id="messages"
-			data-ref:_messages
-			class={ messageListClass }
-			data-on:scroll__debounce.10ms="
-				const overflow = el.scrollHeight - el.clientHeight;
-				const distanceFromBottom = overflow - el.scrollTop;
-				$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
-			"
-		>
+	<div
+		id="messages"
+		data-ref:_messages
+		class="
+			thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto]
+			[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]
+		"
+		data-on:scroll__debounce.10ms="
+			const overflow = el.scrollHeight - el.clientHeight;
+			const distanceFromBottom = overflow - el.scrollTop;
+			$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+		"
+	>
+		<div class="mx-auto w-full max-w-thread px-6 pb-6">
 			for _, message := range props.Messages {
 				@messageGroup(message)
 			}
 		</div>
-	}
+	</div>
 }
 
 templ messageGroup(group MessageGroup) {
@@ -105,43 +229,105 @@ templ messageGroup(group MessageGroup) {
 }
 
 templ userMessage(props UserMessageProps) {
-	<div
-		id={ "msg-" + props.ID }
-		class="
-			user-message ml-auto w-fit max-w-[min(100%,56ch)] min-w-0 shrink-0 rounded-lg border
-			border-line bg-surface-raised/70 px-3 py-2 leading-7 break-words whitespace-normal text-ink
-		"
-	>
-		@markdownContent(props.MdContent)
+	<div id={ "msg-" + props.ID } class="user-message mt-10 flex scroll-mt-6 flex-col items-end">
+		<div
+			class="
+				w-fit max-w-bubble min-w-0 rounded-dock border border-line bg-surface-raised px-3.5
+				py-2 text-body break-words text-ink
+				[&_.markdown-content_p]:m-0 [&_.markdown-content_p+p]:mt-2
+			"
+		>
+			@markdownContent(props.MdContent)
+		</div>
+		<div class="mt-1.5 flex items-center gap-1.5 text-label text-muted [&_svg]:size-3.25">
+			@ui.ClockIcon()
+			<local-time datetime={ props.CreatedAt.UTC().Format(time.RFC3339) }>{ clockTime(ctx, props.CreatedAt) }</local-time>
+		</div>
 	</div>
 }
 
 templ assistantMessage(props AssistantMessagePartsProps) {
 	<div
 		id={ "msg-" + props.ID }
-		class={
-			"mr-auto flex w-full max-w-full shrink-0 flex-col gap-3 rounded-xl px-4 py-3 leading-7",
-			"break-words whitespace-normal text-ink",
-			templ.KV("min-h-[calc(100dvh-13rem)]", props.LargeHeight),
-		}
+		class={ "flex flex-col", templ.KV("min-h-[calc(100dvh-(--spacing(52)))]", props.LargeHeight) }
 	>
-		for _, part := range props.Parts {
-			@assistantPart(part)
+		if props.Working || len(props.Work) > 0 {
+			<details
+				id={ workID(props) }
+				class="work mt-4.5"
+				if props.Working {
+					open
+				}
+				data-preserve-attr="open"
+			>
+				<summary
+					class="
+						flex w-full cursor-pointer list-none items-center gap-1.5 border-b border-line pb-2.5 text-ui
+						font-medium tracking-tight text-ink-secondary select-none transition-colors hover:text-ink
+					"
+				>
+					if props.Working {
+						<span class="shimmer">
+							Working for <elapsed-time since={ unixMilli(props.StartedAt) }>{ elapsedLabel(props.StartedAt, time.Now()) }</elapsed-time>
+						</span>
+					} else {
+						<span>{ fmt.Sprintf("Worked for %ds", props.WorkSeconds) }</span>
+					}
+					<span class="chev text-muted transition-transform duration-200 [&_svg]:size-3.5">
+						@ui.ChevronRightIcon()
+					</span>
+				</summary>
+				<div class="flex flex-col gap-2.5 pt-3.5">
+					for _, part := range props.Work {
+						@workPart(part)
+					}
+					if props.Working {
+						@workStatus(props.Status)
+					}
+				</div>
+			</details>
+		}
+		if props.AnswerHTML != "" {
+			<div
+				class={
+					"answer mt-5.5 text-body text-ink-body",
+					templ.KV("is-streaming", props.Streaming),
+				}
+			>
+				@markdownContent(props.AnswerHTML)
+			</div>
+			if len(props.Sources) > 0 {
+				<div class="mt-7 border-b border-line pb-2.5 text-ui font-medium tracking-tight text-ink-secondary">
+					Sources
+				</div>
+				<ol class="mt-3.5 flex flex-col gap-2.5">
+					for _, source := range props.Sources {
+						<li>
+							<a
+								href={ templ.SafeURL(source.URL) }
+								target="_blank"
+								rel="noopener noreferrer"
+								class="group flex min-w-0 items-center gap-2.5 text-ui whitespace-nowrap no-underline"
+							>
+								@citeNumber(source.Number)
+								<span class="min-w-0 truncate text-ink-body group-hover:text-ink">{ source.Title }</span>
+								<span class="flex-none text-muted">{ source.Domain }</span>
+							</a>
+						</li>
+					}
+				</ol>
+			}
 		}
 	</div>
 }
 
-templ assistantPart(part AssistantPart) {
-	switch part := part.(type) {
-		case AssistantTextPartProps:
-			<div id={ "part-" + part.ID } class="w-full min-w-0 shrink-0">
-				@markdownContent(part.MdContent)
-			</div>
-		case ToolCallPartProps:
-			@toolCallPart(part)
-		case ReasoningPartProps:
-			@reasoningPart(part)
-	}
+templ citeNumber(n int) {
+	<span
+		class="
+			grid h-4 min-w-4 flex-none place-items-center rounded px-1 bg-accent-soft text-meta font-medium
+			text-accent tabular-nums
+		"
+	>{ strconv.Itoa(n) }</span>
 }
 
 templ markdownContent(html string) {
@@ -150,119 +336,155 @@ templ markdownContent(html string) {
 	</div>
 }
 
-templ toolCallPart(props ToolCallPartProps) {
-	{{ name, arg := toolCallDisplay(props.Name, props.Args) }}
-	<div
-		id={ "part-" + props.ID }
-		class="
-			flex w-full min-w-0 shrink-0 items-baseline gap-2 overflow-hidden rounded-lg border
-			border-line bg-surface px-3 py-2
-		"
-	>
-		<span class="font-semibold whitespace-nowrap text-ink">{ name }</span>
-		<span
-			class="min-w-0 overflow-hidden font-mono text-compact text-ellipsis whitespace-nowrap text-ink-secondary"
-		>
-			{ arg }
-		</span>
-	</div>
+const workRowClass = `
+	flex min-h-5.5 min-w-0 items-center gap-1.5 text-ui whitespace-nowrap text-ink-secondary
+	[&>svg]:mr-1 [&>svg]:text-muted
+`
+
+templ workPart(part AssistantPart) {
+	switch part := part.(type) {
+		case AssistantTextPartProps:
+			<div
+				id={ "part-" + part.ID }
+				class="text-ui leading-6 text-ink-secondary [&_.markdown-content_p]:m-0"
+			>
+				@markdownContent(part.MdContent)
+			</div>
+		case ReasoningPartProps:
+			<details id={ "part-" + part.ID } class="thought" data-preserve-attr="open">
+				<summary
+					class="
+						flex w-fit cursor-pointer list-none items-center gap-1.5 text-ui text-ink-secondary
+						select-none transition-colors hover:text-ink [&>svg]:text-muted
+					"
+				>
+					@ui.SparkIcon()
+					{ fmt.Sprintf("Thought for %ds", part.Seconds) }
+					<span class="chev text-muted transition-transform duration-200 [&_svg]:size-3">
+						@ui.ChevronRightIcon()
+					</span>
+				</summary>
+				<div
+					class="
+						mt-1.5 mb-1 ml-1.75 border-l border-line pl-4.75 text-ui leading-relaxed text-ink-secondary
+						[&_.markdown-content_p]:mb-2
+					"
+				>
+					@markdownContent(part.MdContent)
+				</div>
+			</details>
+		case ToolCallPartProps:
+			{{ verb, target := toolCallDone(part.Name, part.Args) }}
+			<div id={ "part-" + part.ID } class={ workRowClass }>
+				if part.Name == "web_fetch" {
+					@ui.GlobeIcon()
+				} else {
+					@ui.SearchSmallIcon()
+				}
+				<b class="font-medium text-ink-body">{ verb }</b>
+				<span class="min-w-0 truncate">{ target }</span>
+			</div>
+		case SourceReadPartProps:
+			<a
+				id={ "part-" + part.ID }
+				href={ templ.SafeURL(part.URL) }
+				target="_blank"
+				rel="noopener noreferrer"
+				class={ workRowClass, "no-underline hover:text-ink" }
+			>
+				@ui.GlobeIcon()
+				<b class="font-medium text-ink-body">Read</b>
+				<span class="min-w-0 truncate">{ part.Title }</span>
+				<span class="flex-none text-muted">{ part.Domain }</span>
+			</a>
+	}
 }
 
-templ reasoningPart(props ReasoningPartProps) {
-	<details
-		id={ "part-" + props.ID }
-		class="reasoning-part w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-line bg-surface"
-		data-preserve-attr="open"
-	>
-		<summary
-			class="flex min-w-0 cursor-pointer list-none items-baseline gap-2 px-3 py-2 text-ink-secondary"
+templ workStatus(status Status) {
+	<div class="relative h-6 overflow-hidden" role="status">
+		<div
+			id={ "status-" + status.Key }
+			class="flex h-6 min-w-0 animate-status-in items-center gap-1.5 text-ui whitespace-nowrap [&>svg]:mr-1 [&>svg]:text-muted"
 		>
-			<span class="font-semibold whitespace-nowrap text-ink">Reasoning</span>
-			<span class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-ink-secondary">
-				{ strings.Join(strings.Fields(props.Text), " ") }
-			</span>
-		</summary>
-		<div class="px-3 pb-3 leading-7 text-ink-secondary">
-			@markdownContent(props.MdContent)
+			switch status.Icon {
+				case StatusThinking:
+					@ui.SparkIcon()
+				case StatusSearching:
+					@ui.SearchSmallIcon()
+				case StatusReading:
+					@ui.GlobeIcon()
+				case StatusNoIcon:
+			}
+			<span class="shimmer flex-none font-medium">{ status.Verb }</span>
+			if status.Target != "" {
+				<span class="min-w-0 truncate text-ink-secondary">{ status.Target }</span>
+			}
+			if status.Words != "" {
+				<span class="min-w-0 flex-1 overflow-hidden text-left text-muted" dir="rtl"><bdi>{ status.Words }</bdi></span>
+			}
 		</div>
-	</details>
-}
-
-func toolCallDisplay(name, args string) (string, string) {
-	var a struct {
-		Query string `json:"query"`
-		URL   string `json:"url"`
-	}
-	_ = json.Unmarshal([]byte(args), &a)
-	switch name {
-	case "web_search":
-		return "Searching web", a.Query
-	case "web_fetch":
-		return "Reading web page", a.URL
-	default:
-		return name, ""
-	}
+	</div>
 }
 
 templ chatInput(threadID string, isStreaming bool) {
 	<div
-		class="mx-auto w-full max-w-3xl shrink-0 px-6 pt-2 pb-5"
+		class="
+			bg-dock flex items-end gap-2 rounded-dock border border-line py-2 pr-2 pl-1 shadow-dock
+			transition-colors aria-busy:border-accent-line
+		"
 		if threadID != "" {
 			data-signals:thread-id={ fmt.Sprintf("'%s'", threadID) }
 		}
 		data-signals:_is-streaming={ strconv.FormatBool(isStreaming) }
 		data-signals:message="''"
 		data-computed:_can-submit="$message.trim() !== '' && !$_isStreaming"
+		data-attr:aria-busy="$_sendingMessage && 'true'"
 	>
-		<div
-			class="chat-input-box flex items-center rounded-xl border border-line bg-surface p-3"
-			data-class:is-sending="$_sendingMessage"
+		<textarea
+			class="
+				field-sizing-content block max-h-45 min-h-8 flex-1 resize-none border-0 bg-transparent px-3
+				py-1.5 text-body leading-5 text-ink outline-none placeholder:text-muted
+				[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
+			"
+			rows="1"
+			autofocus
+			name="message"
+			placeholder="Ask anything"
+			aria-label="Ask anything"
+			data-indicator:_sending-message
+			data-bind:message
+			data-on:keydown="
+				if (evt.key !== 'Enter' || evt.shiftKey) return;
+				evt.preventDefault();
+				if (!$_canSubmit) return;
+				@post('/chat/send');
+			"
+		></textarea>
+		<button
+			type="button"
+			aria-label="Send message"
+			class="
+				grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas
+				transition-colors disabled:cursor-default disabled:bg-surface-strong disabled:text-muted
+			"
+			style={ hiddenStyle(isStreaming) }
+			disabled
+			data-show="!$_isStreaming"
+			data-attr:disabled="!$_canSubmit"
+			data-on:click="@post('/chat/send')"
 		>
-			<textarea
-				class="
-					field-sizing-content max-h-[180px] min-h-8 w-full resize-none border-0 bg-transparent
-					py-[calc((32px-1lh)/2)] leading-[1.5] text-ink outline-none placeholder:text-muted
-					[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
-				"
-				autofocus
-				name="message"
-				placeholder="Ask anything"
-				data-indicator:_sending-message
-				data-bind:message
-				data-on:keydown="
-					if (evt.key !== 'Enter' || evt.shiftKey) return;
-					evt.preventDefault();
-					if (!$_canSubmit) return;
-					@post('/chat/send');
-				"
-			></textarea>
-			<div class="flex justify-start self-start">
-				@ui.Button(ui.ButtonProps{
-					Size:  ui.Icon,
-					Label: "Send message",
-					Attrs: templ.Attributes{
-						"style":              hiddenStyle(isStreaming),
-						"disabled":           true,
-						"data-show":          "!$_isStreaming",
-						"data-attr:disabled": "!$_canSubmit",
-						"data-on:click":      "@post('/chat/send')",
-					},
-				}) {
-					@ui.ArrowUpIcon()
-				}
-				@ui.Button(ui.ButtonProps{
-					Size:  ui.Icon,
-					Label: "Stop response",
-					Attrs: templ.Attributes{
-						"style":         hiddenStyle(!isStreaming),
-						"data-show":     "$_isStreaming",
-						"data-on:click": "@post('/chat/stop')",
-					},
-				}) {
-					@ui.SquareIcon()
-				}
-			</div>
-		</div>
+			@ui.ArrowUpSmallIcon()
+		</button>
+		<button
+			type="button"
+			aria-label="Stop response"
+			class="grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas [&_svg]:size-3"
+			style={ hiddenStyle(!isStreaming) }
+			data-show="$_isStreaming"
+			data-on:click="@post('/chat/stop')"
+		>
+			@ui.StopSmallIcon()
+		</button>
 	</div>
 }
 

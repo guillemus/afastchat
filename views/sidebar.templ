@@ -3,97 +3,116 @@ package views
 import (
 	"afastchat.com/views/ui"
 	"fmt"
+	"time"
 )
 
 type SidebarProps struct {
 	Threads        []Thread
 	ActiveThreadID string
-	UserEmail      string
+	Viewer         Viewer
 }
+
+const sidebarIconButtonClass = `
+	grid size-6.5 flex-none cursor-pointer place-items-center rounded-md text-muted transition-colors
+	hover:bg-fill-strong hover:text-ink
+`
 
 templ Sidebar(props SidebarProps) {
 	<aside
-		class="
-			flex min-h-screen w-[260px] max-w-[260px] min-w-[260px] shrink-0 flex-col overflow-hidden
-			border-r border-line bg-sidebar text-ui
-		"
+		id="sidebar"
+		class="min-h-0 overflow-hidden border-r border-line-subtle bg-sidebar"
 		data-signals:thread-id={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
 		if props.ActiveThreadID != "" {
 			data-init={ fmt.Sprintf("@get('/threads/%s/events')", props.ActiveThreadID) }
 		}
+		data-on:keydown__window="
+			if (evt.target.closest('input, textarea, [contenteditable]')) return;
+			if (evt.key === '/') {
+				evt.preventDefault();
+				document.getElementById('thread-search')?.focus();
+			} else if ((evt.metaKey || evt.ctrlKey) && evt.shiftKey && evt.key.toLowerCase() === 'o') {
+				evt.preventDefault();
+				window.location.href = '/';
+			}
+		"
 	>
-		<div class="flex items-center justify-between px-3 pt-4 pb-3">
-			<span class="font-normal tracking-[-0.02em]">
-				afastchat<span class="text-accent">.com</span>
-			</span>
-		</div>
-		@ui.ButtonLink("/", ui.ButtonProps{Size: ui.Small, Class: "mx-3 mb-3 font-normal"}) {
-			@ui.PlusIcon()
-			New Chat
-		}
-		<div class="relative mx-3 mb-2">
-			<span
-				class="pointer-events-none absolute top-1/2 left-2 flex -translate-y-1/2 text-muted"
-			>
-				@ui.SearchIcon()
-			</span>
-			<input
-				class="
-					w-full rounded-lg border border-transparent bg-transparent py-1 pr-2
-					pl-[calc(var(--spacing)*2+13px+var(--spacing)*2)] text-ink-secondary outline-none
-					transition-colors placeholder:text-muted focus:border-line focus:bg-surface
-				"
-				type="text"
-				name="thread-search"
-				placeholder="Search threads..."
-				data-bind:thread-search
-				data-on:input__debounce.150ms="@get('/threads/search')"
-			/>
-		</div>
-		@ThreadList(props.Threads, props.ActiveThreadID)
-		<div class="flex items-center gap-2 border-t border-line p-3">
+		<div class="flex h-full w-sidebar flex-col px-2.5 pt-2.25 pb-3">
+			<div class="flex h-7.5 items-center gap-2 pr-1.5 pl-10">
+				@ui.LogoMark()
+				<a href="/" class="text-ui font-semibold tracking-tighter text-ink no-underline">afastchat</a>
+			</div>
 			<a
-				href="/settings"
+				href="/"
 				class="
-					-m-1 flex min-w-0 flex-1 items-center gap-2 rounded-md p-1 text-ink-secondary no-underline
-					transition-colors hover:bg-fill hover:text-ink
-				"
+				bg-raised-button mt-3 flex h-8 items-center gap-2 rounded-lg border border-line pr-1.5 pl-2.25
+				font-medium text-ink no-underline shadow-button transition-colors hover:border-line-strong
+			"
 			>
-				<span
-					class="
-						flex size-[26px] shrink-0 items-center justify-center rounded-full bg-accent
-						font-normal text-white
-					"
-				>
-					{ userInitial(props.UserEmail) }
+				<span class="text-ink-secondary">
+					@ui.PlusSmallIcon()
 				</span>
-				<span class="truncate text-compact">Settings</span>
+				New chat
+				<span class="ml-auto flex gap-0.75">
+					<kbd class="kbd">⇧</kbd>
+					<kbd class="kbd">⌘</kbd>
+					<kbd class="kbd">O</kbd>
+				</span>
 			</a>
-			<form method="post" action="/logout">
-				@ui.Button(ui.ButtonProps{
-					Variant: ui.Secondary,
-					Size:    ui.Small,
-					Attrs:   templ.Attributes{"type": "submit"},
-				}) {
-					Log out
-				}
-			</form>
+			<label
+				class="
+				mt-2 flex h-7.5 cursor-text items-center gap-2 rounded-lg border border-line-subtle pr-1.5
+				pl-2.25 text-muted transition-colors focus-within:border-line
+			"
+			>
+				@ui.SearchSmallIcon()
+				<input
+					id="thread-search"
+					class="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-muted"
+					type="text"
+					name="thread-search"
+					placeholder="Search chats"
+					autocomplete="off"
+					data-bind:thread-search
+					data-on:input__debounce.150ms="@get('/threads/search')"
+					data-on:keydown="evt.key === 'Escape' && el.blur()"
+				/>
+				<kbd class="kbd">/</kbd>
+			</label>
+			@ThreadList(props.Threads, props.ActiveThreadID)
+			<div class="mt-auto flex items-center gap-2.5 border-t border-line-subtle px-1 pt-2.5">
+				<a
+					href="/settings"
+					aria-label="Settings"
+					class="
+					grid size-6.5 flex-none place-items-center rounded-full bg-surface-strong text-meta
+					font-semibold tracking-wide text-ink no-underline shadow-active transition-colors
+					hover:bg-fill-strong focus-visible:outline-2 focus-visible:outline-offset-2
+					focus-visible:outline-accent
+				"
+				>
+					{ initials(props.Viewer) }
+				</a>
+				<div class="min-w-0 leading-tight">
+					<p class="truncate font-medium text-ink">{ props.Viewer.Name }</p>
+					<div class="text-meta text-muted">
+						@ui.Sensitive(props.Viewer.Email)
+					</div>
+				</div>
+				<form method="post" action="/logout" class="ml-auto">
+					<button type="submit" aria-label="Log out" title="Log out" class={ sidebarIconButtonClass }>
+						@ui.LogOutIcon()
+					</button>
+				</form>
+			</div>
 		</div>
 		@threadListScrollRestore()
 	</aside>
 }
 
-func userInitial(email string) string {
-	if email == "" {
-		return "?"
-	}
-	return string([]rune(email)[0])
-}
-
 templ ThreadList(threads []Thread, activeThreadID string) {
 	<div
 		class="
-			thread-list flex-1 overflow-y-auto overscroll-contain px-2 py-1
+			thread-list -mx-2.5 mb-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5
 			[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
 		"
 		data-on:scroll__debounce.10ms="sessionStorage.setItem('thread_list_scroll', String(el.scrollTop))"
@@ -113,8 +132,15 @@ templ threadListScrollRestore() {
 
 templ ThreadItems(threads []Thread, activeThreadID string) {
 	<div id="thread-items">
-		for _, thread := range threads {
-			@ThreadListItem(thread, thread.ID == activeThreadID)
+		for _, group := range groupThreads(threads, viewerNow(ctx)) {
+			<div class="mt-4 flex h-6 items-center px-2 text-meta font-medium tracking-wide text-muted">
+				{ group.Label }
+			</div>
+			<div class="flex flex-col gap-px">
+				for _, thread := range group.Threads {
+					@ThreadListItem(thread, thread.ID == activeThreadID)
+				}
+			</div>
 		}
 	</div>
 }
@@ -123,33 +149,36 @@ templ ThreadListItem(thread Thread, isActive bool) {
 	<a
 		id={ "thread-" + thread.ID }
 		class={
-			"group flex items-center gap-2 rounded-lg px-2 py-1 no-underline transition-colors duration-100",
-			"hover:bg-surface hover:text-ink",
-			templ.KV("bg-surface text-ink", isActive),
-			templ.KV("text-ink-secondary", !isActive),
+			"group relative grid h-7.5 grid-cols-[--spacing(3.5)_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2",
+			"whitespace-nowrap no-underline transition-colors duration-100",
+			templ.KV("bg-surface-raised text-ink shadow-active", isActive),
+			templ.KV("text-ink-secondary hover:bg-fill hover:text-ink", !isActive),
 		}
 		href={ templ.SafeURL("/threads/" + thread.ID) }
 	>
-		<span class="min-w-0 flex-1 truncate">{ thread.Title }</span>
-		if thread.IsStreaming {
-			<span class="flex size-3.5 shrink-0 items-center justify-center text-accent">
-				@ui.SpinnerIcon()
-			</span>
+		if isActive {
+			<span
+				class="absolute top-1.75 bottom-1.75 -left-2.5 w-0.5 rounded-sm bg-accent"
+				aria-hidden="true"
+			></span>
 		}
-		<button
-			type="button"
-			aria-label="Archive chat"
-			class="
-				flex shrink-0 cursor-pointer items-center justify-center rounded p-1 text-muted opacity-0
-				group-hover:opacity-100 hover:bg-surface-raised hover:text-ink
-			"
-			data-on:click={ fmt.Sprintf(`
-				evt.preventDefault();
-				evt.stopPropagation();
-				@post('/threads/%s/archive');
-			`, thread.ID) }
-		>
-			@ui.ArchiveIcon()
-		</button>
+		<span class="grid place-items-center">
+			if thread.IsStreaming && isActive {
+				<span class="size-1.5 animate-pulse-dot rounded-full bg-accent"></span>
+			} else if thread.IsStreaming {
+				<span class="text-accent">
+					@ui.SpinnerSmallIcon()
+				</span>
+			}
+		</span>
+		<span class="truncate">{ thread.Title }</span>
+		<time-ago
+			datetime={ thread.CreatedAt.UTC().Format(time.RFC3339) }
+			class={
+				"text-meta tabular-nums transition-colors duration-100",
+				templ.KV("text-accent", isActive),
+				templ.KV("text-muted group-hover:text-ink", !isActive),
+			}
+		>{ timeAgo(thread.CreatedAt, time.Now()) }</time-ago>
 	</a>
 }
