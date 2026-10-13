@@ -35,6 +35,9 @@ templ MessageThread(props MessageThreadProps) {
 				"
 			>
 				@MessageList(props)
+				if props.DoScrollSidebar {
+					@messageScrollRestore()
+				}
 				<button
 					type="button"
 					aria-label="Jump to latest message"
@@ -61,9 +64,6 @@ templ MessageThread(props MessageThreadProps) {
 		}
 		if props.Thread.ID != "" {
 			@threadMenu(props.Thread)
-		}
-		if props.DoScrollSidebar && len(props.Messages) > 0 {
-			@messageScrollRestore()
 		}
 	</main>
 }
@@ -193,6 +193,7 @@ templ messageScrollRestore() {
 		{
 			const el = document.querySelector('#messages')
 			el.scrollTop = el.scrollHeight
+			el.classList.remove('invisible')
 		}
 	</script>
 }
@@ -201,10 +202,13 @@ templ MessageList(props MessageThreadProps) {
 	<div
 		id="messages"
 		data-ref:_messages
-		class="
-			thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto]
-			[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]
-		"
+		class={
+			`
+						thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto]
+						[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]
+					`,
+			templ.KV("invisible", props.DoScrollSidebar),
+		}
 		data-on:scroll__debounce.10ms="
 			const overflow = el.scrollHeight - el.clientHeight;
 			const distanceFromBottom = overflow - el.scrollTop;
