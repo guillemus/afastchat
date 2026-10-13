@@ -14,8 +14,6 @@ import (
 var schema string
 
 var ErrNotFound = errors.New("not found")
-var ErrDuplicateEmail = errors.New("duplicate email")
-var ErrDuplicatePaymentEvent = errors.New("duplicate payment event")
 
 type Pool struct {
 	pool *sqlitex.Pool

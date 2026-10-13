@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"zombiezen.com/go/sqlite"
@@ -252,44 +251,12 @@ func (x *Pool) CreateSystemMessage(ctx context.Context, userID, threadID, msg st
 
 func (x *Pool) GetUser(ctx context.Context, id string) (User, error) {
 	return queryOne(ctx, x, "query user", `
-		SELECT id, email, password_hash, payment_customer_id, created_at, updated_at
+		SELECT id, email, display_name, created_at, updated_at
 		FROM users
 		WHERE id = :id
 	`, map[string]any{":id": id}, func(stmt *sqlite.Stmt) (User, error) {
 		return scanUser(stmt), nil
 	})
-}
-
-func (x *Pool) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	return queryOne(ctx, x, "query user by email", `
-		SELECT id, email, password_hash, payment_customer_id, created_at, updated_at
-		FROM users
-		WHERE lower(email) = lower(:email)
-	`, map[string]any{":email": email}, func(stmt *sqlite.Stmt) (User, error) {
-		return scanUser(stmt), nil
-	})
-}
-
-func (x *Pool) CreateUser(ctx context.Context, email, passwordHash string) (User, error) {
-	id := uuid.New().String()
-	user, err := execReturning(ctx, x, "insert user", `
-		INSERT INTO users (id, email, password_hash)
-		VALUES (:id, :email, :password_hash)
-		RETURNING id, email, password_hash, payment_customer_id, created_at, updated_at
-	`, map[string]any{
-		":id":            id,
-		":email":         email,
-		":password_hash": passwordHash,
-	}, func(stmt *sqlite.Stmt) (User, error) {
-		return scanUser(stmt), nil
-	})
-	if err != nil {
-		if sqlite.ErrCode(err) == sqlite.ResultConstraintUnique && strings.Contains(err.Error(), "users_email_lower_idx") {
-			return User{}, ErrDuplicateEmail
-		}
-		return User{}, fmt.Errorf("insert: %w", err)
-	}
-	return user, nil
 }
 
 func (x *Pool) CreateUsage(ctx context.Context, usage Usage) (Usage, error) {

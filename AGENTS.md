@@ -5,7 +5,7 @@
 # commands
 
 - sqlite db at `tmp/app.db`. Use `mise run db:sql "SQL"` to execute raw SQL against it.
-- after `db/schema.sql` changes, run `mise run migrate` to apply the Atlas migration with auto-approve.
+- `db/schema.sql` is the source of truth. After changing it, run `mise run db:migrate <name>` to generate a goose migration in `db/migrations/` from the diff. goose applies migrations on server start; never hand-write migration files.
 - to check TypeScript, run `mise run tscheck`.
 - to lint (golangci, sumtype, design tokens), run `mise run lint`.
 - to format everything (templ, Go, TypeScript, CSS), run `mise run format`.

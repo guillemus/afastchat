@@ -1,9 +1,5 @@
 package views
 
-import (
-	"afastchat.com/polar"
-)
-
 type Thread struct {
 	ID          string
 	IsStreaming bool
@@ -23,22 +19,9 @@ type ThreadData struct {
 	UserEmail string
 }
 
-type AuthPageData struct {
-	Email string
-	Error string
-}
-
 type SettingsData struct {
-	Threads            []Thread
-	UserEmail          string
-	HasLifetimeLicense bool
-	BalanceCents       polar.Cents
-}
-
-type CheckoutThankYouData struct {
-	Confirmed   bool
-	PaymentType string
-	CreditCents polar.Cents
+	Threads   []Thread
+	UserEmail string
 }
 
 //sumtype:decl

@@ -2,36 +2,32 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"net/mail"
 	"strings"
+	"time"
 
+	"afastchat.com/config"
 	"afastchat.com/db"
 	"afastchat.com/views"
 	"afastchat.com/views/ui"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/starfederation/datastar-go/datastar"
+	"golang.org/x/oauth2"
 )
 
 const (
-	invalidCredentialsMessage = "Invalid email or password."
-	invalidLoginInputMessage  = "Enter valid email and password."
-	invalidSignupInputMessage = "Enter a valid email and a password with at least 8 characters."
-	emailTakenMessage         = "An account with that email already exists."
-	internalLoginErrorMessage = "Something went wrong. Try again."
-	minimumPasswordLength     = 8
+	oauthStateCookieName    = "afastchat_oauth_state"
+	oauthNonceCookieName    = "afastchat_oauth_nonce"
+	oauthVerifierCookieName = "afastchat_oauth_verifier"
+
+	oauthTransactionDuration = 10 * time.Minute
 )
-
-func normalizeEmail(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
-}
-
-func isValidEmail(email string) bool {
-	addr, err := mail.ParseAddress(email)
-	return err == nil && addr.Address == email
-}
 
 func (x *Server) currentUser(r *http.Request) (user db.User, found bool, err error) {
 	ctx := r.Context()
@@ -85,34 +81,6 @@ func (x *Server) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-func (x *Server) requireLifetimeLicense(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := mustGetUser(r)
-		hasLicense, err := x.db.UserHasLicense(r.Context(), user.ID, db.LicenseTierLifetime)
-		if err != nil {
-			slog.Error("query lifetime license", "err", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
-		if !hasLicense {
-			if r.Method == http.MethodGet && isHTMLNavigation(r) {
-				http.Redirect(w, r, "/settings", http.StatusSeeOther)
-			} else if isDatastar(r) {
-				x.patchToast(w, r, ui.Toast{
-					Kind:    ui.ToastWarning,
-					Message: "Unlock A Fast Chat, then try that again.",
-					Link:    ui.ToastLink{Label: "Open settings", Href: "/settings"},
-				})
-			} else {
-				http.Error(w, "payment required", http.StatusPaymentRequired)
-			}
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 func mustGetUser(r *http.Request) db.User {
 	user, ok := r.Context().Value(userContextKey{}).(db.User)
 	if !ok {
@@ -133,22 +101,7 @@ func (x *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.render(w, r, views.LoginPage(views.AuthPageData{}))
-}
-
-func (x *Server) handleSignupPage(w http.ResponseWriter, r *http.Request) {
-	_, found, err := x.currentUser(r)
-	if err != nil {
-		slog.Error("signup page: current user", "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if found {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	x.render(w, r, views.SignupPage(views.AuthPageData{}))
+	x.render(w, r, views.LoginPage(r.URL.Query().Get("failed") == "1"))
 }
 
 func (x *Server) createSession(r *http.Request, userID string) error {
@@ -160,124 +113,114 @@ func (x *Server) createSession(r *http.Request, userID string) error {
 	return nil
 }
 
-func (x *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	email := normalizeEmail(r.FormValue("email"))
-	password := r.FormValue("password")
-
-	if x.authRateLimited(w, r, email) {
-		w.WriteHeader(http.StatusTooManyRequests)
-		x.render(w, r, views.LoginPage(views.AuthPageData{
-			Email: email,
-			Error: tooManyAttemptsMessage,
-		}))
-		return
-	}
-
-	if !isValidEmail(email) || len(password) < minimumPasswordLength {
-		x.render(w, r, views.LoginPage(views.AuthPageData{
-			Email: email,
-			Error: invalidLoginInputMessage,
-		}))
-		return
-	}
-
-	user, err := x.db.GetUserByEmail(ctx, email)
+func (x *Server) handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	state, err := randomToken(32)
 	if err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			x.render(w, r, views.LoginPage(views.AuthPageData{
-				Email: email,
-				Error: invalidCredentialsMessage,
-			}))
-			return
-		}
-		slog.Error("login: get user by email", "email", email, "err", err)
-		x.render(w, r, views.LoginPage(views.AuthPageData{
-			Email: email,
-			Error: internalLoginErrorMessage,
-		}))
+		slog.Error("generate OAuth state", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Login could not be started. Try again."})
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	nonce, err := randomToken(32)
 	if err != nil {
-		x.render(w, r, views.LoginPage(views.AuthPageData{
-			Email: email,
-			Error: invalidCredentialsMessage,
-		}))
+		slog.Error("generate OIDC nonce", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Login could not be started. Try again."})
 		return
 	}
+	verifier := oauth2.GenerateVerifier()
 
-	if err := x.createSession(r, user.ID); err != nil {
-		slog.Error("login: create session", "user_id", user.ID, "err", err)
-		x.render(w, r, views.LoginPage(views.AuthPageData{
-			Email: email,
-			Error: internalLoginErrorMessage,
-		}))
-		return
+	setOAuthTransactionCookie(w, oauthStateCookieName, state)
+	setOAuthTransactionCookie(w, oauthNonceCookieName, nonce)
+	setOAuthTransactionCookie(w, oauthVerifierCookieName, verifier)
+
+	authURL := x.googleOAuth.AuthCodeURL(
+		state,
+		oauth2.S256ChallengeOption(verifier),
+		oauth2.SetAuthURLParam("nonce", nonce),
+	)
+	sse := datastar.NewSSE(w, r)
+	if err := sse.Redirect(authURL); err != nil {
+		slog.Error("redirect to Google", "err", err)
 	}
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func (x *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
+type googleClaims struct {
+	Subject       string `json:"sub"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Name          string `json:"name"`
+	Nonce         string `json:"nonce"`
+}
+
+func (x *Server) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	email := normalizeEmail(r.FormValue("email"))
-	password := r.FormValue("password")
-
-	if x.authRateLimited(w, r, email) {
-		w.WriteHeader(http.StatusTooManyRequests)
-		x.render(w, r, views.SignupPage(views.AuthPageData{
-			Email: email,
-			Error: tooManyAttemptsMessage,
-		}))
-		return
-	}
-
-	if !isValidEmail(email) || len(password) < minimumPasswordLength {
-		x.render(w, r, views.SignupPage(views.AuthPageData{
-			Email: email,
-			Error: invalidSignupInputMessage,
-		}))
-		return
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	transaction, err := readOAuthTransaction(r)
+	clearOAuthCookies(w)
 	if err != nil {
-		slog.Error("signup: hash password", "err", err)
-		x.render(w, r, views.SignupPage(views.AuthPageData{
-			Email: email,
-			Error: internalLoginErrorMessage,
-		}))
+		googleCallbackFailed(w, r, err)
+		return
+	}
+	if providerError := r.URL.Query().Get("error"); providerError != "" {
+		googleCallbackFailed(w, r, fmt.Errorf("provider returned %s", providerError))
 		return
 	}
 
-	user, err := x.db.CreateUser(ctx, email, string(hash))
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		googleCallbackFailed(w, r, fmt.Errorf("authorization code is missing"))
+		return
+	}
+
+	token, err := x.googleOAuth.Exchange(ctx, code, oauth2.VerifierOption(transaction.verifier))
 	if err != nil {
-		if errors.Is(err, db.ErrDuplicateEmail) {
-			x.render(w, r, views.SignupPage(views.AuthPageData{
-				Email: email,
-				Error: emailTakenMessage,
-			}))
-			return
-		}
-		slog.Error("signup: create user", "email", email, "err", err)
-		x.render(w, r, views.SignupPage(views.AuthPageData{
-			Email: email,
-			Error: internalLoginErrorMessage,
-		}))
+		googleCallbackFailed(w, r, fmt.Errorf("exchange authorization code: %w", err))
+		return
+	}
+
+	rawIDToken, ok := token.Extra("id_token").(string)
+	if !ok || rawIDToken == "" {
+		googleCallbackFailed(w, r, fmt.Errorf("ID token is missing"))
+		return
+	}
+	idToken, err := x.googleVerifier.Verify(ctx, rawIDToken)
+	if err != nil {
+		googleCallbackFailed(w, r, fmt.Errorf("verify ID token: %w", err))
+		return
+	}
+
+	var claims googleClaims
+	if err := idToken.Claims(&claims); err != nil {
+		googleCallbackFailed(w, r, fmt.Errorf("decode ID token claims: %w", err))
+		return
+	}
+	if claims.Subject == "" || claims.Email == "" || !claims.EmailVerified ||
+		claims.Nonce == "" || !equalSecret(claims.Nonce, transaction.nonce) {
+		googleCallbackFailed(w, r, fmt.Errorf("invalid ID token claims"))
+		return
+	}
+
+	displayName := strings.TrimSpace(claims.Name)
+	if displayName == "" {
+		displayName = strings.Split(claims.Email, "@")[0]
+	}
+
+	user, err := x.db.LoginWithIdentity(ctx, db.LoginWithIdentityParams{
+		Provider:    db.AuthProviderGoogle,
+		Subject:     claims.Subject,
+		Email:       claims.Email,
+		DisplayName: displayName,
+	})
+	if err != nil {
+		googleCallbackFailed(w, r, fmt.Errorf("complete google login: %w", err))
 		return
 	}
 
 	if err := x.createSession(r, user.ID); err != nil {
-		slog.Error("signup: create session", "user_id", user.ID, "err", err)
-		x.render(w, r, views.SignupPage(views.AuthPageData{
-			Email: email,
-			Error: internalLoginErrorMessage,
-		}))
+		googleCallbackFailed(w, r, fmt.Errorf("create session: %w", err))
 		return
 	}
 
+	slog.Info("user logged in", "user_id", user.ID)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -287,4 +230,82 @@ func (x *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		slog.Error("logout: destroy session", "err", err)
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func googleCallbackFailed(w http.ResponseWriter, r *http.Request, err error) {
+	slog.Error("Google authentication failed", "err", err)
+	http.Redirect(w, r, "/login?failed=1", http.StatusSeeOther)
+}
+
+func setOAuthTransactionCookie(w http.ResponseWriter, name, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: value, Path: "/",
+		MaxAge: int(oauthTransactionDuration.Seconds()), HttpOnly: true,
+		Secure: !config.Dev, SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func clearOAuthCookies(w http.ResponseWriter) {
+	for _, name := range []string{oauthStateCookieName, oauthNonceCookieName, oauthVerifierCookieName} {
+		http.SetCookie(w, &http.Cookie{
+			Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
+			Secure: !config.Dev, SameSite: http.SameSiteLaxMode,
+		})
+	}
+}
+
+type oauthTransaction struct {
+	nonce    string
+	verifier string
+}
+
+func readOAuthTransaction(r *http.Request) (oauthTransaction, error) {
+	state := r.URL.Query().Get("state")
+	if state == "" {
+		return oauthTransaction{}, errors.New("OAuth state is missing")
+	}
+
+	stateCookie, err := r.Cookie(oauthStateCookieName)
+	if err != nil {
+		return oauthTransaction{}, errors.New("OAuth state cookie is missing")
+	}
+
+	nonceCookie, err := r.Cookie(oauthNonceCookieName)
+	if err != nil {
+		return oauthTransaction{}, errors.New("OIDC nonce cookie is missing")
+	}
+
+	verifierCookie, err := r.Cookie(oauthVerifierCookieName)
+	if err != nil {
+		return oauthTransaction{}, errors.New("PKCE verifier cookie is missing")
+	}
+
+	if !equalSecret(state, stateCookie.Value) {
+		return oauthTransaction{}, errors.New("OAuth state does not match")
+	}
+
+	if nonceCookie.Value == "" {
+		return oauthTransaction{}, errors.New("OIDC nonce is empty")
+	}
+
+	if verifierCookie.Value == "" {
+		return oauthTransaction{}, errors.New("PKCE verifier is empty")
+	}
+
+	return oauthTransaction{
+		nonce:    nonceCookie.Value,
+		verifier: verifierCookie.Value,
+	}, nil
+}
+
+func equalSecret(left, right string) bool {
+	return subtle.ConstantTimeCompare([]byte(left), []byte(right)) == 1
+}
+
+func randomToken(size int) (string, error) {
+	value := make([]byte, size)
+	if _, err := rand.Read(value); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(value), nil
 }

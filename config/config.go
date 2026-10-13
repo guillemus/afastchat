@@ -17,11 +17,9 @@ type Config struct {
 	LogLevel           string
 	DBPath             string
 	Port               string
-	OpenAIAPIKey       string
-	FireworksAPIKey    string
-	ExaAPIKey          string
-	PolarAPIKey        string
-	PolarWebhookSecret string
+	OpenRouterAPIKey   string
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
 func ParseConfig() Config {
@@ -33,17 +31,15 @@ func ParseConfig() Config {
 		LogLevel:           GetEnvOr("LOG_LEVEL", "info"),
 		DBPath:             GetEnvOr("DB_PATH", "./tmp/app.db"),
 		Port:               GetEnvOr("PORT", "3000"),
-		OpenAIAPIKey:       os.Getenv("OPENAI_API_KEY"),
-		FireworksAPIKey:    os.Getenv("FIREWORKS_API_KEY"),
-		ExaAPIKey:          os.Getenv("EXA_AI_API_KEY"),
-		PolarAPIKey:        os.Getenv("POLAR_ACCESS_TOKEN"),
-		PolarWebhookSecret: os.Getenv("POLAR_WEBHOOK_SECRET"),
+		OpenRouterAPIKey:   os.Getenv("OPENROUTER_API_KEY"),
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 	}
 }
 
 func AppURL() string {
 	if Dev {
-		return "http://localhost:3000"
+		return "https://localhost"
 	}
 	return "https://afastchat.com"
 }

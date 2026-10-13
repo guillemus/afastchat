@@ -1,12 +1,5 @@
 package agents
 
-type Tool struct {
-	Name        string
-	Description string
-	Parameters  map[string]any
-	Strict      bool
-}
-
 //sumtype:decl
 type StreamEvent interface {
 	isStreamEvent()

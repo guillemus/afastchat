@@ -48,44 +48,14 @@ templ SettingsPage(data SettingsData) {
 	}
 }
 
-templ CheckoutThankYouPage(data CheckoutThankYouData) {
-	@guestLayout() {
-		@checkoutThankYou(data)
-	}
-}
-
 templ LandingPage() {
 	@guestLayout() {
 		@landing()
 	}
 }
 
-templ LoginPage(data AuthPageData) {
+templ LoginPage(failed bool) {
 	@guestLayout() {
-		@authForm(authFormProps{
-			Eyebrow:             "Welcome back",
-			Title:               "Log in",
-			Description:         "Use your email and password to open afastchat.",
-			Action:              "/login",
-			PasswordPlaceholder: "Password",
-			AltPrompt:           "Need an account?",
-			AltLabel:            "Sign up",
-			AltHref:             "/signup",
-		}, data)
-	}
-}
-
-templ SignupPage(data AuthPageData) {
-	@guestLayout() {
-		@authForm(authFormProps{
-			Eyebrow:             "Create account",
-			Title:               "Sign up",
-			Description:         "Create your account with email and password.",
-			Action:              "/signup",
-			PasswordPlaceholder: "At least 8 characters",
-			AltPrompt:           "Already have an account?",
-			AltLabel:            "Log in",
-			AltHref:             "/login",
-		}, data)
+		@login(failed)
 	}
 }

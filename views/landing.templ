@@ -18,7 +18,7 @@ templ landing() {
 			</h1>
 			<div class="w-full max-w-3xl">
 				<a
-					href="/signup"
+					href="/login"
 					class="
 						flex items-center rounded-xl border border-line bg-surface p-3 text-muted no-underline
 						transition-colors hover:border-accent/50
@@ -32,7 +32,7 @@ templ landing() {
 			<div class="flex w-full flex-wrap justify-center gap-3">
 				for _, label := range landingPills {
 					<a
-						href="/signup"
+						href="/login"
 						class="
 							inline-flex items-center rounded-2xl border border-line px-4 py-2 text-ink-secondary
 							no-underline transition-colors hover:border-line-strong hover:bg-surface hover:text-ink
@@ -44,7 +44,6 @@ templ landing() {
 			</div>
 			<div class="mt-2 flex items-center gap-5">
 				<a href="/login" class={ landingLinkClass }>Log in</a>
-				<a href="/signup" class={ landingLinkClass }>Sign up</a>
 			</div>
 		</div>
 	</main>

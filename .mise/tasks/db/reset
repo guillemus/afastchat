@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Delete the local sqlite database and recreate it from db/schema.sql"
+#MISE description="Delete the local sqlite database and let the server recreate it from migrations"
 set -euo pipefail
 
 if [[ $# != 1 || $1 != --yes ]]; then
@@ -9,7 +9,4 @@ if [[ $# != 1 || $1 != --yes ]]; then
 fi
 
 rm -f tmp/app.db tmp/app.db-shm tmp/app.db-wal
-mkdir -p tmp
-mise run migrate
-
-printf 'Local database recreated at tmp/app.db.\n'
+printf 'Local database deleted. Migrations run on next server start.\n'

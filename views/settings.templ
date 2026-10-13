@@ -1,11 +1,5 @@
 package views
 
-import (
-	"afastchat.com/polar"
-	"afastchat.com/views/ui"
-	"fmt"
-)
-
 const settingsCardClass = "mb-3 rounded-xl border border-line bg-surface/55 p-5"
 
 templ settings(data SettingsData) {
@@ -16,11 +10,6 @@ templ settings(data SettingsData) {
 				<h2 class="mb-3 text-ui-emphasis font-medium">Account</h2>
 				@settingsRow("Email", data.UserEmail)
 			</section>
-			if data.HasLifetimeLicense {
-				@billingCard(data)
-			} else {
-				@paywallCard()
-			}
 		</div>
 	</main>
 }
@@ -30,91 +19,4 @@ templ settingsRow(label, value string) {
 		<span>{ label }</span>
 		<span class="font-medium text-ink">{ value }</span>
 	</div>
-}
-
-templ billingCard(data SettingsData) {
-	<section class={ settingsCardClass }>
-		<h2 class="mb-3 text-ui-emphasis font-medium">Billing</h2>
-		@settingsRow("Plan", "Lifetime access")
-		@settingsRow("Usage balance", data.BalanceCents.Format())
-		<div class="mt-3 flex items-center gap-2" data-signals:amount-dollars="'5'">
-			<label class="relative">
-				<span
-					class="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-ink-secondary"
-				>$</span>
-				@ui.Input(ui.InputProps{
-					Class: "min-h-9 w-[140px] pl-5",
-					Attrs: templ.Attributes{
-						"type":                     "text",
-						"value":                    "5",
-						"inputmode":                "numeric",
-						"pattern":                  "[0-9]*",
-						"data-bind:amount-dollars": true,
-					},
-				})
-			</label>
-			@ui.Button(ui.ButtonProps{
-				Size:  ui.Small,
-				Attrs: templ.Attributes{"data-on:click": "@post('/settings/checkout/balance')"},
-			}) {
-				Add usage credit
-			}
-		</div>
-	</section>
-}
-
-templ paywallCard() {
-	<section class={ settingsCardClass }>
-		<h2 class="mb-3 text-ui-emphasis font-medium">Unlock A Fast Chat</h2>
-		<p class="mb-4 leading-7 text-ink-secondary">
-			{ fmt.Sprintf(
-				"Lifetime access is %s and includes %s of usage credit.",
-				polar.ProductProPriceCents.Format(), polar.ProductProIncludedCreditCents.Format(),
-			) }
-		</p>
-		<form method="post" action="/settings/checkout/pro">
-			@ui.Button(ui.ButtonProps{
-				Size:  ui.Small,
-				Attrs: templ.Attributes{"type": "submit"},
-			}) {
-				Buy lifetime access
-			}
-		</form>
-	</section>
-}
-
-templ checkoutThankYou(data CheckoutThankYouData) {
-	<main class="flex-1 overflow-y-auto bg-canvas p-8">
-		<div class="mx-auto max-w-[760px]">
-			<section class={ settingsCardClass }>
-				<h1 class="mb-5 text-heading font-medium tracking-[-0.03em]">
-					{ thankYouTitle(data.Confirmed) }
-				</h1>
-				<p class="mb-4 leading-7 text-ink-secondary">{ thankYouCopy(data) }</p>
-				@ui.ButtonLink("/", ui.ButtonProps{Size: ui.Small}) {
-					Start chatting
-				}
-			</section>
-		</div>
-	</main>
-}
-
-func thankYouTitle(confirmed bool) string {
-	if confirmed {
-		return "Payment confirmed"
-	}
-	return "Payment pending"
-}
-
-func thankYouCopy(data CheckoutThankYouData) string {
-	if !data.Confirmed {
-		return "We could not confirm the payment yet. Refresh this page in a moment."
-	}
-	if data.PaymentType == "lifetime" {
-		return fmt.Sprintf(
-			"Your lifetime access is active and %s of usage credit was added to your account.",
-			data.CreditCents.Format(),
-		)
-	}
-	return fmt.Sprintf("%s of usage credit was added to your account.", data.CreditCents.Format())
 }

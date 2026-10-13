@@ -2,13 +2,25 @@
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    payment_customer_id TEXT NOT NULL DEFAULT '',
+    display_name TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX users_email_lower_idx ON users (lower(email));
+
+CREATE TABLE auth_identities (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    -- Allowed values: google.
+    provider TEXT NOT NULL,
+    -- Stable provider account identifier. Google calls this "sub".
+    subject TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (provider, subject),
+    UNIQUE (user_id, provider)
+);
 
 CREATE TABLE sessions (
     token TEXT PRIMARY KEY,
@@ -74,75 +86,3 @@ CREATE TABLE usage (
 CREATE INDEX idx_usage_user_id_created_at ON usage(user_id, created_at);
 CREATE INDEX idx_usage_thread_id_created_at ON usage(thread_id, created_at);
 CREATE INDEX idx_usage_message_id ON usage(message_id);
-
-CREATE TABLE payments (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    -- Allowed values: polar, stripe.
-    provider TEXT NOT NULL DEFAULT 'polar',
-    provider_checkout_id TEXT NOT NULL,
-    -- Allowed values:
-    -- lifetime: lifetime purchase.
-    -- topup: credit top-up.
-    type TEXT NOT NULL,
-    -- Allowed values:
-    -- created: checkout created.
-    -- succeeded: payment succeeded.
-    -- failed: payment failed.
-    -- expired: checkout expired.
-    status TEXT NOT NULL,
-    amount_cents INTEGER NOT NULL,
-    credit_cents INTEGER NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_payment_checkouts_provider_checkout_id ON payments(provider, provider_checkout_id);
-CREATE INDEX idx_payment_checkouts_user_id_created_at ON payments(user_id, created_at);
-
-CREATE TABLE payment_events (
-    id TEXT PRIMARY KEY,
-    -- Allowed values: polar, stripe.
-    provider TEXT NOT NULL DEFAULT 'polar',
-    provider_event_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    payload TEXT NOT NULL,
-    processed_at DATETIME,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_payment_events_provider_event_id ON payment_events(provider, provider_event_id);
-CREATE INDEX idx_payment_events_type_created_at ON payment_events(provider, type, created_at);
-
-CREATE TABLE licenses (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    source_payment_id TEXT REFERENCES payments(id),
-    -- Current tier: lifetime. More tiers will be added in the future.
-    tier TEXT NOT NULL,
-    granted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_licenses_user_id_tier ON licenses(user_id, tier);
-CREATE INDEX idx_licenses_source_payment_id ON licenses(source_payment_id);
-
-CREATE TABLE billing_ledger (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    payment_checkout_id TEXT REFERENCES payments(id),
-    usage_id TEXT REFERENCES usage(id),
-    -- Allowed values:
-    -- - initial_credit: signup credit.
-    -- - topup_credit: purchased credit.
-    -- - usage_debit: usage charge.
-    -- - adjustment: manual adjustment.
-    type TEXT NOT NULL,
-    amount_cents INTEGER NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_billing_ledger_user_id_created_at ON billing_ledger(user_id, created_at);
-CREATE UNIQUE INDEX idx_billing_ledger_payment_checkout_id_type ON billing_ledger(payment_checkout_id, type) WHERE payment_checkout_id IS NOT NULL;
-CREATE UNIQUE INDEX idx_billing_ledger_usage_id ON billing_ledger(usage_id) WHERE usage_id IS NOT NULL;

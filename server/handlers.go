@@ -42,22 +42,9 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := x.db.GetBillingBalanceCents(ctx, user.ID)
-	if err != nil {
-		handleBadReq(w, "get billing balance", err)
-		return
-	}
-	hasLifetimeLicense, err := x.db.UserHasLicense(ctx, user.ID, db.LicenseTierLifetime)
-	if err != nil {
-		handleBadReq(w, "get lifetime license", err)
-		return
-	}
-
 	x.render(w, r, views.SettingsPage(views.SettingsData{
-		Threads:            mapViewThreads(threads),
-		UserEmail:          user.Email,
-		HasLifetimeLicense: hasLifetimeLicense,
-		BalanceCents:       balance,
+		Threads:   mapViewThreads(threads),
+		UserEmail: user.Email,
 	}))
 }
 
@@ -177,21 +164,6 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Refresh the page, then try again."})
 		return
 	}
-	balance, err := x.db.GetBillingBalanceCents(ctx, user.ID)
-	if err != nil {
-		slog.Error("get billing balance before send", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Try again in a moment."})
-		return
-	}
-	if balance <= 0 {
-		x.patchToast(w, r, ui.Toast{
-			Kind:    ui.ToastWarning,
-			Message: "Your usage balance is empty.",
-			Link:    ui.ToastLink{Label: "Add credit", Href: "/settings"},
-		})
-		return
-	}
-
 	userMessage := sig.Message
 
 	var threadID string
@@ -308,7 +280,7 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 }
 
 func (x *Server) streamAgentMessages(ctx context.Context, userID, threadID string, messages []db.Message, logger *slog.Logger) {
-	agent := agents.NewAgent(x.cfg)
+	agent := agents.NewAgent(x.cfg.OpenRouterAPIKey)
 
 	for tokenEvt, err := range agent.Stream(ctx, messages) {
 		if err != nil {
@@ -387,7 +359,7 @@ func lastAssistantMessageID(messages []db.Message) string {
 }
 
 func (x *Server) updateThreadTitle(ctx context.Context, userID, threadID string, userMessage string) {
-	agent := agents.NewAgent(x.cfg)
+	agent := agents.NewAgent(x.cfg.OpenRouterAPIKey)
 	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
 
 	err := x.db.UpdateThreadTitle(ctx, userID, threadID, title)

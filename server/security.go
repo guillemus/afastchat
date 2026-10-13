@@ -2,27 +2,15 @@ package server
 
 import (
 	"log/slog"
-	"net"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/go-chi/httprate"
 	"github.com/unrolled/secure"
 )
 
 const (
-	tooManyAttemptsMessage = "Too many attempts. Try again later."
-	contentSecurityPolicy  = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; base-uri *; form-action *; frame-ancestors *; img-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; font-src * data: blob:; connect-src * data: blob:; media-src * data: blob:; worker-src * data: blob:"
+	contentSecurityPolicy = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; base-uri *; form-action *; frame-ancestors *; img-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; font-src * data: blob:; connect-src * data: blob:; media-src * data: blob:; worker-src * data: blob:"
 )
-
-func newAuthRateLimiter() *httprate.RateLimiter {
-	return httprate.NewRateLimiter(
-		5,
-		10*time.Minute,
-		httprate.WithResponseHeaders(httprate.ResponseHeaders{}),
-	)
-}
 
 func newCrossOriginProtection() *http.CrossOriginProtection {
 	protection := http.NewCrossOriginProtection()
@@ -50,16 +38,6 @@ func newSecureMiddleware(dev bool) *secure.Secure {
 	})
 }
 
-func (x *Server) authRateLimited(w http.ResponseWriter, r *http.Request, email string) bool {
-	if x.authIPLimiter.OnLimit(w, r, clientIP(r)) {
-		return true
-	}
-	if email != "" && x.authEmailLimiter.OnLimit(w, r, email) {
-		return true
-	}
-	return false
-}
-
 func isHTMLNavigation(r *http.Request) bool {
 	accept := r.Header.Get("Accept")
 	return strings.Contains(accept, "text/html") && !strings.Contains(accept, "text/event-stream")
@@ -67,12 +45,4 @@ func isHTMLNavigation(r *http.Request) bool {
 
 func isDatastar(r *http.Request) bool {
 	return r.Header.Get("Datastar-Request") == "true"
-}
-
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }

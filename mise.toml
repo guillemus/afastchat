@@ -3,11 +3,9 @@ _.file = {
   # ~/.config/afastchat.com/.env
   path = "{{env.HOME}}/.config/afastchat.com/.env",
 }
-OPENAI_API_KEY = { required = true }
-FIREWORKS_API_KEY = { required = true }
-EXA_AI_API_KEY = { required = true }
-POLAR_ACCESS_TOKEN = { required = true }
-POLAR_WEBHOOK_SECRET = { required = true }
+OPENROUTER_API_KEY = { required = true }
+GOOGLE_CLIENT_ID = { required = true }
+GOOGLE_CLIENT_SECRET = { required = true }
 
 [tools]
 go = "1.27.1"
@@ -53,15 +51,10 @@ run = [
 depends = ["build-assets", "templ-generate"]
 run = "go build -o ./bin/server ./cmd/server"
 
-[tasks.migrate]
-description = "Apply db/schema.sql to the local sqlite database"
-run = '''
-atlas schema apply \
-  --to "file://db/schema.sql" \
-  --url "sqlite://tmp/app.db" \
-  --dev-url "sqlite://dev?mode=memory" \
-  --auto-approve
-'''
+[tasks."db:migrate"]
+description = "Generate a goose migration by diffing db/schema.sql against existing migrations"
+usage = 'arg "<name>"'
+run = "atlas migrate diff \"$usage_name\" --env local"
 
 [tasks.connect]
 run = "exec sqlite3 tmp/app.db"

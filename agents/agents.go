@@ -8,32 +8,27 @@ import (
 	"log/slog"
 	"strings"
 
-	"afastchat.com/config"
 	"afastchat.com/db"
-	"afastchat.com/exa"
 
 	"github.com/zendev-sh/goai"
 	"github.com/zendev-sh/goai/provider"
-	"github.com/zendev-sh/goai/provider/fireworks"
-	"github.com/zendev-sh/goai/provider/openai"
+	"github.com/zendev-sh/goai/provider/openrouter"
 )
 
 const (
-	chatModel  = "accounts/fireworks/models/kimi-k2p6"
-	titleModel = "gpt-5.4-nano"
+	chatModel  = "anthropic/claude-haiku-5.5"
+	titleModel = "anthropic/claude-haiku-5.5"
 )
 
 type Agent struct {
 	model      provider.LanguageModel
 	titleModel provider.LanguageModel
-	exaClient  *exa.Client
 }
 
-func NewAgent(cfg config.Config) *Agent {
+func NewAgent(apiKey string) *Agent {
 	return &Agent{
-		model:      fireworks.Chat(chatModel, fireworks.WithAPIKey(cfg.FireworksAPIKey)),
-		titleModel: openai.Chat(titleModel, openai.WithAPIKey(cfg.OpenAIAPIKey)),
-		exaClient:  exa.NewClient(cfg.ExaAPIKey),
+		model:      openrouter.Chat(chatModel, openrouter.WithAPIKey(apiKey)),
+		titleModel: openrouter.Chat(titleModel, openrouter.WithAPIKey(apiKey)),
 	}
 }
 
@@ -84,17 +79,11 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 		stream, err := goai.StreamText(streamCtx, x.model,
 			goai.WithSystem(sysPrompt),
 			goai.WithMessages(MapDBMessages(messages)...),
-			goai.WithTools(x.tools()...),
+			goai.WithTools(serverTools...),
 			goai.WithMaxSteps(30),
 			goai.WithMaxOutputTokens(32768),
-			goai.WithTemperature(0.6),
-			goai.WithTopP(1),
-			goai.WithTopK(40),
-			goai.WithPresencePenalty(0),
-			goai.WithFrequencyPenalty(0),
 			goai.WithProviderOptions(map[string]any{
-				"reasoning_effort": "medium",
-				"strictJsonSchema": true,
+				"reasoning": map[string]any{"effort": "medium"},
 			}),
 		)
 		if err != nil {
@@ -132,7 +121,7 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 						model = x.model.ModelID()
 					}
 					if !yield(UsageDelta{Usage: Usage{
-						Provider:          "fireworks",
+						Provider:          "openrouter",
 						Model:             model,
 						InputTokens:       int64(chunk.Usage.InputTokens),
 						CachedInputTokens: int64(chunk.Usage.CacheReadTokens),
@@ -163,53 +152,25 @@ func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[Str
 	}
 }
 
-func (x *Agent) tools() []goai.Tool {
-	tools := []Tool{webSearchTool, webReadTool, webSearchRecentTool}
-	result := make([]goai.Tool, 0, len(tools))
-	for _, tool := range tools {
-		schema, err := json.Marshal(tool.Parameters)
-		if err != nil {
-			panic(fmt.Sprintf("marshal tool schema %q: %v", tool.Name, err))
-		}
-		result = append(result, goai.Tool{
-			Name:        tool.Name,
-			Description: tool.Description,
-			InputSchema: schema,
-			Execute: func(ctx context.Context, input json.RawMessage) (string, error) {
-				output, err := x.runTool(ctx, tool.Name, string(input))
-				if err != nil {
-					return fmt.Sprintf(`{"error":%q}`, err.Error()), nil
-				}
-				return output, nil
-			},
-		})
-	}
-	return result
-}
-
-func (x *Agent) runTool(ctx context.Context, name, rawArgs string) (string, error) {
-	switch name {
-	case "web_search":
-		var args WebSearchArgs
-		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-			return "", err
-		}
-		return x.webSearch(ctx, args)
-	case "web_read":
-		var args WebReadArgs
-		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-			return "", err
-		}
-		return x.webRead(ctx, args)
-	case "web_search_recent":
-		var args WebSearchRecentArgs
-		if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-			return "", err
-		}
-		return x.webSearchRecent(ctx, args)
-	default:
-		return "", fmt.Errorf("unknown tool: %s", name)
-	}
+var serverTools = []goai.Tool{
+	{
+		Name:                "web_search",
+		ProviderDefinedType: "openrouter:web_search",
+		ProviderDefinedOptions: map[string]any{
+			"parameters": map[string]any{"max_results": 8},
+		},
+	},
+	{
+		Name:                "web_fetch",
+		ProviderDefinedType: "openrouter:web_fetch",
+		ProviderDefinedOptions: map[string]any{
+			"parameters": map[string]any{"max_content_tokens": 20000},
+		},
+	},
+	{
+		Name:                "datetime",
+		ProviderDefinedType: "openrouter:datetime",
+	},
 }
 
 func (x *Agent) GenerateTitleFromUserMessage(ctx context.Context, userMessage string) string {

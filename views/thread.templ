@@ -1,7 +1,6 @@
 package views
 
 import (
-	"afastchat.com/agents"
 	"afastchat.com/views/ui"
 	"encoding/json"
 	"fmt"
@@ -190,28 +189,16 @@ templ reasoningPart(props ReasoningPartProps) {
 }
 
 func toolCallDisplay(name, args string) (string, string) {
+	var a struct {
+		Query string `json:"query"`
+		URL   string `json:"url"`
+	}
+	_ = json.Unmarshal([]byte(args), &a)
 	switch name {
 	case "web_search":
-		var a agents.WebSearchArgs
-		_ = json.Unmarshal([]byte(args), &a)
 		return "Searching web", a.Query
-	case "web_search_recent":
-		var a agents.WebSearchRecentArgs
-		_ = json.Unmarshal([]byte(args), &a)
-		if a.DaysBack == 0 {
-			return "Searching recent web", a.Query
-		}
-		return "Searching recent web", a.Query + " · " + strconv.Itoa(a.DaysBack) + " days"
-	case "web_read":
-		var a agents.WebReadArgs
-		_ = json.Unmarshal([]byte(args), &a)
-		if len(a.URLs) == 1 {
-			return "Reading web page", a.URLs[0]
-		}
-		if len(a.URLs) > 1 {
-			return "Reading web pages", strconv.Itoa(len(a.URLs)) + " URLs"
-		}
-		return "Reading web page", ""
+	case "web_fetch":
+		return "Reading web page", a.URL
 	default:
 		return name, ""
 	}
