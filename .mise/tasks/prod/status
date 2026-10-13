@@ -2,4 +2,4 @@
 #MISE description="Show production service status"
 set -euo pipefail
 
-ssh hetzner-box 'sudo systemctl --no-pager --full status afastchat'
+ssh "${DEPLOY_HOST:?set DEPLOY_HOST to the SSH host alias of the production server}" 'sudo systemctl --no-pager --full status afastchat'

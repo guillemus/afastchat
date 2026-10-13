@@ -11,6 +11,7 @@ import (
 	"afastchat.com/config"
 	"afastchat.com/db"
 	"afastchat.com/openrouter"
+	"afastchat.com/views"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/asaskevich/EventBus"
@@ -89,9 +90,18 @@ func StartServer(cfg config.Config) {
 	s.router.Use(withTimeZone)
 
 	s.router.Handle("/public/*", afastchat.PublicHandler())
+	s.router.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/public/favicon.ico", http.StatusMovedPermanently)
+	})
 
 	s.router.Get("/", s.handleRoot)
 	s.router.Get("/login", s.handleLoginPage)
+	s.router.Get("/privacy", func(w http.ResponseWriter, r *http.Request) {
+		s.render(w, r, views.PrivacyPage())
+	})
+	s.router.Get("/terms", func(w http.ResponseWriter, r *http.Request) {
+		s.render(w, r, views.TermsPage())
+	})
 	s.router.Post("/auth/google", s.handleGoogleLogin)
 	s.router.Get("/auth/google/callback", s.handleGoogleCallback)
 

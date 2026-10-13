@@ -6,4 +6,4 @@ if (($# == 0)); then
     set -- -n 100
 fi
 
-ssh hetzner-box sudo journalctl -u afastchat --no-pager "$@"
+ssh "${DEPLOY_HOST:?set DEPLOY_HOST to the SSH host alias of the production server}" sudo journalctl -u afastchat --no-pager "$@"

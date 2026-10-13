@@ -11,6 +11,11 @@
 !/public/datastar-rocket-v*.js
 !/public/fonts/
 !/public/fonts/**
+!/public/favicon.svg
+!/public/favicon.ico
+!/public/apple-touch-icon.png
+!/public/icon-*.png
+!/public/site.webmanifest
 .DS_Store
 coverage.out
 *.test

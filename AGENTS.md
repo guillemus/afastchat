@@ -19,5 +19,5 @@
 
 # production
 
-You won't run `ssh hetzner-box` by yourself without asking for permission. But you are allowed to run `mise prod:status` and `mise prod:logs` only if it makes sense for the task.
+You won't ssh into the production server (`$DEPLOY_HOST`) by yourself without asking for permission. But you are allowed to run `mise prod:status` and `mise prod:logs` only if it makes sense for the task.
 You also won't deploy anything on prod without asking for permission.

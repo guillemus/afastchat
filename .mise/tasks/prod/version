@@ -2,7 +2,7 @@
 #MISE description="Show the commit of the binary running in production"
 set -euo pipefail
 
-version=$(ssh hetzner-box '
+version=$(ssh "${DEPLOY_HOST:?set DEPLOY_HOST to the SSH host alias of the production server}" '
     set -eu
     exe=/proc/$(systemctl show -p MainPID --value afastchat)/exe
     if ! sudo grep -q "with uncommitted changes" "$exe"; then

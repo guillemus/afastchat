@@ -41,7 +41,7 @@ func AppURL() string {
 	if Dev {
 		return "https://localhost"
 	}
-	return "https://afastchat.com"
+	return GetEnvOr("APP_URL", "https://afastchat.com")
 }
 
 func GetEnvOr(key, defaultValue string) string {

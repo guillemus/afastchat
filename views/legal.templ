@@ -1,0 +1,38 @@
+package views
+
+import "afastchat.com/views/ui"
+
+templ legalPage(title, updatedDate, updatedLabel string) {
+	@ui.Document(title + " - afastchat") {
+		<div class="flex h-dvh flex-col overflow-y-auto bg-canvas">
+			<header class="flex h-15 flex-none items-center px-7">
+				<a href="/" class="flex h-7.5 items-center gap-2 no-underline">
+					@ui.LogoMark()
+					<b class="text-ui font-semibold tracking-tighter text-ink">afastchat</b>
+				</a>
+			</header>
+			<main class="mx-auto w-full max-w-thread flex-1 px-6 py-12">
+				<h1 class="text-display font-medium text-ink">{ title }</h1>
+				<p class="mt-4 text-compact text-muted">Last updated <time datetime={ updatedDate }>{ updatedLabel }</time></p>
+				<div
+					class="
+						mt-10 space-y-8 text-ui leading-7 text-ink-secondary [&_h2]:mb-3 [&_h2]:text-subheading
+						[&_h2]:font-semibold [&_h2]:text-ink [&_p+p]:mt-3 [&_ul]:my-3 [&_ul]:list-disc
+						[&_ul]:space-y-2 [&_ul]:pl-5 [&_a]:underline [&_a]:underline-offset-4
+						[&_a:hover]:text-ink [&_strong]:text-ink
+					"
+				>
+					{ children... }
+				</div>
+			</main>
+			@legalFooter()
+		</div>
+	}
+}
+
+templ legalFooter() {
+	<footer class="flex flex-none items-center justify-center gap-5 px-6 py-6 text-label text-muted">
+		<a href="/privacy" class="no-underline transition-colors hover:text-ink">Privacy policy</a>
+		<a href="/terms" class="no-underline transition-colors hover:text-ink">Terms of service</a>
+	</footer>
+}

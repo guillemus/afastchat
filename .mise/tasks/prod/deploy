@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-#MISE description="Build and deploy production to hetzner-box"
+#MISE description="Build and deploy production to $DEPLOY_HOST"
 set -euo pipefail
+
+host=${DEPLOY_HOST:?set DEPLOY_HOST to the SSH host alias of the production server}
 
 binary=$(mktemp)
 trap 'rm -f "$binary"' EXIT
@@ -8,18 +10,17 @@ trap 'rm -f "$binary"' EXIT
 mise run build-assets
 mise run templ-generate
 
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath -ldflags='-s -w' -o "$binary" ./cmd/server
 
 # Keep the uploaded binary between deploys so rsync can transfer only changes.
-rsync --checksum --compress --progress "$binary" hetzner-box:/tmp/afastchat-server
+rsync --checksum --compress --progress "$binary" "$host:afastchat.com.upload"
 
-ssh hetzner-box '
+ssh "$host" '
     set -eu
 
-    sudo install -o afastchat -g afastchat -m 0755 \
-        /tmp/afastchat-server /srv/afastchat/afastchat.new
-    sudo mv /srv/afastchat/afastchat.new /srv/afastchat/afastchat
+    install -m 0755 ~/afastchat.com.upload ~/afastchat.com.new
+    mv -f ~/afastchat.com.new ~/afastchat.com
 
     sudo systemctl restart afastchat
     systemctl is-active afastchat
