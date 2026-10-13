@@ -3,7 +3,7 @@ _.file = {
   # ~/.config/afastchat.com/.env
   path = "{{env.HOME}}/.config/afastchat.com/.env",
 }
-OPENROUTER_API_KEY = { required = true }
+OPENROUTER_TOKEN_KEY = { required = true }
 GOOGLE_CLIENT_ID = { required = true }
 GOOGLE_CLIENT_SECRET = { required = true }
 

@@ -22,6 +22,14 @@ CREATE TABLE auth_identities (
     UNIQUE (user_id, provider)
 );
 
+CREATE TABLE openrouter_connections (
+    user_id TEXT NOT NULL PRIMARY KEY REFERENCES users(id),
+    -- AES-GCM sealed OpenRouter API key.
+    sealed_key BLOB NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE sessions (
     token TEXT PRIMARY KEY,
     data BLOB NOT NULL,

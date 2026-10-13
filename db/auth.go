@@ -88,6 +88,28 @@ func (x *Pool) LoginWithIdentity(ctx context.Context, arg LoginWithIdentityParam
 	return user, err
 }
 
+func (x *Pool) DeleteUser(ctx context.Context, userID string) error {
+	return x.WithConn(ctx, func(conn *sqlite.Conn) (err error) {
+		defer sqlitex.Save(conn)(&err)
+
+		for _, query := range []string{
+			`DELETE FROM usage WHERE user_id = :user_id`,
+			`DELETE FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE user_id = :user_id)`,
+			`DELETE FROM threads WHERE user_id = :user_id`,
+			`DELETE FROM openrouter_connections WHERE user_id = :user_id`,
+			`DELETE FROM auth_identities WHERE user_id = :user_id`,
+			`DELETE FROM users WHERE id = :user_id`,
+		} {
+			if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
+				Named: map[string]any{":user_id": userID},
+			}); err != nil {
+				return fmt.Errorf("delete user: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 func scanOneUser(conn *sqlite.Conn, query string, named map[string]any, user *User) (bool, error) {
 	found := false
 	err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{

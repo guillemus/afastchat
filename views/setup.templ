@@ -1,0 +1,52 @@
+package views
+
+import "afastchat.com/views/ui"
+
+templ setup(failed bool) {
+	<main class="grid min-h-dvh place-items-center p-4">
+		<div class="w-full max-w-[25rem]">
+			<div class="flex flex-col gap-4 rounded-xl border border-line bg-sidebar p-7 shadow-popover">
+				<p class="text-label leading-none font-semibold tracking-[0.12em] text-muted uppercase">
+					One more step
+				</p>
+				<h1 class="text-display leading-none font-bold tracking-[-0.04em] text-ink">
+					Connect OpenRouter
+				</h1>
+				<p class="max-w-[21rem] text-ui-emphasis leading-7 text-ink-secondary">
+					afastchat runs on your own OpenRouter account. You pay OpenRouter directly for what you use.
+				</p>
+				if failed {
+					<p
+						role="alert"
+						class="rounded-lg border border-danger-line bg-danger-surface px-3 py-2 text-danger"
+					>
+						OpenRouter could not be connected. Please try again.
+					</p>
+				}
+				@ui.Button(ui.ButtonProps{Class: "w-full", Attrs: openRouterConnectAttrs("/auth/openrouter")}) {
+					@ui.KeyIcon()
+					Connect OpenRouter
+				}
+				<form method="post" action="/logout" class="flex justify-center">
+					@ui.Button(ui.ButtonProps{
+						Variant: ui.Text,
+						Size:    ui.Small,
+						Class:   "text-muted!",
+						Attrs:   templ.Attributes{"type": "submit"},
+					}) {
+						Log out
+					}
+				</form>
+			</div>
+		</div>
+	</main>
+}
+
+func openRouterConnectAttrs(url string) templ.Attributes {
+	return templ.Attributes{
+		"data-indicator:_openrouter_pending": true,
+		"data-attr:disabled":                 "$_openrouter_pending",
+		"data-attr:aria-busy":                "$_openrouter_pending",
+		"data-on:click":                      "if (!$_openrouter_pending) { @post('" + url + "') }",
+	}
+}

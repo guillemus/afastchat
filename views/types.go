@@ -20,8 +20,10 @@ type ThreadData struct {
 }
 
 type SettingsData struct {
-	Threads   []Thread
-	UserEmail string
+	Threads             []Thread
+	UserEmail           string
+	OpenRouterConnected bool
+	OpenRouterFailed    bool
 }
 
 //sumtype:decl

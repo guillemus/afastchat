@@ -10,6 +10,7 @@ import (
 	"afastchat.com"
 	"afastchat.com/config"
 	"afastchat.com/db"
+	"afastchat.com/openrouter"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/asaskevich/EventBus"
@@ -27,6 +28,7 @@ type Server struct {
 	crossOriginProtection *http.CrossOriginProtection
 	googleOAuth           oauth2.Config
 	googleVerifier        *oidc.IDTokenVerifier
+	openRouterKeys        *openrouter.KeyCipher
 	port                  string
 }
 
@@ -38,6 +40,11 @@ func StartServer(cfg config.Config) {
 	conn, err := db.Connect(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("db: %v", err)
+	}
+
+	openRouterKeys, err := openrouter.NewKeyCipher(cfg.OpenRouterTokenKey)
+	if err != nil {
+		log.Fatalf("openrouter: %v", err)
 	}
 
 	sessionManager := scs.New()
@@ -67,6 +74,7 @@ func StartServer(cfg config.Config) {
 			RedirectURL: config.AppURL() + "/auth/google/callback",
 			Scopes:      []string{oidc.ScopeOpenID, "email", "profile"},
 		},
+		openRouterKeys: openRouterKeys,
 		googleVerifier: oidc.NewVerifier(
 			"https://accounts.google.com",
 			oidc.NewRemoteKeySet(context.Background(), "https://www.googleapis.com/oauth2/v3/certs"),
@@ -88,15 +96,25 @@ func StartServer(cfg config.Config) {
 	s.router.Group(func(r chi.Router) {
 		r.Use(s.requireAuth)
 
+		r.Get("/setup", s.handleSetup)
+		r.Post("/auth/openrouter", s.handleOpenRouterConnect)
+		r.Get("/auth/openrouter/callback", s.handleOpenRouterCallback)
 		r.Get("/settings", s.handleSettings)
+		r.Post("/settings/openrouter/disconnect", s.handleOpenRouterDisconnect)
+		r.Post("/settings/delete-account", s.handleDeleteAccount)
 		r.Post("/logout", s.handleLogout)
-		r.Get("/", s.handleIndex)
-		r.Get("/threads/{id}", s.handleThread)
 		r.Get("/threads/{id}/events", s.handleThreadEvents)
 		r.Post("/threads/{id}/archive", s.handleArchiveThread)
 		r.Get("/threads/search", s.handleSearchThreads)
-		r.Post("/chat/send", s.handleSendMessage)
 		r.Post("/chat/stop", s.handleStopStreaming)
+
+		r.Group(func(r chi.Router) {
+			r.Use(s.requireOpenRouter)
+
+			r.Get("/", s.handleIndex)
+			r.Get("/threads/{id}", s.handleThread)
+			r.Post("/chat/send", s.handleSendMessage)
+		})
 	})
 
 	go s.resumeStreamingThreads()

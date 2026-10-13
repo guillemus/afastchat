@@ -1,0 +1,18 @@
+package ui
+
+templ Sensitive(text string) {
+	<sensitive-text class="flex min-w-0">
+		<button
+			type="button"
+			data-attr:aria-pressed="$$revealed ? 'true' : 'false'"
+			data-attr:title="$$revealed ? null : 'Click to show'"
+			class="
+				-mx-2 -my-1.5 block min-w-0 cursor-pointer truncate rounded-md px-2 py-1.5 text-left
+				blur-xs select-none transition-[filter] duration-150
+				focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+				aria-pressed:cursor-text aria-pressed:blur-none aria-pressed:select-text
+			"
+			data-on:click="$$revealed = true"
+		>{ text }</button>
+	</sensitive-text>
+}

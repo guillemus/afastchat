@@ -17,7 +17,7 @@ type Config struct {
 	LogLevel           string
 	DBPath             string
 	Port               string
-	OpenRouterAPIKey   string
+	OpenRouterTokenKey string
 	GoogleClientID     string
 	GoogleClientSecret string
 }
@@ -31,7 +31,7 @@ func ParseConfig() Config {
 		LogLevel:           GetEnvOr("LOG_LEVEL", "info"),
 		DBPath:             GetEnvOr("DB_PATH", "./tmp/app.db"),
 		Port:               GetEnvOr("PORT", "3000"),
-		OpenRouterAPIKey:   os.Getenv("OPENROUTER_API_KEY"),
+		OpenRouterTokenKey: os.Getenv("OPENROUTER_TOKEN_KEY"),
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 	}

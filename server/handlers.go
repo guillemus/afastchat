@@ -42,10 +42,51 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, connected, err := x.openRouterKey(ctx, user.ID)
+	if err != nil {
+		handleBadReq(w, "load openrouter key", err)
+		return
+	}
+
 	x.render(w, r, views.SettingsPage(views.SettingsData{
-		Threads:   mapViewThreads(threads),
-		UserEmail: user.Email,
+		Threads:             mapViewThreads(threads),
+		UserEmail:           user.Email,
+		OpenRouterConnected: connected,
+		OpenRouterFailed:    r.URL.Query().Get("openrouter_failed") == "1",
 	}))
+}
+
+func (x *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+
+	streaming, err := x.db.ListStreamingThreads(ctx)
+	if err != nil {
+		slog.Error("list streaming threads before account deletion", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Your account could not be deleted. Try again."})
+		return
+	}
+	for _, thread := range streaming {
+		if thread.UserID == user.ID {
+			publishThreadStop(x.bus, thread.ID)
+		}
+	}
+
+	if err := x.db.DeleteUser(ctx, user.ID); err != nil {
+		slog.Error("delete account", "user_id", user.ID, "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Your account could not be deleted. Try again."})
+		return
+	}
+
+	if err := x.sessions.Destroy(ctx); err != nil {
+		slog.Error("delete account: destroy session", "err", err)
+	}
+	slog.Info("account deleted", "user_id", user.ID)
+
+	sse := datastar.NewSSE(w, r)
+	if err := sse.Redirect("/"); err != nil {
+		slog.Error("redirect after account deletion", "err", err)
+	}
 }
 
 func (x *Server) getDisplayMessages(ctx context.Context, userID, threadID string, largeHeight bool) ([]views.MessageGroup, error) {
@@ -165,6 +206,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userMessage := sig.Message
+	apiKey := mustGetOpenRouterKey(r)
 
 	var threadID string
 	isNewThread := sig.ThreadID == ""
@@ -181,7 +223,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		slog.Info("created thread", "threadId", threadID)
 
 		GoRecover(func() {
-			x.updateThreadTitle(context.Background(), user.ID, threadID, userMessage)
+			x.updateThreadTitle(context.Background(), apiKey, user.ID, threadID, userMessage)
 		})
 
 		sse := datastar.NewSSE(w, r)
@@ -203,7 +245,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	GoRecover(func() {
-		x.writeAgentStreamToThread(user.ID, threadID, userMessage)
+		x.writeAgentStreamToThread(apiKey, user.ID, threadID, userMessage)
 	})
 }
 
@@ -229,7 +271,7 @@ func (x *Server) persistStreamMessage(
 	return append(messages, created), nil
 }
 
-func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) {
+func (x *Server) writeAgentStreamToThread(apiKey, userID, threadID, userMessage string) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID, "userId", userID)
@@ -276,11 +318,13 @@ func (x *Server) writeAgentStreamToThread(userID, threadID, userMessage string) 
 	}
 
 	logger.Info("starting agent stream")
-	x.streamAgentMessages(ctx, userID, threadID, messages, logger)
+	x.streamAgentMessages(ctx, apiKey, userID, threadID, messages, logger)
 }
 
-func (x *Server) streamAgentMessages(ctx context.Context, userID, threadID string, messages []db.Message, logger *slog.Logger) {
-	agent := agents.NewAgent(x.cfg.OpenRouterAPIKey)
+func (x *Server) streamAgentMessages(
+	ctx context.Context, apiKey, userID, threadID string, messages []db.Message, logger *slog.Logger,
+) {
+	agent := agents.NewAgent(apiKey)
 
 	for tokenEvt, err := range agent.Stream(ctx, messages) {
 		if err != nil {
@@ -358,8 +402,8 @@ func lastAssistantMessageID(messages []db.Message) string {
 	return ""
 }
 
-func (x *Server) updateThreadTitle(ctx context.Context, userID, threadID string, userMessage string) {
-	agent := agents.NewAgent(x.cfg.OpenRouterAPIKey)
+func (x *Server) updateThreadTitle(ctx context.Context, apiKey, userID, threadID string, userMessage string) {
+	agent := agents.NewAgent(apiKey)
 	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
 
 	err := x.db.UpdateThreadTitle(ctx, userID, threadID, title)

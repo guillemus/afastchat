@@ -1,22 +1,188 @@
 package views
 
-const settingsCardClass = "mb-3 rounded-xl border border-line bg-surface/55 p-5"
+import "afastchat.com/views/ui"
+
+const deleteAccountDialogID = "delete-account-dialog"
 
 templ settings(data SettingsData) {
 	<main class="flex-1 overflow-y-auto bg-canvas p-8">
 		<div class="mx-auto max-w-[760px]">
-			<h1 class="mb-5 text-heading font-medium tracking-[-0.03em]">Settings</h1>
-			<section class={ settingsCardClass }>
-				<h2 class="mb-3 text-ui-emphasis font-medium">Account</h2>
-				@settingsRow("Email", data.UserEmail)
-			</section>
+			<h1 class="text-heading font-medium tracking-[-0.03em]">Settings</h1>
+			@settingsAccount(data)
+			@settingsOpenRouter(data)
+			@settingsDanger()
 		</div>
 	</main>
 }
 
-templ settingsRow(label, value string) {
-	<div class="flex items-center justify-between gap-4 py-2 text-ink-secondary">
-		<span>{ label }</span>
-		<span class="font-medium text-ink">{ value }</span>
+templ settingsSection(title string) {
+	<section class="mt-8">
+		<h2 class="text-ui-emphasis font-medium text-ink">{ title }</h2>
+		{ children... }
+	</section>
+}
+
+templ settingsCard(border string) {
+	<div class={ "mt-3 divide-y divide-line-subtle rounded-xl border bg-surface/55", border }>
+		{ children... }
 	</div>
+}
+
+templ settingsRow() {
+	<div class="flex items-center gap-3.5 px-5 py-4">
+		{ children... }
+	</div>
+}
+
+templ settingsAccount(data SettingsData) {
+	@settingsSection("Account") {
+		@settingsCard("border-line") {
+			@settingsRow() {
+				<span
+					class="
+						grid size-10 flex-none place-items-center rounded-full bg-accent text-ui-emphasis
+						text-white
+					"
+					aria-hidden="true"
+				>{ userInitial(data.UserEmail) }</span>
+				<div class="flex min-w-0 flex-1 font-medium">
+					@ui.Sensitive(data.UserEmail)
+				</div>
+				<span class="flex items-center gap-1.5 text-compact text-muted [&_svg]:size-3.5">
+					@ui.GoogleIcon()
+					Google
+				</span>
+			}
+			@settingsRow() {
+				<div class="min-w-0 flex-1">
+					<p class="font-medium">Log out</p>
+					<p class="text-compact text-muted">Log out of afastchat on this device.</p>
+				</div>
+				<form method="post" action="/logout">
+					@ui.Button(ui.ButtonProps{
+						Variant: ui.Secondary,
+						Size:    ui.Small,
+						Attrs:   templ.Attributes{"type": "submit"},
+					}) {
+						Log out
+					}
+				</form>
+			}
+		}
+	}
+}
+
+templ settingsOpenRouter(data SettingsData) {
+	@settingsSection("OpenRouter") {
+		@settingsCard("border-line") {
+			@settingsRow() {
+				<span
+					class="grid size-9 flex-none place-items-center rounded-lg bg-surface-raised text-ink-secondary"
+					aria-hidden="true"
+				>
+					@ui.KeyIcon()
+				</span>
+				<div class="min-w-0 flex-1">
+					<p class="font-medium">OpenRouter</p>
+					if data.OpenRouterConnected {
+						<p class="flex items-center gap-1.5 text-compact text-ink-secondary">
+							<span class="size-1.5 flex-none rounded-full bg-accent" aria-hidden="true"></span>
+							Connected. Your chats are billed to your OpenRouter account.
+						</p>
+					} else {
+						<p class="text-compact text-muted">Connect your OpenRouter account to start chatting.</p>
+					}
+				</div>
+				if data.OpenRouterConnected {
+					@ui.Button(ui.ButtonProps{
+						Variant: ui.Ghost,
+						Size:    ui.Small,
+						Attrs:   templ.Attributes{"data-on:click": "@post('/settings/openrouter/disconnect')"},
+					}) {
+						Disconnect
+					}
+					@ui.Button(ui.ButtonProps{
+						Variant: ui.Secondary,
+						Size:    ui.Small,
+						Attrs:   openRouterConnectAttrs("/auth/openrouter?from=settings"),
+					}) {
+						Reconnect
+					}
+				} else {
+					@ui.Button(ui.ButtonProps{
+						Size:  ui.Small,
+						Attrs: openRouterConnectAttrs("/auth/openrouter?from=settings"),
+					}) {
+						Connect
+					}
+				}
+			}
+			if data.OpenRouterFailed {
+				<p role="alert" class="bg-danger-surface px-5 py-3 text-compact text-danger last:rounded-b-xl">
+					OpenRouter could not be connected. Please try again.
+				</p>
+			}
+		}
+		<p class="mt-2 text-compact text-muted">
+			Manage spending limits or revoke keys on
+			<a
+				href="https://openrouter.ai/settings/keys"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="text-ink-secondary underline hover:text-ink"
+			>openrouter.ai</a>.
+		</p>
+	}
+}
+
+templ settingsDanger() {
+	@settingsSection("Danger zone") {
+		@settingsCard("border-danger-line") {
+			@settingsRow() {
+				<div class="min-w-0 flex-1">
+					<p class="font-medium">Delete account</p>
+					<p class="text-compact text-muted">Permanently delete your account and all your chats.</p>
+				</div>
+				@ui.Button(ui.ButtonProps{
+					Variant: ui.Secondary,
+					Size:    ui.Small,
+					Class:   "text-danger!",
+					Attrs:   templ.Attributes{"commandfor": deleteAccountDialogID, "command": "show-modal"},
+				}) {
+					Delete account
+				}
+			}
+		}
+		@deleteAccountDialog()
+	}
+}
+
+templ deleteAccountDialog() {
+	@ui.Dialog(deleteAccountDialogID, nil) {
+		<h2 class="text-ui-emphasis font-semibold">Delete your account?</h2>
+		<p class="mt-2 leading-6 text-muted">This happens right away and can't be undone.</p>
+		<ul class="mt-3 list-disc space-y-1 pl-5 leading-6 text-ink-secondary">
+			<li>All your chats are deleted.</li>
+			<li>OpenRouter is disconnected. The key stays in your OpenRouter account until you revoke it there.</li>
+		</ul>
+		<div class="mt-6 flex justify-end gap-2">
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Ghost,
+				Attrs:   templ.Attributes{"commandfor": deleteAccountDialogID, "command": "close"},
+			}) {
+				Cancel
+			}
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Danger,
+				Attrs: templ.Attributes{
+					"data-indicator:_delete_pending": true,
+					"data-attr:disabled":             "$_delete_pending",
+					"data-attr:aria-busy":            "$_delete_pending",
+					"data-on:click":                  "if (!$_delete_pending) { @post('/settings/delete-account') }",
+				},
+			}) {
+				Delete account
+			}
+		</div>
+	}
 }

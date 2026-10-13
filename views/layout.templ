@@ -59,3 +59,9 @@ templ LoginPage(failed bool) {
 		@login(failed)
 	}
 }
+
+templ SetupPage(failed bool) {
+	@guestLayout() {
+		@setup(failed)
+	}
+}

@@ -1,0 +1,15 @@
+package ui
+
+templ Dialog(id string, attrs templ.Attributes) {
+	<dialog
+		id={ id }
+		data-preserve-attr="open"
+		class="
+			m-auto w-[min(430px,calc(100%_-_32px))] rounded-lg border border-line bg-surface-raised p-6
+			text-ink shadow-popover backdrop:bg-backdrop/70
+		"
+		{ attrs... }
+	>
+		{ children... }
+	</dialog>
+}

@@ -45,6 +45,16 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 		x.publishSidebarEvent(sidebarEvent{threadID: thread.ID})
 	}()
 
+	apiKey, found, err := x.openRouterKey(ctx, thread.UserID)
+	if err != nil {
+		logger.Error("load openrouter key", "err", err)
+		return
+	}
+	if !found {
+		logger.Warn("skip resume: openrouter not connected")
+		return
+	}
+
 	messages, err := x.db.GetMessagesByThread(ctx, thread.UserID, thread.ID)
 	if err != nil {
 		logger.Error("get messages", "err", err)
@@ -58,5 +68,5 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 	})
 
 	logger.Info("resuming agent stream")
-	x.streamAgentMessages(ctx, thread.UserID, thread.ID, messages, logger)
+	x.streamAgentMessages(ctx, apiKey, thread.UserID, thread.ID, messages, logger)
 }

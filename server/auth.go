@@ -155,7 +155,7 @@ type googleClaims struct {
 func (x *Server) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	transaction, err := readOAuthTransaction(r)
-	clearOAuthCookies(w)
+	clearCookies(w, oauthStateCookieName, oauthNonceCookieName, oauthVerifierCookieName)
 	if err != nil {
 		googleCallbackFailed(w, r, err)
 		return
@@ -245,8 +245,8 @@ func setOAuthTransactionCookie(w http.ResponseWriter, name, value string) {
 	})
 }
 
-func clearOAuthCookies(w http.ResponseWriter) {
-	for _, name := range []string{oauthStateCookieName, oauthNonceCookieName, oauthVerifierCookieName} {
+func clearCookies(w http.ResponseWriter, names ...string) {
+	for _, name := range names {
 		http.SetCookie(w, &http.Cookie{
 			Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
 			Secure: !config.Dev, SameSite: http.SameSiteLaxMode,
