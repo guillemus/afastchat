@@ -32,7 +32,7 @@ templ Document(title string) {
 			<link rel="modulepreload" href="/public/datastar-rocket-v1.0.4.js"/>
 			<script type="module" src={ "/public/index.js?v=" + config.AssetVersion }></script>
 			<script type="speculationrules">
-				{ "prefetch": [{ "source": "document", "eagerness": "moderate" }] }
+				{ "prefetch": [{ "source": "document", "where": { "and": [{ "href_matches": "/threads/*" }, { "selector_matches": "#sidebar a" }] }, "eagerness": "moderate" }] }
 			</script>
 		</head>
 		<body
