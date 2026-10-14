@@ -43,6 +43,17 @@ func groupThreads(threads []Thread, now time.Time) []threadGroup {
 	return groups
 }
 
+func splitPinned(threads []Thread) (pinned, unpinned []Thread) {
+	for _, thread := range threads {
+		if thread.IsPinned {
+			pinned = append(pinned, thread)
+		} else {
+			unpinned = append(unpinned, thread)
+		}
+	}
+	return pinned, unpinned
+}
+
 func initials(viewer Viewer) string {
 	var out []rune
 	for word := range strings.FieldsSeq(viewer.Name) {

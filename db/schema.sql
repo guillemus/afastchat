@@ -53,6 +53,7 @@ CREATE TABLE threads (
     user_id TEXT NOT NULL REFERENCES users(id),
     title TEXT NOT NULL DEFAULT '',
     archived_at DATETIME,
+    pinned_at DATETIME,
     is_streaming INTEGER NOT NULL DEFAULT 0 CHECK (is_streaming IN (0, 1)),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

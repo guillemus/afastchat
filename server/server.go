@@ -123,6 +123,8 @@ func StartServer(cfg config.Config) {
 		r.Post("/threads/{id}/archive", s.handleArchiveThread)
 		r.Post("/threads/{id}/rename", s.handleRenameThread)
 		r.Post("/threads/{id}/delete", s.handleDeleteThread)
+		r.Post("/threads/{id}/pin", s.handlePinThread)
+		r.Post("/threads/{id}/unpin", s.handleUnpinThread)
 		r.Get("/threads/search", s.handleSearchThreads)
 		r.Post("/chat/stop", s.handleStopStreaming)
 		r.Post("/user/selected-model", s.handleSelectModel)

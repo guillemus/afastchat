@@ -10,6 +10,7 @@
 - to check TypeScript, run `mise run tscheck`.
 - to lint (golangci, sumtype, design tokens), run `mise run lint`.
 - to format everything (templ, Go, TypeScript, CSS), run `mise run format`.
+- to authenticate agent-browser for testing, run `mise run dev:login`. It creates a `*@afastchat.test` user with your `OPENROUTER_API_KEY` connected.
 
 # views
 

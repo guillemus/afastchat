@@ -12,6 +12,13 @@ type SidebarProps struct {
 	Viewer         Viewer
 }
 
+const sidebarDeleteThreadDialogID = "sidebar-delete-thread-dialog"
+
+const threadActionButtonClass = `
+	grid size-6 cursor-pointer place-items-center rounded-md text-muted transition-colors
+	hover:bg-fill-strong hover:text-ink focus-visible:outline-none focus-visible:bg-fill-strong
+`
+
 const sidebarIconButtonClass = `
 	grid size-6.5 flex-none cursor-pointer place-items-center rounded-md text-muted transition-colors
 	hover:bg-fill-strong hover:text-ink
@@ -23,18 +30,20 @@ templ Sidebar(props SidebarProps) {
 		class="min-h-0 overflow-hidden border-r border-line-subtle bg-sidebar"
 		data-signals:thread-id={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
 		data-signals:rename-title__ifmissing="''"
+		data-signals:_pinned-collapsed="localStorage.getItem('pinned_collapsed') === 'true'"
+		data-effect="localStorage.setItem('pinned_collapsed', $_pinnedCollapsed)"
 		if props.ActiveThreadID != "" {
 			data-signals:_stream-thread={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
 			data-effect="@get('/threads/' + $_streamThread + '/events', { requestCancellation: 'cleanup' })"
 			data-on:mousedown="
 				const link = evt.target.closest('#thread-items a');
-				if (!link || link.hasAttribute('data-editing')) return;
+				if (!link || link.hasAttribute('data-editing') || evt.target.closest('[data-thread-actions]')) return;
 				if (evt.button !== 0 || evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
 				$_streamThread = link.id.slice('thread-'.length);
 			"
 			data-on:click="
 				const link = evt.target.closest('#thread-items a');
-				if (!link || evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
+				if (!link || evt.target.closest('[data-thread-actions]') || evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
 				evt.preventDefault();
 				if (!link.hasAttribute('data-editing')) $_streamThread = link.id.slice('thread-'.length);
 			"
@@ -55,15 +64,14 @@ templ Sidebar(props SidebarProps) {
 		"
 	>
 		<div class="flex h-full w-sidebar flex-col px-2.5 pt-2.25 pb-3">
-			<div class="flex h-7.5 items-center gap-2 pr-1.5 pl-10">
-				@ui.LogoMark()
-				<a href="/" class="text-ui font-semibold tracking-tighter text-ink no-underline">afastchat</a>
+			<div class="flex h-7.5 items-center justify-center">
+				<a href="/" class="text-subheading font-semibold tracking-tighter text-ink no-underline">afastchat</a>
 			</div>
 			<a
 				href="https://designobo.com"
 				target="_blank"
 				rel="noopener"
-				class="flex items-center gap-1 self-start pl-2.25 text-meta text-muted no-underline transition-colors hover:text-ink"
+				class="flex items-center gap-1 self-center text-meta text-muted no-underline transition-colors hover:text-ink"
 			>
 				made with
 				@ui.DesignoboMark()
@@ -130,7 +138,35 @@ templ Sidebar(props SidebarProps) {
 			</div>
 		</div>
 		@threadListScrollRestore()
+		@sidebarDeleteThreadDialog()
 	</aside>
+}
+
+templ sidebarDeleteThreadDialog() {
+	@ui.Dialog(sidebarDeleteThreadDialogID, templ.Attributes{"data-signals:_delete-thread-id": "''"}) {
+		<h2 class="text-ui-emphasis font-semibold">Delete this chat?</h2>
+		<p class="mt-2 leading-6 text-muted">
+			The chat and all its messages are deleted. This can't be undone. Hold <kbd class="kbd">Shift</kbd> to skip this next time.
+		</p>
+		<div class="mt-6 flex justify-end gap-2">
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Ghost,
+				Attrs:   templ.Attributes{"commandfor": sidebarDeleteThreadDialogID, "command": "close"},
+			}) {
+				Cancel
+			}
+			@ui.Button(ui.ButtonProps{
+				Variant: ui.Danger,
+				Attrs: templ.Attributes{
+					"data-indicator:_sidebar_delete_pending": true,
+					"data-attr:disabled":                     "$_sidebar_delete_pending",
+					"data-on:click":                          "@post('/threads/' + $_deleteThreadId + '/delete')",
+				},
+			}) {
+				Delete
+			}
+		</div>
+	}
 }
 
 templ ThreadList(threads []Thread, activeThreadID string) {
@@ -155,8 +191,12 @@ templ threadListScrollRestore() {
 }
 
 templ ThreadItems(threads []Thread, activeThreadID string) {
+	{{ pinned, unpinned := splitPinned(threads) }}
 	<div id="thread-items">
-		for _, group := range groupThreads(threads, viewerNow(ctx)) {
+		if len(pinned) > 0 {
+			@pinnedThreads(pinned, activeThreadID)
+		}
+		for _, group := range groupThreads(unpinned, viewerNow(ctx)) {
 			<div class="mt-4 flex h-6 items-center px-2 text-meta font-medium tracking-wide text-muted">
 				{ group.Label }
 			</div>
@@ -169,14 +209,79 @@ templ ThreadItems(threads []Thread, activeThreadID string) {
 	</div>
 }
 
+templ pinnedThreads(threads []Thread, activeThreadID string) {
+	<section class="group/pinned" data-attr:data-collapsed="$_pinnedCollapsed">
+		<script>
+			{
+				const section = document.currentScript.parentElement
+				const collapsed = localStorage.getItem('pinned_collapsed') === 'true'
+				section.toggleAttribute('data-collapsed', collapsed)
+				section.querySelector('[data-pinned-items]').toggleAttribute('inert', collapsed)
+			}
+		</script>
+		<button
+			type="button"
+			class="
+				group/toggle mt-4 flex h-6 w-full cursor-pointer items-center gap-1.5 rounded-md px-2 text-meta
+				font-medium tracking-wide text-muted transition-colors hover:text-ink
+			"
+			data-attr:aria-expanded="String(!$_pinnedCollapsed)"
+			data-on:click="
+				const section = el.closest('section');
+				section.setAttribute('data-animating', '');
+				clearTimeout(section.pinnedAnimation);
+				section.pinnedAnimation = setTimeout(() => section.removeAttribute('data-animating'), 350);
+				$_pinnedCollapsed = !$_pinnedCollapsed;
+			"
+		>
+			<span class="[&_svg]:size-3">
+				@ui.PinIcon()
+			</span>
+			Pinned
+			<span
+				class="
+					ml-auto opacity-0 transition-opacity duration-200 group-hover/toggle:opacity-100
+					group-focus-visible/toggle:opacity-100 group-data-collapsed/pinned:rotate-180
+					group-data-animating/pinned:transition
+				"
+			>
+				@ui.ChevronDownSmallIcon()
+			</span>
+		</button>
+		<div
+			class="
+				grid grid-rows-[1fr] duration-300 ease-[cubic-bezier(0.2,0,0,1)] group-data-collapsed/pinned:grid-rows-[0fr]
+				group-data-animating/pinned:transition-[grid-template-rows] motion-reduce:transition-none!
+			"
+		>
+			<div
+				data-pinned-items
+				class="-mx-2.5 flex min-h-0 flex-col justify-end overflow-hidden px-2.5"
+				data-attr:inert="$_pinnedCollapsed"
+			>
+				<div
+					class="
+						flex flex-col gap-px duration-300 group-data-collapsed/pinned:opacity-0
+						group-data-animating/pinned:transition-opacity motion-reduce:transition-none!
+					"
+				>
+					for _, thread := range threads {
+						@ThreadListItem(thread, thread.ID == activeThreadID)
+					}
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
 templ ThreadListItem(thread Thread, isActive bool) {
 	<a
 		id={ "thread-" + thread.ID }
 		class={
 			"group relative grid h-7.5 grid-cols-[--spacing(3.5)_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2",
 			"whitespace-nowrap no-underline transition-colors duration-100",
-			templ.KV("bg-surface-raised text-ink shadow-active", isActive),
-			templ.KV("text-ink-secondary hover:bg-fill hover:text-ink", !isActive),
+			templ.KV("bg-surface-raised text-ink shadow-active [--row-bg:var(--color-surface-raised)]", isActive),
+			templ.KV("text-ink-secondary hover:bg-fill hover:text-ink [--row-bg:var(--color-sidebar-hover)]", !isActive),
 		}
 		href={ templ.SafeURL("/threads/" + thread.ID) }
 		data-prefetch-moderate
@@ -187,6 +292,7 @@ templ ThreadListItem(thread Thread, isActive bool) {
 		}
 		data-on:click="el.hasAttribute('data-editing') && evt.preventDefault()"
 		data-on:dblclick="
+			if (evt.target.closest('[data-thread-actions]')) return;
 			const input = el.querySelector('input');
 			input.value = el.dataset.title;
 			el.setAttribute('data-editing', '');
@@ -228,7 +334,61 @@ templ ThreadListItem(thread Thread, isActive bool) {
 				templ.KV("text-muted group-hover:text-ink", !isActive),
 			}
 		>{ timeAgo(thread.CreatedAt, time.Now()) }</time-ago>
+		<span
+			data-thread-actions
+			class="absolute inset-y-0 right-0 flex overflow-hidden rounded-r-md group-data-editing:hidden"
+		>
+			<span
+				class="
+					flex translate-x-full items-center gap-0.5 bg-[linear-gradient(to_right,transparent,var(--row-bg)_--spacing(5))] pr-1
+					pl-6 opacity-0 transition duration-150 ease-out group-focus-within:translate-x-0
+					group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100
+				"
+			>
+				if thread.IsPinned {
+					<button
+						type="button"
+						aria-label="Unpin chat"
+						title="Unpin"
+						class={ threadActionButtonClass }
+						data-on:click__prevent={ fmt.Sprintf("@post('/threads/%s/unpin')", thread.ID) }
+					>
+						@ui.PinOffIcon()
+					</button>
+				} else {
+					<button
+						type="button"
+						aria-label="Pin chat"
+						title="Pin"
+						class={ threadActionButtonClass }
+						data-on:click__prevent={ fmt.Sprintf("@post('/threads/%s/pin')", thread.ID) }
+					>
+						@ui.PinIcon()
+					</button>
+				}
+				<button
+					type="button"
+					aria-label="Delete chat"
+					title="Delete"
+					class={ threadActionButtonClass, "hover:text-danger focus-visible:text-danger" }
+					data-on:click__prevent={ deleteThreadExpr(thread.ID) }
+				>
+					@ui.TrashIcon()
+				</button>
+			</span>
+		</span>
 	</a>
+}
+
+func deleteThreadExpr(threadID string) string {
+	return fmt.Sprintf(`
+		if (evt.shiftKey) {
+			@post('/threads/%[1]s/delete');
+		} else {
+			$_deleteThreadId = '%[1]s';
+			document.getElementById('%[2]s').showModal();
+		}
+	`, threadID, sidebarDeleteThreadDialogID)
 }
 
 func renameThreadExpr(threadID string) string {

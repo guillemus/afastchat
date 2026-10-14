@@ -111,6 +111,7 @@
     --color-backdrop: #050506;
     --color-canvas: #0b0b0d;
     --color-sidebar: #0f0f12;
+    --color-sidebar-hover: #161619;
     --color-surface: #141417;
     --color-surface-raised: #1c1c21;
     --color-surface-strong: #25252c;
@@ -195,10 +196,6 @@
 
 .app-shell[data-collapsed]:not([data-animating]) > aside {
     visibility: hidden;
-}
-
-.thread-header {
-    padding-left: max(--spacing(5), --spacing(14) - var(--sidebar-width));
 }
 
 @media (prefers-reduced-motion: reduce) {

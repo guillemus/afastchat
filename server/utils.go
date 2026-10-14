@@ -32,6 +32,7 @@ func viewThreadFromDbThread(thread db.Thread) views.Thread {
 	return views.Thread{
 		ID:          thread.ID,
 		IsStreaming: thread.IsStreaming,
+		IsPinned:    thread.PinnedAt != nil,
 		Title:       thread.Title,
 		CreatedAt:   thread.CreatedAt,
 	}

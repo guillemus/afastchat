@@ -5,6 +5,7 @@ import "time"
 type Thread struct {
 	ID          string
 	IsStreaming bool
+	IsPinned    bool
 	Title       string
 	CreatedAt   time.Time
 }

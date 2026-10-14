@@ -7,15 +7,8 @@ import (
 	"time"
 )
 
-const (
-	threadMenuID         = "thread-menu"
-	renameThreadDialogID = "rename-thread-dialog"
-	deleteThreadDialogID = "delete-thread-dialog"
-)
-
 templ MessageThread(props MessageThreadProps) {
 	<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-canvas">
-		@ThreadHeader(props.Thread)
 		if len(props.Messages) == 0 {
 			<div class="flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-20">
 				<h2 class="mb-5.5 text-headline font-medium text-ink">What's on your mind?</h2>
@@ -62,130 +55,7 @@ templ MessageThread(props MessageThreadProps) {
 				</div>
 			</div>
 		}
-		if props.Thread.ID != "" {
-			@threadMenu(props.Thread)
-		}
 	</main>
-}
-
-templ ThreadHeader(thread Thread) {
-	<header
-		id="thread-header"
-		class="thread-header flex h-12 flex-none items-center gap-2.5 border-b border-line-subtle pr-5"
-	>
-		if thread.ID != "" {
-			<h1 class="min-w-0 truncate text-compact font-medium tracking-tight text-ink">{ thread.Title }</h1>
-			<button
-				type="button"
-				aria-label="Chat options"
-				popovertarget={ threadMenuID }
-				class="
-					ml-auto grid size-6.5 flex-none cursor-pointer place-items-center rounded-md text-muted
-					transition-colors hover:bg-fill-strong hover:text-ink
-				"
-			>
-				@ui.MoreIcon()
-			</button>
-		}
-	</header>
-}
-
-const threadMenuItemClass = `
-	flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-ink-body
-	transition-colors hover:bg-fill-strong hover:text-ink [&_svg]:text-muted
-`
-
-templ threadMenu(thread Thread) {
-	<div
-		id={ threadMenuID }
-		popover
-		class="
-			fixed inset-auto top-11 right-5 m-0 w-44 rounded-lg border border-line bg-surface-raised p-1
-			text-compact text-ink shadow-popover
-		"
-	>
-		<button
-			type="button"
-			class={ threadMenuItemClass }
-			commandfor={ renameThreadDialogID }
-			command="show-modal"
-			data-title={ thread.Title }
-			data-on:click={ fmt.Sprintf("$renameTitle = el.dataset.title; document.getElementById('%s').hidePopover()", threadMenuID) }
-		>
-			@ui.PencilIcon()
-			Rename
-		</button>
-		<button
-			type="button"
-			class={ threadMenuItemClass }
-			data-on:click={ fmt.Sprintf("document.getElementById('%s').hidePopover(); @post('/threads/%s/archive')", threadMenuID, thread.ID) }
-		>
-			@ui.ArchiveSmallIcon()
-			Archive
-		</button>
-		<button
-			type="button"
-			class={ threadMenuItemClass, "text-danger! [&_svg]:text-danger!" }
-			commandfor={ deleteThreadDialogID }
-			command="show-modal"
-			data-on:click={ fmt.Sprintf("document.getElementById('%s').hidePopover()", threadMenuID) }
-		>
-			@ui.TrashIcon()
-			Delete
-		</button>
-	</div>
-	@ui.Dialog(renameThreadDialogID, templ.Attributes{"data-signals:rename-title": "''"}) {
-		<h2 class="text-ui-emphasis font-semibold">Rename chat</h2>
-		@ui.Input(ui.InputProps{
-			Class: "mt-4",
-			Attrs: templ.Attributes{
-				"type":               "text",
-				"aria-label":         "Chat name",
-				"data-bind":          "renameTitle",
-				"data-on:keydown":    fmt.Sprintf("evt.key === 'Enter' && @post('/threads/%s/rename')", thread.ID),
-				"data-indicator":     "_renamePending",
-				"data-attr:disabled": "$_renamePending",
-			},
-		})
-		<div class="mt-6 flex justify-end gap-2">
-			@ui.Button(ui.ButtonProps{
-				Variant: ui.Ghost,
-				Attrs:   templ.Attributes{"commandfor": renameThreadDialogID, "command": "close"},
-			}) {
-				Cancel
-			}
-			@ui.Button(ui.ButtonProps{
-				Attrs: templ.Attributes{
-					"data-attr:disabled": "$_renamePending",
-					"data-on:click":      fmt.Sprintf("@post('/threads/%s/rename')", thread.ID),
-				},
-			}) {
-				Save
-			}
-		</div>
-	}
-	@ui.Dialog(deleteThreadDialogID, nil) {
-		<h2 class="text-ui-emphasis font-semibold">Delete this chat?</h2>
-		<p class="mt-2 leading-6 text-muted">The chat and all its messages are deleted. This can't be undone.</p>
-		<div class="mt-6 flex justify-end gap-2">
-			@ui.Button(ui.ButtonProps{
-				Variant: ui.Ghost,
-				Attrs:   templ.Attributes{"commandfor": deleteThreadDialogID, "command": "close"},
-			}) {
-				Cancel
-			}
-			@ui.Button(ui.ButtonProps{
-				Variant: ui.Danger,
-				Attrs: templ.Attributes{
-					"data-indicator:_delete_thread_pending": true,
-					"data-attr:disabled":                    "$_delete_thread_pending",
-					"data-on:click":                         fmt.Sprintf("@post('/threads/%s/delete')", thread.ID),
-				},
-			}) {
-				Delete
-			}
-		</div>
-	}
 }
 
 templ messageScrollRestore() {

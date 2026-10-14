@@ -9,6 +9,7 @@ type Thread struct {
 	UserID      string
 	Title       string
 	ArchivedAt  *time.Time // nil if not archived
+	PinnedAt    *time.Time
 	IsStreaming bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

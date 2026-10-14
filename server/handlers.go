@@ -183,32 +183,84 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	var sig struct {
-		ThreadSearch string `json:"threadSearch"`
-		ThreadID     string `json:"threadId"`
-	}
+	var sig threadListSignals
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read search signals", "err", err)
 		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to search chats. Refresh the page, then try again."})
 		return
 	}
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	threads, err := x.searchThreads(ctx, user.ID, sig.ThreadSearch)
 	if err != nil {
 		slog.Error("list threads for search", "err", err)
 		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't search your chats. Try again."})
 		return
 	}
 
-	query := strings.ToLower(strings.TrimSpace(sig.ThreadSearch))
+	sse := datastar.NewSSE(w, r)
+	views.PatchThreads(sse, mapViewThreads(threads), sig.ThreadID)
+}
+
+func (x *Server) searchThreads(ctx context.Context, userID, search string) ([]db.Thread, error) {
+	threads, err := x.db.ListThreads(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	query := strings.ToLower(strings.TrimSpace(search))
 	filtered := make([]db.Thread, 0, len(threads))
 	for _, it := range threads {
 		if strings.Contains(strings.ToLower(it.Title), query) {
 			filtered = append(filtered, it)
 		}
 	}
+	return filtered, nil
+}
 
-	sse := datastar.NewSSE(w, r)
-	views.PatchThreads(sse, mapViewThreads(filtered), sig.ThreadID)
+type threadListSignals struct {
+	ThreadSearch string `json:"threadSearch"`
+	ThreadID     string `json:"threadId"`
+}
+
+func (x *Server) patchThreadList(ctx context.Context, sse *datastar.ServerSentEventGenerator, userID string, sig threadListSignals) {
+	threads, err := x.searchThreads(ctx, userID, sig.ThreadSearch)
+	if err != nil {
+		slog.Error("list threads", "err", err)
+		patchToastOnSSE(sse, ui.Toast{Kind: ui.ToastError, Message: "We couldn't refresh your chats. Refresh the page."})
+		return
+	}
+	views.PatchThreads(sse, mapViewThreads(threads), sig.ThreadID)
+}
+
+func (x *Server) handlePinThread(w http.ResponseWriter, r *http.Request) {
+	x.setThreadPinned(w, r, true)
+}
+
+func (x *Server) handleUnpinThread(w http.ResponseWriter, r *http.Request) {
+	x.setThreadPinned(w, r, false)
+}
+
+func (x *Server) setThreadPinned(w http.ResponseWriter, r *http.Request, pinned bool) {
+	ctx := r.Context()
+	user := mustGetUser(r)
+	threadID := chi.URLParam(r, "id")
+	var sig threadListSignals
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read pin signals", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to update this chat. Refresh the page, then try again."})
+		return
+	}
+
+	if err := x.db.SetThreadPinned(ctx, user.ID, threadID, pinned); err != nil {
+		slog.Error("set thread pinned", "err", err, "pinned", pinned)
+		message := "We couldn't pin this chat. Try again."
+		if !pinned {
+			message = "We couldn't unpin this chat. Try again."
+		}
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: message})
+		return
+	}
+
+	x.patchThreadList(ctx, datastar.NewSSE(w, r), user.ID, sig)
 }
 
 func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
@@ -481,9 +533,6 @@ msgloop:
 			}
 
 			views.PatchThreadItem(sse, viewThreadFromDbThread(thread), thread.ID == threadID)
-			if thread.ID == threadID {
-				views.PatchThreadHeader(sse, viewThreadFromDbThread(thread))
-			}
 		}
 	}
 }
@@ -549,16 +598,18 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x.broker.PublishUserThread(user.ID, threadID)
-
-	if err := sse.ExecuteScript(`document.getElementById('rename-thread-dialog')?.close()`); err != nil {
-		slog.Error("close rename dialog", "err", err)
-	}
 }
 
 func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
+	var sig threadListSignals
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		slog.Error("read delete signals", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to delete this chat. Refresh the page, then try again."})
+		return
+	}
 
 	x.broker.PublishThreadStop(threadID)
 	if err := x.db.DeleteThread(ctx, user.ID, threadID); err != nil {
@@ -568,7 +619,15 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse := datastar.NewSSE(w, r)
-	if err := sse.Redirect("/"); err != nil {
-		slog.Error("redirect after thread deletion", "err", err)
+	if threadID == sig.ThreadID {
+		if err := sse.Redirect("/"); err != nil {
+			slog.Error("redirect after thread deletion", "err", err)
+		}
+		return
+	}
+
+	x.patchThreadList(ctx, sse, user.ID, sig)
+	if err := sse.ExecuteScript(`document.getElementById('sidebar-delete-thread-dialog')?.close()`); err != nil {
+		slog.Error("close delete dialog", "err", err)
 	}
 }

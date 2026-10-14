@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="Mint a 30-day auth session for a dev user and load it into agent-browser; creates the user if missing"
+set -euo pipefail
+
+usage='agent-<browser_session> [email] (email defaults to agent-<browser_session>@afastchat.test)'
+if (($# > 2)); then
+    echo "usage: mise run dev:login -- [email] [browser_session]  ($usage)" >&2
+    exit 2
+fi
+
+email=${1:-}
+session=${2:-afastchat-dev}
+[[ "$session" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo "invalid browser session '$session'" >&2; exit 1; }
+profile=${AGENT_BROWSER_PROFILE:-"$PWD/tmp/browser-profiles/$session"}
+email=${email:-agent-$session@afastchat.test}
+
+token=$(go run ./cmd/devlogin "$email")
+agent-browser --session "$session" --profile "$profile" --headed "${AGENT_BROWSER_HEADED:-false}" --ignore-https-errors cookies set afastchat_session "$token" --url https://localhost/ --httpOnly --sameSite Lax
+echo "agent-browser session $session logged in as $email"

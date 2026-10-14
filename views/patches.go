@@ -12,7 +12,7 @@ import (
 )
 
 func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
-	patchTempl(sse, ThreadItems(threads, activeThreadID))
+	patchTempl(sse, ThreadItems(threads, activeThreadID), datastar.WithModeReplace())
 }
 
 func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread, isActive bool) {
@@ -52,10 +52,6 @@ func PatchThreadPage(sse *datastar.ServerSentEventGenerator, data ThreadData) {
 			}
 		}
 	`, path))
-}
-
-func PatchThreadHeader(sse *datastar.ServerSentEventGenerator, thread Thread) {
-	patchTempl(sse, ThreadHeader(thread))
 }
 
 func PatchThreadMessageList(
@@ -101,8 +97,8 @@ func PatchSignals(sse *datastar.ServerSentEventGenerator, v any) {
 	}
 }
 
-func patchTempl(sse *datastar.ServerSentEventGenerator, component templ.Component) {
-	if err := sse.PatchElementTempl(component); err != nil && !errors.Is(err, context.Canceled) {
+func patchTempl(sse *datastar.ServerSentEventGenerator, component templ.Component, opts ...datastar.PatchElementOption) {
+	if err := sse.PatchElementTempl(component, opts...); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("patch elements", "err", err)
 	}
 }

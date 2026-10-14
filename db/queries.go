@@ -11,7 +11,7 @@ import (
 
 func (x *Pool) GetThread(ctx context.Context, id, userID string) (Thread, error) {
 	return queryOne(ctx, x, "query thread", `
-		SELECT id, user_id, title, archived_at, is_streaming, created_at, updated_at
+		SELECT id, user_id, title, archived_at, pinned_at, is_streaming, created_at, updated_at
 		FROM threads
 		WHERE id = :id AND user_id = :user_id
 	`, map[string]any{":id": id, ":user_id": userID}, func(stmt *sqlite.Stmt) (Thread, error) {
@@ -21,10 +21,10 @@ func (x *Pool) GetThread(ctx context.Context, id, userID string) (Thread, error)
 
 func (x *Pool) ListThreads(ctx context.Context, userID string) ([]Thread, error) {
 	return queryAll(ctx, x, "query threads", `
-		SELECT id, user_id, title, archived_at, is_streaming, created_at, updated_at
+		SELECT id, user_id, title, archived_at, pinned_at, is_streaming, created_at, updated_at
 		FROM threads
 		WHERE user_id = :user_id AND archived_at IS NULL
-		ORDER BY created_at DESC
+		ORDER BY pinned_at DESC NULLS LAST, created_at DESC
 	`, map[string]any{":user_id": userID}, func(stmt *sqlite.Stmt) (Thread, error) {
 		return scanThread(stmt), nil
 	})
@@ -32,7 +32,7 @@ func (x *Pool) ListThreads(ctx context.Context, userID string) ([]Thread, error)
 
 func (x *Pool) ListStreamingThreads(ctx context.Context) ([]Thread, error) {
 	return queryAll(ctx, x, "query streaming threads", `
-		SELECT id, user_id, title, archived_at, is_streaming, created_at, updated_at
+		SELECT id, user_id, title, archived_at, pinned_at, is_streaming, created_at, updated_at
 		FROM threads
 		WHERE is_streaming = 1 AND archived_at IS NULL
 		ORDER BY updated_at ASC
@@ -46,7 +46,7 @@ func (x *Pool) CreateThread(ctx context.Context, userID, title string) (Thread, 
 	return execReturning(ctx, x, "insert thread", `
 		INSERT INTO threads (id, user_id, title)
 		VALUES (:id, :user_id, :title)
-		RETURNING id, user_id, title, archived_at, is_streaming, created_at, updated_at
+		RETURNING id, user_id, title, archived_at, pinned_at, is_streaming, created_at, updated_at
 	`, map[string]any{":id": id, ":user_id": userID, ":title": title}, func(stmt *sqlite.Stmt) (Thread, error) {
 		return scanThread(stmt), nil
 	})
@@ -68,6 +68,15 @@ func (x *Pool) ArchiveThread(ctx context.Context, userID, id string) error {
 		WHERE id = :id AND user_id = :user_id
 		RETURNING id
 	`, map[string]any{":id": id, ":user_id": userID})
+}
+
+func (x *Pool) SetThreadPinned(ctx context.Context, userID, id string, pinned bool) error {
+	return x.exec(ctx, "set thread pinned", `
+		UPDATE threads
+		SET pinned_at = CASE WHEN :pinned THEN datetime('now') END, updated_at = datetime('now')
+		WHERE id = :id AND user_id = :user_id
+		RETURNING id
+	`, map[string]any{":pinned": pinned, ":id": id, ":user_id": userID})
 }
 
 func (x *Pool) DeleteThread(ctx context.Context, userID, id string) error {

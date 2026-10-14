@@ -26,6 +26,7 @@ func scanThread(stmt *sqlite.Stmt) Thread {
 		UserID:      stmt.GetText("user_id"),
 		Title:       stmt.GetText("title"),
 		ArchivedAt:  nullableTime(stmt.IsNull("archived_at"), stmt.GetText("archived_at")),
+		PinnedAt:    nullableTime(stmt.IsNull("pinned_at"), stmt.GetText("pinned_at")),
 		IsStreaming: stmt.GetInt64("is_streaming") != 0,
 		CreatedAt:   parseTime(stmt.GetText("created_at")),
 		UpdatedAt:   parseTime(stmt.GetText("updated_at")),
