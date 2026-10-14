@@ -30,8 +30,6 @@ templ Sidebar(props SidebarProps) {
 		class="min-h-0 overflow-hidden border-r border-line-subtle bg-sidebar"
 		data-signals:thread-id={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
 		data-signals:rename-title__ifmissing="''"
-		data-signals:_pinned-collapsed="localStorage.getItem('pinned_collapsed') === 'true'"
-		data-effect="localStorage.setItem('pinned_collapsed', $_pinnedCollapsed)"
 		if props.ActiveThreadID != "" {
 			data-signals:_stream-thread={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
 			data-effect="@get('/threads/' + $_streamThread + '/events', { requestCancellation: 'cleanup' })"
@@ -63,7 +61,11 @@ templ Sidebar(props SidebarProps) {
 			}
 		"
 	>
-		<div class="flex h-full w-sidebar flex-col px-2.5 pt-2.25 pb-3">
+		<div
+			class="flex h-full w-sidebar flex-col px-2.5 pt-2.25 pb-3"
+			data-signals:_pinned-collapsed="localStorage.getItem('pinned_collapsed') === 'true'"
+			data-effect="localStorage.setItem('pinned_collapsed', $_pinnedCollapsed)"
+		>
 			<div class="flex h-7.5 items-center justify-center">
 				<a href="/" class="text-subheading font-semibold tracking-tighter text-ink no-underline">afastchat</a>
 			</div>
