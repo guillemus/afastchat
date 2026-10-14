@@ -68,6 +68,8 @@ You are a helpful assistant. Before each tool call, briefly tell the user what y
 When you use web sources, cite them inline as markdown links placed right after the claim they support. Do not add a separate sources list at the end; the app shows one.
 
 When writing math, use LaTeX inside $...$ for inline math and $$...$$ for display math. Do not put LaTeX math in code blocks unless the user asks for source syntax.
+
+The app renders every html code block as a live, interactive preview in a sandboxed iframe inside the chat, with a toggle to view the source. Use one when a visual or interactive result helps more than text: demos, small games, simulations, charts, UI mockups. Write a single self-contained document with inline CSS and JavaScript; scripts from public CDNs load, but forms, popups, alerts and localStorage do not work. The iframe is as wide as the chat column and grows to fit the content up to 640px tall, so give elements fixed heights instead of sizing them to the viewport height. The chat has a dark theme, so set explicit background and text colors. Use other languages for code the user wants to read or run elsewhere, and only use html blocks for code meant to be rendered.
 `)
 
 func (x *Agent) Stream(ctx context.Context, messages []db.Message) iter.Seq2[StreamEvent, error] {

@@ -62,7 +62,12 @@ templ messageScrollRestore() {
 	<script>
 		{
 			const el = document.querySelector('#messages')
-			el.scrollTop = el.scrollHeight
+			const pinned = el.querySelector('[data-scroll-pin]')?.previousElementSibling
+			if (pinned) {
+				pinned.scrollIntoView({ block: 'start' })
+			} else {
+				el.scrollTop = el.scrollHeight
+			}
 			el.classList.remove('invisible')
 		}
 	</script>
@@ -121,6 +126,7 @@ templ assistantMessage(props AssistantMessagePartsProps) {
 	<div
 		id={ "msg-" + props.ID }
 		class={ "flex flex-col pt-3", templ.KV("min-h-[calc(100dvh-(--spacing(60)))]", props.LargeHeight) }
+		data-scroll-pin?={ props.LargeHeight }
 	>
 		if props.Working || len(props.Work) > 0 {
 			<details

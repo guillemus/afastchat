@@ -43,7 +43,12 @@ func PatchThreadPage(sse *datastar.ServerSentEventGenerator, data ThreadData) {
 		if (location.pathname !== %[1]q) history.pushState(null, '', %[1]q);
 		if (window.threadSwitched) {
 			const messages = document.getElementById('messages');
-			if (messages) messages.scrollTop = messages.scrollHeight;
+			const pinned = messages?.querySelector('[data-scroll-pin]')?.previousElementSibling;
+			if (pinned) {
+				pinned.scrollIntoView({ block: 'start' });
+			} else if (messages) {
+				messages.scrollTop = messages.scrollHeight;
+			}
 			const input = document.querySelector('textarea[name=message]');
 			if (input) {
 				input.value = '';

@@ -24,19 +24,30 @@ const copyCodeExpr = `
 	setTimeout(() => el.textContent = 'Copy', 1500);
 `
 
-var md = goldmark.New(
-	goldmark.WithExtensions(
-		extension.GFM,
-		&katex.Extender{},
-		highlighting.NewHighlighting(
-			highlighting.WithFormatOptions(
-				chromahtml.WithClasses(true),
-			),
-			highlighting.WithWrapperRenderer(renderCodeBlockWrapper),
-		),
-	),
-	goldmark.WithParserOptions(parser.WithInlineParsers(util.Prioritized(&inlineMathParser{}, -1))),
+const showHTMLPreviewExpr = `el.closest('html-preview').dataset.view = 'preview'`
+
+const showHTMLCodeExpr = `el.closest('html-preview').dataset.view = 'code'`
+
+var (
+	md          = newMarkdown(true)
+	mdStreaming = newMarkdown(false)
 )
+
+func newMarkdown(htmlPreview bool) goldmark.Markdown {
+	return goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM,
+			&katex.Extender{},
+			highlighting.NewHighlighting(
+				highlighting.WithFormatOptions(
+					chromahtml.WithClasses(true),
+				),
+				highlighting.WithWrapperRenderer(codeBlockWrapper(htmlPreview)),
+			),
+		),
+		goldmark.WithParserOptions(parser.WithInlineParsers(util.Prioritized(&inlineMathParser{}, -1))),
+	)
+}
 
 type inlineMathParser struct {
 	katex.Parser
@@ -66,28 +77,58 @@ func isInlineMath(line []byte) bool {
 	return false
 }
 
-func renderCodeBlockWrapper(w util.BufWriter, c highlighting.CodeBlockContext, entering bool) {
-	if !entering {
-		if !c.Highlighted() {
-			_, _ = w.WriteString("</code></pre>")
+func codeBlockWrapper(htmlPreview bool) highlighting.WrapperRenderer {
+	return func(w util.BufWriter, c highlighting.CodeBlockContext, entering bool) {
+		label := "code"
+		if language, ok := c.Language(); ok && len(language) > 0 {
+			label = string(language)
 		}
-		_, _ = w.WriteString("</div>\n")
-		return
-	}
+		preview := htmlPreview && strings.EqualFold(label, "html")
 
-	label := "code"
-	if language, ok := c.Language(); ok && len(language) > 0 {
-		label = string(language)
-	}
+		if !entering {
+			if !c.Highlighted() {
+				_, _ = w.WriteString("</code></pre>")
+			}
+			if preview {
+				_, _ = w.WriteString("</div></html-preview>\n")
+			} else {
+				_, _ = w.WriteString("</div>\n")
+			}
+			return
+		}
 
-	_, _ = w.WriteString(`<div class="code-block"><div class="code-block-header"><span>`)
-	_, _ = w.WriteString(html.EscapeString(label))
-	_, _ = w.WriteString(`</span><button type="button" class="code-copy" data-on:click="`)
-	_, _ = w.WriteString(html.EscapeString(copyCodeExpr))
-	_, _ = w.WriteString(`">Copy</button></div>`)
-	if !c.Highlighted() {
-		_, _ = w.WriteString("<pre><code>")
+		if preview {
+			_, _ = w.WriteString(`<html-preview class="code-block" data-view="preview" data-ignore-morph>`)
+		} else {
+			_, _ = w.WriteString(`<div class="code-block">`)
+		}
+		_, _ = w.WriteString(`<div class="code-block-header"><span>`)
+		_, _ = w.WriteString(html.EscapeString(label))
+		_, _ = w.WriteString(`</span>`)
+		if preview {
+			writeCodeTab(w, "preview", "Preview", showHTMLPreviewExpr)
+			writeCodeTab(w, "code", "Code", showHTMLCodeExpr)
+		}
+		_, _ = w.WriteString(`<button type="button" class="code-copy" data-on:click="`)
+		_, _ = w.WriteString(html.EscapeString(copyCodeExpr))
+		_, _ = w.WriteString(`">Copy</button></div>`)
+		if preview {
+			_, _ = w.WriteString(`<div class="html-preview-frame"></div><div class="html-preview-code">`)
+		}
+		if !c.Highlighted() {
+			_, _ = w.WriteString("<pre><code>")
+		}
 	}
+}
+
+func writeCodeTab(w util.BufWriter, view, label, expr string) {
+	_, _ = w.WriteString(`<button type="button" class="code-tab" data-tab="`)
+	_, _ = w.WriteString(view)
+	_, _ = w.WriteString(`" data-on:click="`)
+	_, _ = w.WriteString(html.EscapeString(expr))
+	_, _ = w.WriteString(`">`)
+	_, _ = w.WriteString(label)
+	_, _ = w.WriteString(`</button>`)
 }
 
 var tableWrapper = strings.NewReplacer(
@@ -96,6 +137,14 @@ var tableWrapper = strings.NewReplacer(
 )
 
 func renderMarkdown(src string) string {
+	return convertMarkdown(md, src)
+}
+
+func renderStreamingMarkdown(src string) string {
+	return convertMarkdown(mdStreaming, src)
+}
+
+func convertMarkdown(md goldmark.Markdown, src string) string {
 	var buf bytes.Buffer
 	b := unsafe.Slice(unsafe.StringData(src), len(src))
 	if err := md.Convert(b, &buf); err != nil {

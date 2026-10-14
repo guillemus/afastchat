@@ -60,7 +60,7 @@ func mapViewMessages(messages []db.Message, streaming, largeHeight bool) []views
 func mapAssistantTurn(turn []db.Message, startedAt time.Time, streaming bool) views.AssistantMessagePartsProps {
 	render := renderMarkdownCached
 	if streaming {
-		render = renderMarkdown
+		render = renderStreamingMarkdown
 	}
 
 	var refs []db.SourceRef

@@ -84,3 +84,53 @@ rocket('flip-list', {
         })
     },
 })
+
+const htmlPreviewMaxHeight = 640
+
+const htmlPreviewShim = `<style>:where(html) { color-scheme: dark; }</style><script>(() => {
+    const post = () => {
+        const body = document.body
+        if (!body) return
+        const style = getComputedStyle(body)
+        const height = body.scrollHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom)
+        parent.postMessage({ htmlPreviewHeight: height }, '*')
+    }
+    new ResizeObserver(post).observe(document.documentElement)
+    addEventListener('load', post)
+    post()
+})()<\/script>`
+
+rocket('html-preview', {
+    mode: 'light',
+    setup: ({ host, cleanup }) => {
+        const frame = host.querySelector('.html-preview-frame')
+        const code = host.querySelector('pre')?.textContent
+        if (!frame || code === undefined) return
+
+        const iframe = document.createElement('iframe')
+        iframe.title = 'HTML preview'
+        iframe.referrerPolicy = 'no-referrer'
+        iframe.sandbox.add('allow-scripts')
+        frame.replaceChildren(iframe)
+
+        const onMessage = (evt: MessageEvent) => {
+            if (evt.source !== iframe.contentWindow) return
+            const height = evt.data?.htmlPreviewHeight
+            if (typeof height !== 'number' || !Number.isFinite(height)) return
+            iframe.style.height = `${Math.min(Math.ceil(height), htmlPreviewMaxHeight)}px`
+        }
+        window.addEventListener('message', onMessage)
+        cleanup(() => window.removeEventListener('message', onMessage))
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (!entries.some((entry) => entry.isIntersecting)) return
+                observer.disconnect()
+                iframe.srcdoc = code + htmlPreviewShim
+            },
+            { rootMargin: '200px' },
+        )
+        observer.observe(frame)
+        cleanup(() => observer.disconnect())
+    },
+})

@@ -497,6 +497,45 @@ details[open]::details-content {
     color: var(--color-ink);
 }
 
+.markdown-content html-preview {
+    display: block;
+}
+
+.markdown-content .code-tab {
+    height: --spacing(5.5);
+    margin-left: --spacing(1);
+    padding: 0 --spacing(1.5);
+    border-radius: var(--radius-chip);
+    color: var(--color-muted);
+    cursor: pointer;
+}
+
+.markdown-content .code-block-header > span + .code-tab {
+    margin-left: --spacing(3);
+}
+
+.markdown-content .code-tab:hover {
+    color: var(--color-ink);
+}
+
+.markdown-content html-preview[data-view='preview'] .code-tab[data-tab='preview'],
+.markdown-content html-preview[data-view='code'] .code-tab[data-tab='code'] {
+    background: var(--color-fill-strong);
+    color: var(--color-ink);
+}
+
+.markdown-content html-preview[data-view='preview'] .html-preview-code,
+.markdown-content html-preview[data-view='code'] .html-preview-frame {
+    display: none;
+}
+
+.markdown-content .html-preview-frame iframe {
+    display: block;
+    width: 100%;
+    height: --spacing(30);
+    border: 0;
+}
+
 .markdown-content pre {
     margin: 0;
     padding: --spacing(3) --spacing(3.5);

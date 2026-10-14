@@ -148,7 +148,7 @@ templ sidebarDeleteThreadDialog() {
 	@ui.Dialog(sidebarDeleteThreadDialogID, templ.Attributes{"data-signals:_delete-thread-id": "''"}) {
 		<h2 class="text-ui-emphasis font-semibold">Delete this chat?</h2>
 		<p class="mt-2 leading-6 text-muted">
-			The chat and all its messages are deleted. This can't be undone. Hold <kbd class="kbd">Shift</kbd> to skip this next time.
+			This action will permanently delete this chat.
 		</p>
 		<div class="mt-6 flex justify-end gap-2">
 			@ui.Button(ui.ButtonProps{
