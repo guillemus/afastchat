@@ -214,12 +214,10 @@ templ ThreadItems(threads []Thread, activeThreadID string) {
 templ pinnedThreads(threads []Thread, activeThreadID string) {
 	<section class="group/pinned" data-attr:data-collapsed="$_pinnedCollapsed">
 		<script>
-			{
-				const section = document.currentScript.parentElement
-				const collapsed = localStorage.getItem('pinned_collapsed') === 'true'
-				section.toggleAttribute('data-collapsed', collapsed)
-				section.querySelector('[data-pinned-items]').toggleAttribute('inert', collapsed)
-			}
+			document.currentScript.parentElement.toggleAttribute(
+				'data-collapsed',
+				localStorage.getItem('pinned_collapsed') === 'true',
+			)
 		</script>
 		<button
 			type="button"

@@ -24,10 +24,6 @@ const copyCodeExpr = `
 	setTimeout(() => el.textContent = 'Copy', 1500);
 `
 
-const showHTMLPreviewExpr = `el.closest('html-preview').dataset.view = 'preview'`
-
-const showHTMLCodeExpr = `el.closest('html-preview').dataset.view = 'code'`
-
 var (
 	md          = newMarkdown(true)
 	mdStreaming = newMarkdown(false)
@@ -98,37 +94,19 @@ func codeBlockWrapper(htmlPreview bool) highlighting.WrapperRenderer {
 		}
 
 		if preview {
-			_, _ = w.WriteString(`<html-preview class="code-block" data-view="preview" data-ignore-morph>`)
-		} else {
-			_, _ = w.WriteString(`<div class="code-block">`)
-		}
-		_, _ = w.WriteString(`<div class="code-block-header"><span>`)
-		_, _ = w.WriteString(html.EscapeString(label))
-		_, _ = w.WriteString(`</span>`)
-		if preview {
-			writeCodeTab(w, "preview", "Preview", showHTMLPreviewExpr)
-			writeCodeTab(w, "code", "Code", showHTMLCodeExpr)
-		}
-		_, _ = w.WriteString(`<button type="button" class="code-copy" data-on:click="`)
-		_, _ = w.WriteString(html.EscapeString(copyCodeExpr))
-		_, _ = w.WriteString(`">Copy</button></div>`)
-		if preview {
+			_, _ = w.WriteString(`<html-preview class="code-block" data-ignore-morph>`)
 			_, _ = w.WriteString(`<div class="html-preview-frame"></div><div class="html-preview-code">`)
+		} else {
+			_, _ = w.WriteString(`<div class="code-block"><div class="code-block-header"><span>`)
+			_, _ = w.WriteString(html.EscapeString(label))
+			_, _ = w.WriteString(`</span><button type="button" class="code-copy" data-on:click="`)
+			_, _ = w.WriteString(html.EscapeString(copyCodeExpr))
+			_, _ = w.WriteString(`">Copy</button></div>`)
 		}
 		if !c.Highlighted() {
 			_, _ = w.WriteString("<pre><code>")
 		}
 	}
-}
-
-func writeCodeTab(w util.BufWriter, view, label, expr string) {
-	_, _ = w.WriteString(`<button type="button" class="code-tab" data-tab="`)
-	_, _ = w.WriteString(view)
-	_, _ = w.WriteString(`" data-on:click="`)
-	_, _ = w.WriteString(html.EscapeString(expr))
-	_, _ = w.WriteString(`">`)
-	_, _ = w.WriteString(label)
-	_, _ = w.WriteString(`</button>`)
 }
 
 var tableWrapper = strings.NewReplacer(
