@@ -57,11 +57,12 @@ func nullableTime(isNull bool, val string) *time.Time {
 
 func scanUser(stmt *sqlite.Stmt) User {
 	return User{
-		ID:          stmt.GetText("id"),
-		Email:       stmt.GetText("email"),
-		DisplayName: stmt.GetText("display_name"),
-		CreatedAt:   parseTime(stmt.GetText("created_at")),
-		UpdatedAt:   parseTime(stmt.GetText("updated_at")),
+		ID:            stmt.GetText("id"),
+		Email:         stmt.GetText("email"),
+		DisplayName:   stmt.GetText("display_name"),
+		SelectedModel: stmt.GetText("selected_model"),
+		CreatedAt:     parseTime(stmt.GetText("created_at")),
+		UpdatedAt:     parseTime(stmt.GetText("updated_at")),
 	}
 }
 

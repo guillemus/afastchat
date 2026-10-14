@@ -52,7 +52,7 @@ templ guestLayout() {
 templ IndexPage(data IndexData) {
 	@appLayout() {
 		@Sidebar(SidebarProps{Threads: data.Threads, Viewer: data.Viewer})
-		@MessageThread(MessageThreadProps{})
+		@MessageThread(MessageThreadProps{Models: data.Models})
 	}
 }
 
@@ -68,6 +68,7 @@ templ ThreadPage(data ThreadData, doScrollSidebar bool) {
 			Thread:          data.Thread,
 			DoScrollSidebar: doScrollSidebar,
 			IsStreaming:     data.Streaming,
+			Models:          data.Models,
 		})
 	}
 }

@@ -20,7 +20,7 @@ templ MessageThread(props MessageThreadProps) {
 			<div class="flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-20">
 				<h2 class="mb-5.5 text-headline font-medium text-ink">What's on your mind?</h2>
 				<div class="w-full max-w-thread">
-					@chatInput(props.Thread.ID, props.IsStreaming)
+					@chatInput(props.Thread.ID, props.IsStreaming, props.Models)
 				</div>
 			</div>
 		} else {
@@ -58,7 +58,7 @@ templ MessageThread(props MessageThreadProps) {
 			</div>
 			<div class="flex-none px-6 pb-5">
 				<div class="mx-auto max-w-thread">
-					@chatInput(props.Thread.ID, props.IsStreaming)
+					@chatInput(props.Thread.ID, props.IsStreaming, props.Models)
 				</div>
 			</div>
 		}
@@ -204,9 +204,9 @@ templ MessageList(props MessageThreadProps) {
 		data-ref:_messages
 		class={
 			`
-						thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto]
-						[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]
-					`,
+								thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto]
+								[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]
+							`,
 			templ.KV("invisible", props.DoScrollSidebar),
 		}
 		data-on:scroll__debounce.10ms="
@@ -427,11 +427,11 @@ templ workStatus(status Status) {
 	</div>
 }
 
-templ chatInput(threadID string, isStreaming bool) {
+templ chatInput(threadID string, isStreaming bool, models ModelPicker) {
 	<div
 		class="
-			bg-dock flex items-end gap-2 rounded-dock border border-line py-2 pr-2 pl-1 shadow-dock
-			transition-colors aria-busy:border-accent-line
+			bg-dock flex flex-col gap-1 rounded-dock border border-line p-2 shadow-dock transition-colors
+			aria-busy:border-accent-line
 		"
 		if threadID != "" {
 			data-signals:thread-id={ fmt.Sprintf("'%s'", threadID) }
@@ -443,7 +443,7 @@ templ chatInput(threadID string, isStreaming bool) {
 	>
 		<textarea
 			class="
-				field-sizing-content block max-h-45 min-h-8 flex-1 resize-none border-0 bg-transparent px-3
+				field-sizing-content block max-h-45 min-h-8 w-full resize-none border-0 bg-transparent px-2.5
 				py-1.5 text-body leading-5 text-ink outline-none placeholder:text-muted
 				[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
 			"
@@ -461,31 +461,34 @@ templ chatInput(threadID string, isStreaming bool) {
 				@post('/chat/send');
 			"
 		></textarea>
-		<button
-			type="button"
-			aria-label="Send message"
-			class="
-				grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas
-				transition-colors disabled:cursor-default disabled:bg-surface-strong disabled:text-muted
-			"
-			style={ hiddenStyle(isStreaming) }
-			disabled
-			data-show="!$_isStreaming"
-			data-attr:disabled="!$_canSubmit"
-			data-on:click="@post('/chat/send')"
-		>
-			@ui.ArrowUpSmallIcon()
-		</button>
-		<button
-			type="button"
-			aria-label="Stop response"
-			class="grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas [&_svg]:size-3"
-			style={ hiddenStyle(!isStreaming) }
-			data-show="$_isStreaming"
-			data-on:click="@post('/chat/stop')"
-		>
-			@ui.StopSmallIcon()
-		</button>
+		<div class="flex items-center gap-2">
+			@modelPicker(models)
+			<button
+				type="button"
+				aria-label="Send message"
+				class="
+					ml-auto grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas
+					transition-colors disabled:cursor-default disabled:bg-surface-strong disabled:text-muted
+				"
+				style={ hiddenStyle(isStreaming) }
+				disabled
+				data-show="!$_isStreaming"
+				data-attr:disabled="!$_canSubmit"
+				data-on:click="@post('/chat/send')"
+			>
+				@ui.ArrowUpSmallIcon()
+			</button>
+			<button
+				type="button"
+				aria-label="Stop response"
+				class="ml-auto grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas [&_svg]:size-3"
+				style={ hiddenStyle(!isStreaming) }
+				data-show="$_isStreaming"
+				data-on:click="@post('/chat/stop')"
+			>
+				@ui.StopSmallIcon()
+			</button>
+		</div>
 	</div>
 }
 

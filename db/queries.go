@@ -261,7 +261,7 @@ func (x *Pool) CreateSystemMessage(ctx context.Context, userID, threadID, msg st
 
 func (x *Pool) GetUser(ctx context.Context, id string) (User, error) {
 	return queryOne(ctx, x, "query user", `
-		SELECT id, email, display_name, created_at, updated_at
+		SELECT id, email, display_name, selected_model, created_at, updated_at
 		FROM users
 		WHERE id = :id
 	`, map[string]any{":id": id}, func(stmt *sqlite.Stmt) (User, error) {

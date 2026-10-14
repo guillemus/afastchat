@@ -45,11 +45,12 @@ type Message struct {
 }
 
 type User struct {
-	ID          string
-	Email       string
-	DisplayName string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            string
+	Email         string
+	DisplayName   string
+	SelectedModel string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type Usage struct {

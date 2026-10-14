@@ -7,6 +7,7 @@ require (
 	github.com/a-h/templ v0.3.1020
 	github.com/alecthomas/chroma/v2 v2.24.1
 	github.com/alexedwards/scs/v2 v2.9.0
+	github.com/andybalholm/brotli v1.2.2
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.2.5
@@ -27,7 +28,6 @@ require (
 
 require (
 	github.com/CAFxX/httpcompression v0.0.9 // indirect
-	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect

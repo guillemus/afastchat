@@ -3,6 +3,8 @@ CREATE TABLE users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
     display_name TEXT NOT NULL,
+    -- OpenRouter model id used for new messages. Empty means the app default.
+    selected_model TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -28,6 +30,14 @@ CREATE TABLE openrouter_connections (
     sealed_key BLOB NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_favorite_models (
+    user_id TEXT NOT NULL REFERENCES users(id),
+    -- OpenRouter model id.
+    model_id TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, model_id)
 );
 
 CREATE TABLE sessions (

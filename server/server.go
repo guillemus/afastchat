@@ -121,6 +121,8 @@ func StartServer(cfg config.Config) {
 		r.Post("/threads/{id}/delete", s.handleDeleteThread)
 		r.Get("/threads/search", s.handleSearchThreads)
 		r.Post("/chat/stop", s.handleStopStreaming)
+		r.Post("/user/selected-model", s.handleSelectModel)
+		r.Post("/user/favorite-models", s.handleFavoriteModel)
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireOpenRouter)

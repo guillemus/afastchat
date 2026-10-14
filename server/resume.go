@@ -55,6 +55,12 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 		return
 	}
 
+	user, err := x.db.GetUser(ctx, thread.UserID)
+	if err != nil {
+		logger.Error("get user", "err", err)
+		return
+	}
+
 	messages, err := x.db.GetMessagesByThread(ctx, thread.UserID, thread.ID)
 	if err != nil {
 		logger.Error("get messages", "err", err)
@@ -68,5 +74,5 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 	})
 
 	logger.Info("resuming agent stream")
-	x.streamAgentMessages(ctx, apiKey, thread.UserID, thread.ID, messages, logger)
+	x.streamAgentMessages(ctx, apiKey, user.SelectedModel, thread.UserID, thread.ID, messages, logger)
 }

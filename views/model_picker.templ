@@ -1,0 +1,304 @@
+package views
+
+import (
+	"afastchat.com/views/ui"
+	"fmt"
+	"regexp"
+	"slices"
+	"strings"
+)
+
+const modelTabFavorites = "favorites"
+
+var modelKeyReplacer = regexp.MustCompile(`[^a-z0-9]+`)
+
+func modelKey(id string) string {
+	return modelKeyReplacer.ReplaceAllString(strings.ToLower(id), "_")
+}
+
+func (m ModelPicker) isFavorite(id string) bool {
+	return slices.Contains(m.Favorites, id)
+}
+
+func (m ModelPicker) initialTab() string {
+	if len(m.Favorites) > 0 {
+		return modelTabFavorites
+	}
+	for _, option := range m.Options {
+		if option.ID == m.Selected {
+			return option.Provider
+		}
+	}
+	return m.Providers[0].ID
+}
+
+func (m ModelPicker) providerLabel(id string) string {
+	for _, provider := range m.Providers {
+		if provider.ID == id {
+			return provider.Label
+		}
+	}
+	return id
+}
+
+func (m ModelPicker) favoritesSignal() string {
+	entries := make([]string, 0, len(m.Options))
+	for _, option := range m.Options {
+		entries = append(entries, fmt.Sprintf("%s: %t", modelKey(option.ID), m.isFavorite(option.ID)))
+	}
+	return "{" + strings.Join(entries, ", ") + "}"
+}
+
+func (m ModelPicker) visibleExpr(option ModelOption) string {
+	return fmt.Sprintf(
+		"($_modelSearch.trim() ? %q.includes($_modelSearch.trim().toLowerCase()) : ($_modelTab === 'favorites' ? $_favorites.%s : $_modelTab === %q))",
+		strings.ToLower(option.Name+" "+option.Provider+" "+m.providerLabel(option.Provider)),
+		modelKey(option.ID),
+		option.Provider,
+	)
+}
+
+func (m ModelPicker) emptyExpr() string {
+	visible := make([]string, 0, len(m.Options))
+	for _, option := range m.Options {
+		visible = append(visible, m.visibleExpr(option))
+	}
+	return "!(" + strings.Join(visible, " || ") + ")"
+}
+
+func modelSelectExpr(option ModelOption) string {
+	return fmt.Sprintf("$model = %q; $_modelPickerOpen = false; @post('/user/selected-model');", option.ID)
+}
+
+func modelFavoriteExpr(option ModelOption) string {
+	key := modelKey(option.ID)
+	return fmt.Sprintf(
+		"evt.stopPropagation(); el.closest('flip-list').capture(); $_favorites.%s = !$_favorites.%s; @post('/user/favorite-models?model=%s&favorite=' + $_favorites.%s);",
+		key, key, option.ID, key,
+	)
+}
+
+func costSlots(tier int) []bool {
+	slots := make([]bool, 3)
+	for i := range slots {
+		slots[i] = i < tier
+	}
+	return slots
+}
+
+templ modelPicker(models ModelPicker) {
+	<div
+		class="relative min-w-0 [anchor-name:--model-picker]"
+		data-signals:model__ifmissing={ fmt.Sprintf("%q", models.Selected) }
+		data-signals:_favorites__ifmissing={ models.favoritesSignal() }
+		data-signals:_model-picker-open="false"
+		data-signals:_model-search="''"
+		data-signals:_model-tab={ fmt.Sprintf("%q", models.initialTab()) }
+		data-on:click__outside="$_modelPickerOpen = false"
+		data-on:keydown__window="evt.key === 'Escape' && ($_modelPickerOpen = false)"
+	>
+		<button
+			type="button"
+			aria-haspopup="listbox"
+			aria-label="Choose model"
+			class="
+				flex h-8 max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-ui font-medium
+				text-ink-secondary transition-colors hover:bg-fill-strong hover:text-ink aria-expanded:bg-fill-strong
+				aria-expanded:text-ink
+			"
+			data-attr:aria-expanded="$_modelPickerOpen ? 'true' : 'false'"
+			data-on:click="$_modelSearch = ''; $_modelPickerOpen = !$_modelPickerOpen"
+		>
+			for _, option := range models.Options {
+				<span
+					class="flex min-w-0 items-center gap-1.5"
+					data-show={ fmt.Sprintf("$model === %q", option.ID) }
+					if option.ID != models.Selected {
+						style="display: none"
+					}
+				>
+					<span class="min-w-0 truncate">{ option.Name }</span>
+					@modelCost(option.CostTier)
+				</span>
+			}
+			<span class="flex-none text-muted transition-transform duration-200 [[aria-expanded=true]>&]:rotate-180">
+				@ui.ChevronDownSmallIcon()
+			</span>
+		</button>
+		<div
+			role="dialog"
+			aria-label="Models"
+			popover="manual"
+			data-effect="el.togglePopover($_modelPickerOpen)"
+			class="
+				fixed inset-auto m-0 my-2 flex h-model-picker max-h-[calc(100%-(--spacing(4)))] w-full max-w-[min(var(--container-model-picker),calc(100vw-(--spacing(8))))]
+				flex-col overflow-hidden rounded-card border border-line bg-surface text-ink shadow-popover not-open:hidden
+				[position-anchor:--model-picker] [position-area:top_span-right]
+				[position-try-fallbacks:flip-block,flip-inline]
+			"
+		>
+			<label class="flex flex-none items-center gap-2.5 border-b border-line-subtle px-4 text-muted">
+				@ui.SearchSmallIcon()
+				<input
+					type="text"
+					placeholder="Search models..."
+					aria-label="Search models"
+					autocomplete="off"
+					class="h-12 min-w-0 flex-1 border-0 bg-transparent text-ui text-ink outline-none placeholder:text-muted"
+					data-bind:_model-search
+					data-effect="$_modelPickerOpen && requestAnimationFrame(() => el.focus())"
+				/>
+			</label>
+			<div class="flex min-h-0 flex-1">
+				<nav
+					aria-label="Model providers"
+					class="
+						flex w-15 flex-none flex-col items-center gap-1.5 overflow-y-auto border-r border-line-subtle py-2.5
+						[scrollbar-width:none]
+					"
+				>
+					@modelTabButton(modelTabFavorites, "Favorites") {
+						@ui.StarSmallIcon()
+					}
+					<div class="my-1 h-px w-6 flex-none bg-line"></div>
+					for _, provider := range models.Providers {
+						@modelTabButton(provider.ID, provider.Label) {
+							@modelProviderIcon(provider.ID)
+						}
+					}
+				</nav>
+				<flip-list
+					role="listbox"
+					aria-label="Models"
+					class="
+						block min-w-0 flex-1 overflow-y-auto p-2
+						[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-width:thin]
+					"
+				>
+					for _, option := range models.Options {
+						@modelRow(models, option)
+					}
+					<p
+						class="px-3 py-8 text-center text-ui text-muted"
+						data-show={ models.emptyExpr() }
+						data-text="$_modelSearch.trim() ? 'No models match your search.' : 'No favorites yet. Star a model to pin it here.'"
+					></p>
+				</flip-list>
+			</div>
+		</div>
+	</div>
+}
+
+templ modelTabButton(tab, label string) {
+	<button
+		type="button"
+		aria-label={ label }
+		title={ label }
+		class="
+			grid size-10 flex-none cursor-pointer place-items-center rounded-lg border border-transparent text-muted
+			transition-colors hover:bg-fill-strong hover:text-ink aria-pressed:border-line-strong
+			aria-pressed:bg-fill-strong aria-pressed:text-ink [&_svg]:size-4.5
+		"
+		data-attr:aria-pressed={ fmt.Sprintf("!$_modelSearch.trim() && $_modelTab === %q ? 'true' : 'false'", tab) }
+		data-on:click={ fmt.Sprintf("$_modelSearch = ''; $_modelTab = %q", tab) }
+	>
+		{ children... }
+	</button>
+}
+
+templ modelRow(models ModelPicker, option ModelOption) {
+	<div
+		role="option"
+		tabindex="0"
+		class="
+			group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors
+			hover:bg-fill focus-visible:bg-fill aria-selected:bg-fill-strong
+		"
+		data-show={ models.visibleExpr(option) }
+		data-attr:aria-selected={ fmt.Sprintf("$model === %q ? 'true' : 'false'", option.ID) }
+		data-on:click={ modelSelectExpr(option) }
+		data-on:keydown={ fmt.Sprintf("if (evt.key !== 'Enter' && evt.key !== ' ') return; evt.preventDefault(); %s", modelSelectExpr(option)) }
+	>
+		<span class="mt-0.5 grid size-5 flex-none place-items-center text-ink-secondary [&_svg]:size-4">
+			@modelProviderIcon(option.Provider)
+		</span>
+		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+			<span class="flex min-w-0 items-center gap-2">
+				<span class="min-w-0 truncate text-ui font-medium text-ink">{ option.Name }</span>
+				@modelCost(option.CostTier)
+			</span>
+			<span class="truncate text-label text-muted">{ option.Description }</span>
+		</span>
+		<button
+			type="button"
+			aria-label={ "Favorite " + option.Name }
+			class="
+				grid size-7 flex-none self-center cursor-pointer place-items-center rounded-md text-muted opacity-0
+				transition hover:bg-fill-strong hover:text-ink focus-visible:opacity-100 group-hover:opacity-100
+				aria-pressed:text-favorite aria-pressed:opacity-100 [&[aria-pressed=true]_svg]:fill-current
+			"
+			if models.isFavorite(option.ID) {
+				aria-pressed="true"
+			} else {
+				aria-pressed="false"
+			}
+			data-attr:aria-pressed={ fmt.Sprintf("$_favorites.%s ? 'true' : 'false'", modelKey(option.ID)) }
+			data-on:click={ modelFavoriteExpr(option) }
+			data-on:keydown="evt.stopPropagation()"
+		>
+			@ui.StarSmallIcon()
+		</button>
+	</div>
+}
+
+templ modelCost(tier int) {
+	<span
+		role="img"
+		aria-label={ fmt.Sprintf("Cost level %d of 4", tier) }
+		class={ "inline-flex flex-none text-meta font-medium", templ.KV("text-accent", tier <= 2), templ.KV("text-danger", tier > 2) }
+	>
+		for _, filled := range costSlots(tier) {
+			<span aria-hidden="true" class={ "w-2 text-center", templ.KV("opacity-40", !filled) }>
+				if filled {
+					$
+				} else {
+					·
+				}
+			</span>
+		}
+		<span aria-hidden="true" class="w-1.5 text-center opacity-60">
+			if tier > 3 {
+				+
+			}
+		</span>
+	</span>
+}
+
+templ modelProviderIcon(provider string) {
+	switch provider {
+		case "openai":
+			@ui.OpenAIIcon()
+		case "anthropic":
+			@ui.ClaudeIcon()
+		case "google":
+			@ui.GeminiIcon()
+		case "meta":
+			@ui.MetaIcon()
+		case "x-ai":
+			@ui.GrokIcon()
+		case "deepseek":
+			@ui.DeepSeekIcon()
+		case "qwen":
+			@ui.QwenIcon()
+		case "moonshotai":
+			@ui.KimiIcon()
+		case "z-ai":
+			@ui.ZaiIcon()
+		case "xiaomi":
+			@ui.XiaomiIcon()
+		case "minimax":
+			@ui.MiniMaxIcon()
+		case "mistralai":
+			@ui.MistralIcon()
+	}
+}

@@ -25,7 +25,7 @@ func (x *Pool) LoginWithIdentity(ctx context.Context, arg LoginWithIdentityParam
 		defer sqlitex.Save(conn)(&err)
 
 		found, err := scanOneUser(conn, `
-			SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at
+			SELECT u.id, u.email, u.display_name, u.selected_model, u.created_at, u.updated_at
 			FROM auth_identities i
 			JOIN users u ON u.id = i.user_id
 			WHERE i.provider = :provider AND i.subject = :subject
@@ -39,7 +39,7 @@ func (x *Pool) LoginWithIdentity(ctx context.Context, arg LoginWithIdentityParam
 				UPDATE users
 				SET email = :email, display_name = :display_name, updated_at = CURRENT_TIMESTAMP
 				WHERE id = :id
-				RETURNING id, email, display_name, created_at, updated_at
+				RETURNING id, email, display_name, selected_model, created_at, updated_at
 			`, map[string]any{":email": arg.Email, ":display_name": arg.DisplayName, ":id": user.ID}, &user); err != nil {
 				return fmt.Errorf("refresh authenticated user: %w", err)
 			}
@@ -54,7 +54,7 @@ func (x *Pool) LoginWithIdentity(ctx context.Context, arg LoginWithIdentityParam
 		}
 
 		found, err = scanOneUser(conn, `
-			SELECT id, email, display_name, created_at, updated_at
+			SELECT id, email, display_name, selected_model, created_at, updated_at
 			FROM users
 			WHERE lower(email) = lower(:email)
 		`, map[string]any{":email": arg.Email}, &user)
@@ -66,7 +66,7 @@ func (x *Pool) LoginWithIdentity(ctx context.Context, arg LoginWithIdentityParam
 			if _, err := scanOneUser(conn, `
 				INSERT INTO users (id, email, display_name)
 				VALUES (:id, :email, :display_name)
-				RETURNING id, email, display_name, created_at, updated_at
+				RETURNING id, email, display_name, selected_model, created_at, updated_at
 			`, map[string]any{":id": uuid.New().String(), ":email": arg.Email, ":display_name": arg.DisplayName}, &user); err != nil {
 				return fmt.Errorf("insert user: %w", err)
 			}
@@ -97,6 +97,7 @@ func (x *Pool) DeleteUser(ctx context.Context, userID string) error {
 			`DELETE FROM messages WHERE thread_id IN (SELECT id FROM threads WHERE user_id = :user_id)`,
 			`DELETE FROM threads WHERE user_id = :user_id`,
 			`DELETE FROM openrouter_connections WHERE user_id = :user_id`,
+			`DELETE FROM user_favorite_models WHERE user_id = :user_id`,
 			`DELETE FROM auth_identities WHERE user_id = :user_id`,
 			`DELETE FROM users WHERE id = :user_id`,
 		} {

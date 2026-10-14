@@ -98,12 +98,14 @@
     --radius-dock: 14px;
 
     --spacing-sidebar: 248px;
+    --spacing-model-picker: 30rem;
 
     --container-auth: 25rem;
     --container-dialog: 430px;
     --container-bubble: 56ch;
     --container-landing: 700px;
     --container-thread: 740px;
+    --container-model-picker: 32rem;
     --container-settings: 760px;
 
     --color-backdrop: #050506;
@@ -135,8 +137,15 @@
     --color-accent-line: rgb(99 230 161 / 30%);
     --color-accent-faint: rgb(99 230 161 / 3%);
     --color-on-accent: #0b0b0d;
-    --color-logo-from: #a3f3c8;
-    --color-logo-to: #22b56a;
+    --color-favorite: #f5c542;
+    --color-brand-claude: #d97757;
+    --color-brand-gemini: #3186ff;
+    --color-brand-meta: #0082fb;
+    --color-brand-deepseek: #4d6bfe;
+    --color-brand-qwen: #6f69f7;
+    --color-brand-xiaomi: #ff6900;
+    --color-brand-minimax: #fe603c;
+    --color-brand-mistral: #fa500f;
     --color-google-blue: #4285f4;
     --color-google-green: #34a853;
     --color-google-yellow: #fbbc05;
@@ -207,27 +216,19 @@ body {
     @apply overflow-hidden bg-canvas font-sans text-compact tracking-normal text-ink-body antialiased;
 }
 
-.hidden {
-    display: none !important;
-}
-
-.invisible {
-    visibility: hidden !important;
-}
-
-.bg-raised-button {
+@utility bg-raised-button {
     background: linear-gradient(180deg, var(--color-raised-from), var(--color-raised-to));
 }
 
-.bg-dock {
+@utility bg-dock {
     background: linear-gradient(180deg, var(--color-dock-from), var(--color-dock-to));
 }
 
-.kbd {
+@utility kbd {
     @apply inline-grid h-4.5 min-w-4.5 place-items-center rounded-chip border border-b-2 border-line bg-fill px-1.25 text-meta leading-none font-medium text-muted;
 }
 
-.shimmer {
+@utility shimmer {
     background-image: linear-gradient(
         90deg,
         var(--color-muted) 38%,
@@ -238,6 +239,12 @@ body {
     background-clip: text;
     color: transparent;
     animation: var(--animate-shimmer);
+
+    @media (prefers-reduced-motion: reduce) {
+        background-image: none;
+        color: var(--color-ink-secondary);
+        animation: none;
+    }
 }
 
 .thread-mask {
@@ -296,14 +303,6 @@ body {
 @keyframes caret {
     50% {
         opacity: 0;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .shimmer {
-        background-image: none;
-        color: var(--color-ink-secondary);
-        animation: none;
     }
 }
 

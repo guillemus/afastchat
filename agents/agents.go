@@ -15,19 +15,16 @@ import (
 	"github.com/zendev-sh/goai/provider/openrouter"
 )
 
-const (
-	chatModel  = "anthropic/claude-haiku-5.5"
-	titleModel = "anthropic/claude-haiku-5.5"
-)
+const titleModel = "anthropic/claude-haiku-5.5"
 
 type Agent struct {
 	model      provider.LanguageModel
 	titleModel provider.LanguageModel
 }
 
-func NewAgent(apiKey string) *Agent {
+func NewAgent(apiKey, modelID string) *Agent {
 	return &Agent{
-		model:      openrouter.Chat(chatModel, openrouter.WithAPIKey(apiKey)),
+		model:      openrouter.Chat(ResolveModel(modelID).ID, openrouter.WithAPIKey(apiKey)),
 		titleModel: openrouter.Chat(titleModel, openrouter.WithAPIKey(apiKey)),
 	}
 }

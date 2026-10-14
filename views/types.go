@@ -17,6 +17,7 @@ type Viewer struct {
 type IndexData struct {
 	Threads []Thread
 	Viewer  Viewer
+	Models  ModelPicker
 }
 
 type ThreadData struct {
@@ -25,6 +26,27 @@ type ThreadData struct {
 	Messages  []MessageGroup
 	Streaming bool
 	Viewer    Viewer
+	Models    ModelPicker
+}
+
+type ModelOption struct {
+	ID          string
+	Name        string
+	Provider    string
+	Description string
+	CostTier    int
+}
+
+type ModelProvider struct {
+	ID    string
+	Label string
+}
+
+type ModelPicker struct {
+	Providers []ModelProvider
+	Options   []ModelOption
+	Selected  string
+	Favorites []string
 }
 
 type SettingsData struct {
@@ -124,4 +146,5 @@ type MessageThreadProps struct {
 	Thread          Thread
 	DoScrollSidebar bool
 	IsStreaming     bool
+	Models          ModelPicker
 }

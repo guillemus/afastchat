@@ -27,9 +27,16 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	models, err := x.modelPicker(ctx, user)
+	if err != nil {
+		handleBadReq(w, "load model picker", err)
+		return
+	}
+
 	x.render(w, r, views.IndexPage(views.IndexData{
 		Threads: mapViewThreads(threads),
 		Viewer:  viewerFromUser(user),
+		Models:  models,
 	}))
 }
 
@@ -120,12 +127,18 @@ func (x *Server) getThreadPage(
 		return td, fmt.Errorf("list threads: %w", err)
 	}
 
+	models, err := x.modelPicker(ctx, user)
+	if err != nil {
+		return td, fmt.Errorf("load model picker: %w", err)
+	}
+
 	return views.ThreadData{
 		Threads:   mapViewThreads(threads),
 		Thread:    viewThreadFromDbThread(thread),
 		Messages:  messages,
 		Streaming: thread.IsStreaming,
 		Viewer:    viewerFromUser(user),
+		Models:    models,
 	}, nil
 }
 
@@ -201,6 +214,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	var sig struct {
 		Message  string `json:"message"`
 		ThreadID string `json:"threadId"`
+		Model    string `json:"model"`
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read send message signals", "err", err)
@@ -209,6 +223,12 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	userMessage := sig.Message
 	apiKey := mustGetOpenRouterKey(r)
+	modelID := agents.ResolveModel(sig.Model).ID
+	if modelID != user.SelectedModel {
+		if err := x.db.UpdateUserSelectedModel(ctx, user.ID, modelID); err != nil {
+			slog.Error("save selected model before send", "err", err)
+		}
+	}
 
 	var threadID string
 	isNewThread := sig.ThreadID == ""
@@ -247,7 +267,7 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	GoRecover(func() {
-		x.writeAgentStreamToThread(apiKey, user.ID, threadID, userMessage)
+		x.writeAgentStreamToThread(apiKey, modelID, user.ID, threadID, userMessage)
 	})
 }
 
@@ -273,7 +293,7 @@ func (x *Server) persistStreamMessage(
 	return append(messages, created), nil
 }
 
-func (x *Server) writeAgentStreamToThread(apiKey, userID, threadID, userMessage string) {
+func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, userMessage string) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID, "userId", userID)
@@ -320,13 +340,13 @@ func (x *Server) writeAgentStreamToThread(apiKey, userID, threadID, userMessage 
 	}
 
 	logger.Info("starting agent stream")
-	x.streamAgentMessages(ctx, apiKey, userID, threadID, messages, logger)
+	x.streamAgentMessages(ctx, apiKey, modelID, userID, threadID, messages, logger)
 }
 
 func (x *Server) streamAgentMessages(
-	ctx context.Context, apiKey, userID, threadID string, messages []db.Message, logger *slog.Logger,
+	ctx context.Context, apiKey, modelID, userID, threadID string, messages []db.Message, logger *slog.Logger,
 ) {
-	agent := agents.NewAgent(apiKey)
+	agent := agents.NewAgent(apiKey, modelID)
 	sources := turnSources{}
 
 	for tokenEvt, err := range agent.Stream(ctx, messages) {
@@ -408,7 +428,7 @@ func lastAssistantMessageID(messages []db.Message) string {
 }
 
 func (x *Server) updateThreadTitle(ctx context.Context, apiKey, userID, threadID string, userMessage string) {
-	agent := agents.NewAgent(apiKey)
+	agent := agents.NewAgent(apiKey, "")
 	title := agent.GenerateTitleFromUserMessage(ctx, userMessage)
 
 	err := x.db.UpdateThreadTitle(ctx, userID, threadID, title)

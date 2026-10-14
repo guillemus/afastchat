@@ -83,5 +83,21 @@ depends = ["lint:golangci", "lint:sumtype", "lint:styles"]
 [tasks.test]
 run = "go test ./..."
 
+[tasks.bench]
+description = "Black-box streaming load benchmark against a fake OpenRouter. Extra args go to go test, e.g. -bench.users=100,500"
+run = "go test ./bench -run '^$' -bench Streaming"
+
+[tasks."bench:profile"]
+description = "Run the streaming benchmark with CPU, block, mutex, heap and trace profiles in tmp/bench, then print where app code spends CPU and blocks"
+run = "mkdir -p tmp/bench && go test ./bench -run '^$' -bench Streaming -o tmp/bench/bench.test -cpuprofile tmp/bench/cpu.out -blockprofile tmp/bench/block.out -mutexprofile tmp/bench/mutex.out -memprofile tmp/bench/mem.out -trace tmp/bench/trace.out"
+depends_post = ["bench:report"]
+
+[tasks."bench:report"]
+description = "Summarize the profiles from bench:profile, filtered to app code"
+run = [
+  "go tool pprof -top -cum -nodecount=30 -show 'afastchat\\.com/(server|db|agents|views)' tmp/bench/bench.test tmp/bench/cpu.out",
+  "go tool pprof -top -cum -nodecount=20 -show 'afastchat\\.com/(server|db|agents|views)' -hide 'handleThreadEvents$' tmp/bench/bench.test tmp/bench/block.out",
+]
+
 [tasks.tscheck]
 run = "bunx tsc --noEmit"
