@@ -245,7 +245,7 @@ func (x *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if err := x.sessions.Destroy(ctx); err != nil {
 		slog.Error("logout: destroy session", "err", err)
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func googleCallbackFailed(w http.ResponseWriter, r *http.Request, err error) {
