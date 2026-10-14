@@ -426,10 +426,7 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := sse.PatchElementTempl(views.ThreadPage(threadPage, false)); err != nil {
-			slog.Error("patch thread page", "err", err)
-			return
-		}
+		views.PatchThreadPage(sse, threadPage)
 	}
 
 msgloop:

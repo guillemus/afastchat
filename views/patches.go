@@ -19,6 +19,41 @@ func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread, isAc
 	patchTempl(sse, ThreadListItem(thread, isActive))
 }
 
+// PatchThreadPage is sent whenever a thread events stream connects: on page
+// load, on reconnect, on a sidebar switch and on back/forward. Only the last
+// two change the thread on screen, and only then should the messages scroll
+// to the bottom, the draft be cleared and the input be focused.
+//
+// The first script records whether this is a switch by checking if the
+// thread's sidebar item was already current before the patch. It must run
+// before the patch, because afterwards the item is always current. The URL
+// can't answer it either: on back/forward the browser has already changed it.
+//
+// The last script pushes the URL only when it differs, so it is a no-op on
+// load, reconnect and back/forward.
+func PatchThreadPage(sse *datastar.ServerSentEventGenerator, data ThreadData) {
+	path := "/threads/" + data.Thread.ID
+	executeScript(sse, fmt.Sprintf(
+		`window.threadSwitched = document.getElementById(%q)?.getAttribute('aria-current') !== 'page'`,
+		"thread-"+data.Thread.ID,
+	))
+	patchTempl(sse, ThreadPage(data, false))
+	PatchIsStreaming(sse, data.Streaming)
+	executeScript(sse, fmt.Sprintf(`
+		if (location.pathname !== %[1]q) history.pushState(null, '', %[1]q);
+		if (window.threadSwitched) {
+			const messages = document.getElementById('messages');
+			if (messages) messages.scrollTop = messages.scrollHeight;
+			const input = document.querySelector('textarea[name=message]');
+			if (input) {
+				input.value = '';
+				input.dispatchEvent(new Event('input', { bubbles: true }));
+				if (!document.activeElement?.closest('[data-editing]')) input.focus();
+			}
+		}
+	`, path))
+}
+
 func PatchThreadHeader(sse *datastar.ServerSentEventGenerator, thread Thread) {
 	patchTempl(sse, ThreadHeader(thread))
 }

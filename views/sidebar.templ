@@ -24,7 +24,24 @@ templ Sidebar(props SidebarProps) {
 		data-signals:thread-id={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
 		data-signals:rename-title__ifmissing="''"
 		if props.ActiveThreadID != "" {
-			data-init={ fmt.Sprintf("@get('/threads/%s/events')", props.ActiveThreadID) }
+			data-signals:_stream-thread={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
+			data-effect="@get('/threads/' + $_streamThread + '/events', { requestCancellation: 'cleanup' })"
+			data-on:mousedown="
+				const link = evt.target.closest('#thread-items a');
+				if (!link || link.hasAttribute('data-editing')) return;
+				if (evt.button !== 0 || evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
+				$_streamThread = link.id.slice('thread-'.length);
+			"
+			data-on:click="
+				const link = evt.target.closest('#thread-items a');
+				if (!link || evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
+				evt.preventDefault();
+				if (!link.hasAttribute('data-editing')) $_streamThread = link.id.slice('thread-'.length);
+			"
+			data-on:popstate__window="
+				const [, page, id] = location.pathname.split('/');
+				if (page === 'threads' && id) $_streamThread = id;
+			"
 		}
 		data-on:keydown__window="
 			if (evt.target.closest('input, textarea, [contenteditable]')) return;
@@ -167,22 +184,20 @@ templ ThreadListItem(thread Thread, isActive bool) {
 		data-preserve-attr="data-editing"
 		if isActive {
 			aria-current="page"
-			data-on:click="(el.hasAttribute('data-editing') || !(evt.metaKey || evt.ctrlKey || evt.shiftKey)) && evt.preventDefault()"
-			data-on:dblclick="
-				const input = el.querySelector('input');
-				input.value = el.dataset.title;
-				el.setAttribute('data-editing', '');
-				input.focus();
-				input.select();
-			"
 		}
+		data-on:click="el.hasAttribute('data-editing') && evt.preventDefault()"
+		data-on:dblclick="
+			const input = el.querySelector('input');
+			input.value = el.dataset.title;
+			el.setAttribute('data-editing', '');
+			input.focus();
+			input.select();
+		"
 	>
-		if isActive {
-			<span
-				class="absolute top-1.75 bottom-1.75 -left-2.5 w-0.5 rounded-sm bg-accent"
-				aria-hidden="true"
-			></span>
-		}
+		<span
+			class={ "absolute top-1.75 bottom-1.75 -left-2.5 w-0.5 rounded-sm bg-accent", templ.KV("hidden", !isActive) }
+			aria-hidden="true"
+		></span>
 		<span class="grid place-items-center">
 			if thread.IsStreaming && isActive {
 				<span class="size-1.5 animate-pulse-dot rounded-full bg-accent"></span>
@@ -194,18 +209,16 @@ templ ThreadListItem(thread Thread, isActive bool) {
 		</span>
 		<span class="grid min-w-0 group-data-pending:opacity-50">
 			<span data-thread-title class="truncate group-data-editing:hidden">{ thread.Title }</span>
-			if isActive {
-				<input
-					type="text"
-					aria-label="Chat name"
-					class="hidden min-w-0 bg-transparent p-0 text-ink outline-none group-data-editing:block"
-					data-on:keydown="
-						if (evt.key === 'Escape') el.closest('a').removeAttribute('data-editing');
-						if (evt.key === 'Enter') el.blur();
-					"
-					data-on:blur={ renameThreadExpr(thread.ID) }
-				/>
-			}
+			<input
+				type="text"
+				aria-label="Chat name"
+				class="hidden min-w-0 bg-transparent p-0 text-ink outline-none group-data-editing:block"
+				data-on:keydown="
+					if (evt.key === 'Escape') el.closest('a').removeAttribute('data-editing');
+					if (evt.key === 'Enter') el.blur();
+				"
+				data-on:blur={ renameThreadExpr(thread.ID) }
+			/>
 		</span>
 		<time-ago
 			datetime={ thread.CreatedAt.UTC().Format(time.RFC3339) }
