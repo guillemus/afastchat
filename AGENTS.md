@@ -16,6 +16,7 @@
 - Views are templ components in `views/`, shared UI in `views/ui/`. Frontend TypeScript lives in `views/scripts/` and is bundled into `public/index.js`.
 - Prefix client-only Datastar signals with `_`. Unprefixed signals are sent with every request.
 - Style with Tailwind utilities using the tokens in `views/styles.css`; `mise run lint:styles` rejects raw palette colors and default text sizes.
+- Prefetch links declaratively with `data-prefetch-immediate|eager|moderate|conservative` on the `<a>`; the speculation rules in `views/ui/shell.templ` match those attributes. Only use it on side-effect-free GETs.
 - Show user feedback through the shared toast: `x.patchToast(w, r, ui.Toast{...})`.
 
 # production

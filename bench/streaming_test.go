@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -41,6 +42,8 @@ var (
 	benchRate    = flag.Int("bench.rate", 100, "tokens per second per stream")
 	benchHistory = flag.Int("bench.history", 5, "previous turns seeded per thread")
 	benchMath    = flag.Bool("bench.math", false, "include LaTeX math in answers")
+	benchProc    = flag.Bool("bench.proc", false, "run the server binary as a separate process and report its CPU and RSS")
+	benchProcs   = flag.Int("bench.procs", 2, "GOMAXPROCS of the server process when -bench.proc is set")
 )
 
 const sessionCookie = "afastchat_session"
@@ -70,6 +73,7 @@ type app struct {
 	pool     *db.Pool
 	sessions *scs.SessionManager
 	keys     *openrouter.KeyCipher
+	server   *os.Process
 }
 
 var (
@@ -77,6 +81,14 @@ var (
 	appEnv  app
 	appErr  error
 )
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if appEnv.server != nil {
+		_ = appEnv.server.Kill()
+	}
+	os.Exit(code)
+}
 
 func startApp(b *testing.B) app {
 	appOnce.Do(func() { appEnv, appErr = bootApp() })
@@ -117,11 +129,19 @@ func bootApp() (app, error) {
 	if err != nil {
 		return app{}, err
 	}
-	go server.StartServer(config.Config{
-		DBPath:             dbPath,
-		Port:               port,
-		OpenRouterTokenKey: tokenKey,
-	})
+	var proc *os.Process
+	if *benchProc {
+		proc, err = startServerProcess(dir, dbPath, port, tokenKey, llm.URL, logFile)
+		if err != nil {
+			return app{}, err
+		}
+	} else {
+		go server.StartServer(config.Config{
+			DBPath:             dbPath,
+			Port:               port,
+			OpenRouterTokenKey: tokenKey,
+		})
+	}
 
 	url := "http://127.0.0.1:" + port
 	if err := waitReady(url + "/login"); err != nil {
@@ -139,7 +159,74 @@ func bootApp() (app, error) {
 	sessions := scs.New()
 	sessions.Store = db.NewSCSStore(pool)
 
-	return app{url: url, pool: pool, sessions: sessions, keys: keys}, nil
+	return app{url: url, pool: pool, sessions: sessions, keys: keys, server: proc}, nil
+}
+
+func startServerProcess(dir, dbPath, port, tokenKey, llmURL string, logFile *os.File) (*os.Process, error) {
+	bin, err := filepath.Abs(filepath.Join(dir, "server"))
+	if err != nil {
+		return nil, err
+	}
+	absDB, err := filepath.Abs(dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	build := exec.Command("go", "build", "-o", bin, "../cmd/server")
+	build.Stdout, build.Stderr = os.Stderr, os.Stderr
+	if err := build.Run(); err != nil {
+		return nil, fmt.Errorf("build server: %w", err)
+	}
+
+	cmd := exec.Command(bin)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(),
+		"DEV=",
+		"LOG_LEVEL=warn",
+		"DB_PATH="+absDB,
+		"PORT="+port,
+		"OPENROUTER_TOKEN_KEY="+tokenKey,
+		"OPENROUTER_BASE_URL="+llmURL,
+		"GOMAXPROCS="+strconv.Itoa(*benchProcs),
+	)
+	cmd.Stdout, cmd.Stderr = logFile, logFile
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return cmd.Process, nil
+}
+
+type procStats struct {
+	rssKB int64
+	cpu   time.Duration
+}
+
+func readProcStats(proc *os.Process) procStats {
+	if proc == nil {
+		return procStats{}
+	}
+	out, err := exec.Command("ps", "-o", "rss=", "-o", "time=", "-p", strconv.Itoa(proc.Pid)).Output()
+	if err != nil {
+		return procStats{}
+	}
+	fields := strings.Fields(string(out))
+	if len(fields) != 2 {
+		return procStats{}
+	}
+	rss, _ := strconv.ParseInt(fields[0], 10, 64)
+	return procStats{rssKB: rss, cpu: parseCPUTime(fields[1])}
+}
+
+func parseCPUTime(s string) time.Duration {
+	if _, rest, ok := strings.Cut(s, "-"); ok {
+		s = rest
+	}
+	var total float64
+	for part := range strings.SplitSeq(s, ":") {
+		v, _ := strconv.ParseFloat(part, 64)
+		total = total*60 + v
+	}
+	return time.Duration(total * float64(time.Second))
 }
 
 func freePort() (string, error) {
@@ -178,6 +265,7 @@ func benchmarkStreaming(b *testing.B, userCount int) {
 	var heapBefore runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&heapBefore)
+	procBefore := readProcStats(env.server)
 
 	clients := make([]*client, userCount)
 	for i := range clients {
@@ -195,8 +283,10 @@ func benchmarkStreaming(b *testing.B, userCount int) {
 	var heapIdle runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&heapIdle)
+	procIdle := readProcStats(env.server)
 
-	sampler := startMemSampler()
+	sampler := startMemSampler(env.server)
+	loopStart := time.Now()
 	stagger := time.Second / time.Duration(max(userCount, 1))
 
 	for b.Loop() {
@@ -210,8 +300,10 @@ func benchmarkStreaming(b *testing.B, userCount int) {
 		wg.Wait()
 	}
 	b.StopTimer()
+	elapsed := time.Since(loopStart)
+	procAfter := readProcStats(env.server)
 
-	peakHeap, goroutines := sampler.stop()
+	peakHeap, peakRSS, goroutines := sampler.stop()
 
 	var stats streamStats
 	for _, it := range clients {
@@ -226,9 +318,18 @@ func benchmarkStreaming(b *testing.B, userCount int) {
 	b.ReportMetric(ms(percentileDur(stats.done, 0.50)-ideal), "lag-p50-ms")
 	b.ReportMetric(ms(percentileDur(stats.done, 0.99)-ideal), "lag-p99-ms")
 	b.ReportMetric(float64(stats.wireBytes)/1024/float64(max(len(stats.done), 1)), "wire-KB/msg")
-	b.ReportMetric(max(float64(heapIdle.HeapInuse)-float64(heapBefore.HeapInuse), 0)/1024/float64(userCount), "idle-heap-KB/user")
-	b.ReportMetric(float64(peakHeap)/1024/1024, "peak-heap-MB")
-	b.ReportMetric(float64(goroutines), "peak-goroutines")
+	if env.server == nil {
+		b.ReportMetric(max(float64(heapIdle.HeapInuse)-float64(heapBefore.HeapInuse), 0)/1024/float64(userCount), "idle-heap-KB/user")
+		b.ReportMetric(float64(peakHeap)/1024/1024, "peak-heap-MB")
+		b.ReportMetric(float64(goroutines), "peak-goroutines")
+		return
+	}
+	cpu := procAfter.cpu - procIdle.cpu
+	b.ReportMetric(ms(cpu)/float64(max(len(stats.done), 1)), "cpu-ms/msg")
+	b.ReportMetric(cpu.Seconds()/elapsed.Seconds(), "cores")
+	b.ReportMetric(max(float64(procIdle.rssKB)-float64(procBefore.rssKB), 0)/float64(userCount), "idle-rss-KB/user")
+	b.ReportMetric(float64(procIdle.rssKB)/1024, "idle-rss-MB")
+	b.ReportMetric(float64(peakRSS)/1024, "peak-rss-MB")
 }
 
 func parseUserCounts(b *testing.B) []int {
@@ -356,6 +457,7 @@ func (x *client) sendAndWait(b *testing.B) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Datastar-Request", "true")
 
+	x.drain()
 	wireBefore := x.wire.n.Load()
 	sentAt := time.Now()
 	res, err := http.DefaultClient.Do(req)
@@ -372,6 +474,7 @@ func (x *client) sendAndWait(b *testing.B) {
 
 	timeout := time.Duration(*benchTokens)*time.Second/time.Duration(*benchRate) + time.Minute
 	var lastPatch time.Time
+	started := false
 	if !x.waitFor(timeout, func(evt sseEvent) bool {
 		if strings.Contains(evt.data, `id="messages"`) {
 			if lastPatch.IsZero() {
@@ -381,7 +484,8 @@ func (x *client) sendAndWait(b *testing.B) {
 			}
 			lastPatch = evt.at
 		}
-		return strings.Contains(evt.data, `"_isStreaming":false`)
+		started = started || strings.Contains(evt.data, `"_isStreaming":true`)
+		return started && strings.Contains(evt.data, `"_isStreaming":false`)
 	}) {
 		b.Errorf("thread %s: stream did not finish within %s", x.threadID, timeout)
 		return
@@ -389,6 +493,16 @@ func (x *client) sendAndWait(b *testing.B) {
 
 	x.stats.done = append(x.stats.done, time.Since(sentAt))
 	x.stats.wireBytes += x.wire.n.Load() - wireBefore
+}
+
+func (x *client) drain() {
+	for {
+		select {
+		case <-x.stream:
+		default:
+			return
+		}
+	}
 }
 
 func (x *client) waitFor(timeout time.Duration, match func(sseEvent) bool) bool {
@@ -464,10 +578,11 @@ type memSampler struct {
 	stopC      chan struct{}
 	doneC      chan struct{}
 	peakHeap   uint64
+	peakRSSKB  int64
 	goroutines int
 }
 
-func startMemSampler() *memSampler {
+func startMemSampler(proc *os.Process) *memSampler {
 	x := &memSampler{stopC: make(chan struct{}), doneC: make(chan struct{})}
 	go func() {
 		defer close(x.doneC)
@@ -478,6 +593,7 @@ func startMemSampler() *memSampler {
 			runtime.ReadMemStats(&m)
 			x.peakHeap = max(x.peakHeap, m.HeapInuse)
 			x.goroutines = max(x.goroutines, runtime.NumGoroutine())
+			x.peakRSSKB = max(x.peakRSSKB, readProcStats(proc).rssKB)
 			select {
 			case <-ticker.C:
 			case <-x.stopC:
@@ -488,10 +604,10 @@ func startMemSampler() *memSampler {
 	return x
 }
 
-func (x *memSampler) stop() (peakHeap uint64, goroutines int) {
+func (x *memSampler) stop() (peakHeap uint64, peakRSSKB int64, goroutines int) {
 	close(x.stopC)
 	<-x.doneC
-	return x.peakHeap, x.goroutines
+	return x.peakHeap, x.peakRSSKB, x.goroutines
 }
 
 func newFakeOpenRouter(tokens, rate int) *httptest.Server {

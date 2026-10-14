@@ -411,7 +411,10 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	defer unsubscribe()
 
-	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli()))
+	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli(
+		datastar.WithBrotliLGWin(18),
+		datastar.WithBrotliLevel(3),
+	)))
 	{
 		threadPage, err := x.getThreadPage(ctx, user, threadID)
 		if err != nil {

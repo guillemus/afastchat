@@ -36,13 +36,23 @@ templ Document(title string) {
 					"prefetch": [
 						{
 							"source": "document",
-							"where": {
-								"and": [
-									{ "href_matches": "/threads/*" },
-									{ "selector_matches": "#sidebar a" }
-								]
-							},
+							"where": { "selector_matches": "[data-prefetch-immediate]" },
+							"eagerness": "immediate"
+						},
+						{
+							"source": "document",
+							"where": { "selector_matches": "[data-prefetch-eager]" },
+							"eagerness": "eager"
+						},
+						{
+							"source": "document",
+							"where": { "selector_matches": "[data-prefetch-moderate]" },
 							"eagerness": "moderate"
+						},
+						{
+							"source": "document",
+							"where": { "selector_matches": "[data-prefetch-conservative]" },
+							"eagerness": "conservative"
 						}
 					]
 				}

@@ -42,7 +42,18 @@ templ Sidebar(props SidebarProps) {
 				<a href="/" class="text-ui font-semibold tracking-tighter text-ink no-underline">afastchat</a>
 			</div>
 			<a
+				href="https://designobo.com"
+				target="_blank"
+				rel="noopener"
+				class="flex items-center gap-1 self-start pl-2.25 text-meta text-muted no-underline transition-colors hover:text-ink"
+			>
+				made with
+				@ui.DesignoboMark()
+				designobo
+			</a>
+			<a
 				href="/"
+				data-prefetch-immediate
 				class="
 				bg-raised-button mt-3 flex h-8 items-center gap-2 rounded-lg border border-line pr-1.5 pl-2.25
 				font-medium text-ink no-underline shadow-button transition-colors hover:border-line-strong
@@ -150,6 +161,7 @@ templ ThreadListItem(thread Thread, isActive bool) {
 			templ.KV("text-ink-secondary hover:bg-fill hover:text-ink", !isActive),
 		}
 		href={ templ.SafeURL("/threads/" + thread.ID) }
+		data-prefetch-moderate
 	>
 		if isActive {
 			<span
