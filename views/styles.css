@@ -248,27 +248,33 @@ body {
     mask-image: linear-gradient(to bottom, transparent 0, black --spacing(11));
 }
 
-.work > summary::-webkit-details-marker,
-.thought > summary::-webkit-details-marker {
+details > summary::-webkit-details-marker {
     display: none;
 }
 
-.work[open] > summary .chev,
-.thought[open] > summary .chev {
+details[open] > summary .chev {
     transform: rotate(90deg);
 }
 
-.answer.is-streaming .markdown-content > :is(p, h1, h2, h3, h4):last-child::after,
-.answer.is-streaming .markdown-content > :is(ul, ol):last-child > li:last-child::after {
-    content: '';
-    display: inline-block;
-    width: --spacing(1.75);
-    height: --spacing(4);
-    margin-left: --spacing(0.75);
-    vertical-align: --spacing(-0.75);
-    border-radius: var(--radius-xs);
-    background: var(--color-accent);
-    animation: caret 1s steps(1) infinite;
+details::details-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+        grid-template-rows 200ms cubic-bezier(0.2, 0, 0, 1),
+        opacity 200ms cubic-bezier(0.2, 0, 0, 1),
+        content-visibility 200ms allow-discrete;
+}
+
+details[open]::details-content {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    details::details-content {
+        transition: none;
+    }
 }
 
 @keyframes pulse-dot {
@@ -293,12 +299,6 @@ body {
 @keyframes status-in {
     from {
         transform: translateY(100%);
-        opacity: 0;
-    }
-}
-
-@keyframes caret {
-    50% {
         opacity: 0;
     }
 }

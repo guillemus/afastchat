@@ -28,9 +28,6 @@ templ MessageThread(props MessageThreadProps) {
 				"
 			>
 				@MessageList(props)
-				if props.DoScrollSidebar {
-					@messageScrollRestore()
-				}
 				<button
 					type="button"
 					aria-label="Jump to latest message"
@@ -54,6 +51,9 @@ templ MessageThread(props MessageThreadProps) {
 					@chatInput(props.Thread.ID, props.IsStreaming, props.Models)
 				</div>
 			</div>
+			if props.DoScrollSidebar {
+				@messageScrollRestore()
+			}
 		}
 	</main>
 }
@@ -82,7 +82,7 @@ templ MessageList(props MessageThreadProps) {
 			$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
 		"
 	>
-		<div class="mx-auto w-full max-w-thread px-6 pb-6">
+		<div class="mx-auto w-full max-w-thread px-6 pb-16">
 			for _, message := range props.Messages {
 				@messageGroup(message)
 			}
@@ -100,7 +100,7 @@ templ messageGroup(group MessageGroup) {
 }
 
 templ userMessage(props UserMessageProps) {
-	<div id={ "msg-" + props.ID } class="user-message mt-10 flex scroll-mt-6 flex-col items-end">
+	<div id={ "msg-" + props.ID } class="user-message mt-16 flex scroll-mt-14 flex-col items-end first:mt-8">
 		<div
 			class="
 				w-fit max-w-bubble min-w-0 rounded-dock border border-line bg-surface-raised px-3.5
@@ -120,7 +120,7 @@ templ userMessage(props UserMessageProps) {
 templ assistantMessage(props AssistantMessagePartsProps) {
 	<div
 		id={ "msg-" + props.ID }
-		class={ "flex flex-col", templ.KV("min-h-[calc(100dvh-(--spacing(52)))]", props.LargeHeight) }
+		class={ "flex flex-col pt-3", templ.KV("min-h-[calc(100dvh-(--spacing(60)))]", props.LargeHeight) }
 	>
 		if props.Working || len(props.Work) > 0 {
 			<details
@@ -141,49 +141,58 @@ templ assistantMessage(props AssistantMessagePartsProps) {
 					} else {
 						<span>{ fmt.Sprintf("Worked for %ds", props.WorkSeconds) }</span>
 					}
-					<span class="chev text-muted transition-transform duration-200 [&_svg]:size-3.5">
+					<span class="chev text-muted transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] [&_svg]:size-3.5">
 						@ui.ChevronRightIcon()
 					</span>
 				</summary>
-				<div class="flex flex-col gap-2.5 pt-3.5">
-					for _, part := range props.Work {
-						@workPart(part)
-					}
-					if props.Working {
-						@workStatus(props.Status)
-					}
+				<div class="flex min-h-0 flex-col justify-end overflow-hidden">
+					<div class="flex flex-col gap-2.5 pt-3.5">
+						for _, part := range props.Work {
+							@workPart(part)
+						}
+						if props.Working {
+							@workStatus(props.Status)
+						}
+					</div>
 				</div>
 			</details>
 		}
 		if props.AnswerHTML != "" {
-			<div
-				class={
-					"answer mt-5.5 text-body text-ink-body",
-					templ.KV("is-streaming", props.Streaming),
-				}
-			>
+			<div class="answer mt-5.5 text-body text-ink-body">
 				@markdownContent(props.AnswerHTML)
 			</div>
 			if len(props.Sources) > 0 {
-				<div class="mt-7 border-b border-line pb-2.5 text-ui font-medium tracking-tight text-ink-secondary">
-					Sources
-				</div>
-				<ol class="mt-3.5 flex flex-col gap-2.5">
-					for _, source := range props.Sources {
-						<li>
-							<a
-								href={ templ.SafeURL(source.URL) }
-								target="_blank"
-								rel="noopener noreferrer"
-								class="group flex min-w-0 items-center gap-2.5 text-ui whitespace-nowrap no-underline"
-							>
-								@citeNumber(source.Number)
-								<span class="min-w-0 truncate text-ink-body group-hover:text-ink">{ source.Title }</span>
-								<span class="flex-none text-muted">{ source.Domain }</span>
-							</a>
-						</li>
-					}
-				</ol>
+				<details id={ "sources-" + props.ID } class="sources mt-7" data-preserve-attr="open">
+					<summary
+						class="
+							flex w-full cursor-pointer list-none items-center gap-1.5 border-b border-line pb-2.5 text-ui
+							font-medium tracking-tight text-ink-secondary select-none transition-colors hover:text-ink
+						"
+					>
+						<span>{ fmt.Sprintf("Sources (%d)", len(props.Sources)) }</span>
+						<span class="chev text-muted transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] [&_svg]:size-3.5">
+							@ui.ChevronRightIcon()
+						</span>
+					</summary>
+					<div class="flex min-h-0 flex-col justify-end overflow-hidden">
+						<ol class="mt-3.5 flex flex-col gap-2.5">
+							for _, source := range props.Sources {
+								<li>
+									<a
+										href={ templ.SafeURL(source.URL) }
+										target="_blank"
+										rel="noopener noreferrer"
+										class="group flex min-w-0 items-center gap-2.5 text-ui whitespace-nowrap no-underline"
+									>
+										@citeNumber(source.Number)
+										<span class="min-w-0 truncate text-ink-body group-hover:text-ink">{ source.Title }</span>
+										<span class="flex-none text-muted">{ source.Domain }</span>
+									</a>
+								</li>
+							}
+						</ol>
+					</div>
+				</details>
 			}
 		}
 	</div>
@@ -228,17 +237,19 @@ templ workPart(part AssistantPart) {
 				>
 					@ui.SparkIcon()
 					{ fmt.Sprintf("Thought for %ds", part.Seconds) }
-					<span class="chev text-muted transition-transform duration-200 [&_svg]:size-3">
+					<span class="chev text-muted transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] [&_svg]:size-3">
 						@ui.ChevronRightIcon()
 					</span>
 				</summary>
-				<div
-					class="
-						mt-1.5 mb-1 ml-1.75 border-l border-line pl-4.75 text-ui leading-relaxed text-ink-secondary
-						[&_.markdown-content_p]:mb-2
-					"
-				>
-					@markdownContent(part.MdContent)
+				<div class="flex min-h-0 flex-col justify-end overflow-hidden">
+					<div
+						class="
+							mt-1.5 mb-1 ml-1.75 border-l border-line pl-4.75 text-ui leading-relaxed text-ink-secondary
+							[&_.markdown-content_p]:mb-2
+						"
+					>
+						@markdownContent(part.MdContent)
+					</div>
 				</div>
 			</details>
 		case ToolCallPartProps:

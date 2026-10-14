@@ -107,7 +107,6 @@ func mapAssistantTurn(turn []db.Message, startedAt time.Time, streaming bool) vi
 		ID:        turn[0].ID,
 		StartedAt: startedAt,
 		Working:   streaming && answerText == "",
-		Streaming: streaming,
 		Work:      mapWorkParts(turn[:lastWork+1], render),
 	}
 

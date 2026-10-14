@@ -67,7 +67,7 @@ func PatchThreadMessageList(
 		let userMessages = el?.querySelectorAll('.user-message');
 		let latestUserMessage = userMessages?.[userMessages.length - 1];
 		if (latestUserMessage) {
-			latestUserMessage.scrollIntoView({ block: 'start' });
+			latestUserMessage.scrollIntoView({ block: 'start', behavior: 'smooth' });
 		} else if (el) {
 			el.scrollTop = el.scrollHeight;
 		}

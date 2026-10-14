@@ -72,7 +72,6 @@ type AssistantMessagePartsProps struct {
 	ID          string
 	LargeHeight bool
 	Working     bool
-	Streaming   bool
 	StartedAt   time.Time
 	WorkSeconds int
 	Work        []AssistantPart

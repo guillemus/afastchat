@@ -232,7 +232,7 @@ templ pinnedThreads(threads []Thread, activeThreadID string) {
 				const section = el.closest('section');
 				section.setAttribute('data-animating', '');
 				clearTimeout(section.pinnedAnimation);
-				section.pinnedAnimation = setTimeout(() => section.removeAttribute('data-animating'), 350);
+				section.pinnedAnimation = setTimeout(() => section.removeAttribute('data-animating'), 250);
 				$_pinnedCollapsed = !$_pinnedCollapsed;
 			"
 		>
@@ -252,7 +252,7 @@ templ pinnedThreads(threads []Thread, activeThreadID string) {
 		</button>
 		<div
 			class="
-				grid grid-rows-[1fr] duration-300 ease-[cubic-bezier(0.2,0,0,1)] group-data-collapsed/pinned:grid-rows-[0fr]
+				grid grid-rows-[1fr] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-data-collapsed/pinned:grid-rows-[0fr]
 				group-data-animating/pinned:transition-[grid-template-rows] motion-reduce:transition-none!
 			"
 		>
@@ -263,7 +263,7 @@ templ pinnedThreads(threads []Thread, activeThreadID string) {
 			>
 				<div
 					class="
-						flex flex-col gap-px duration-300 group-data-collapsed/pinned:opacity-0
+						flex flex-col gap-px duration-200 group-data-collapsed/pinned:opacity-0
 						group-data-animating/pinned:transition-opacity motion-reduce:transition-none!
 					"
 				>
