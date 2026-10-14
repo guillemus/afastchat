@@ -14,7 +14,6 @@ import (
 	"afastchat.com/views"
 
 	"github.com/alexedwards/scs/v2"
-	"github.com/asaskevich/EventBus"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
@@ -22,7 +21,7 @@ import (
 
 type Server struct {
 	cfg                   config.Config
-	bus                   EventBus.Bus
+	broker                *Broker
 	router                chi.Router
 	db                    *db.Pool
 	sessions              *scs.SessionManager
@@ -48,6 +47,11 @@ func StartServer(cfg config.Config) {
 		log.Fatalf("openrouter: %v", err)
 	}
 
+	broker, err := NewBroker()
+	if err != nil {
+		log.Fatalf("broker: %v", err)
+	}
+
 	sessionManager := scs.New()
 	sessionManager.Store = db.NewSCSStore(conn)
 	sessionManager.Lifetime = 30 * 24 * time.Hour
@@ -59,7 +63,7 @@ func StartServer(cfg config.Config) {
 
 	s := &Server{
 		cfg:                   cfg,
-		bus:                   EventBus.New(),
+		broker:                broker,
 		router:                chi.NewRouter(),
 		db:                    conn,
 		sessions:              sessionManager,

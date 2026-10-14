@@ -1,6 +1,7 @@
 - `/Users/guillem/Documents/projects/designobo.com` is the reference project for all design decisions: tooling, mise tasks, templ/Datastar view patterns, UI components, toasts, and coding standards. When unsure how to do something, check how designobo does it.
 - Deploy target is VPS, no Docker. Prefer single Go binary with embedded public assets.
 - Local env vars live in `~/.config/afastchat.com/.env`, loaded by mise.
+- Datastar v1.0.4 source code is cloned at `.repos/datastar` (gitignored). Read it for Datastar/Rocket APIs, e.g. `.repos/datastar/library/src/rocket/runtime.ts`. Web components are written with Rocket (`rocket()` from `/public/datastar-rocket-v1.0.4.js`), not raw `customElements.define`.
 
 # commands
 

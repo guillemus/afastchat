@@ -203,10 +203,7 @@ templ MessageList(props MessageThreadProps) {
 		id="messages"
 		data-ref:_messages
 		class={
-			`
-								thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto]
-								[scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]
-							`,
+			"thread-mask min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:auto] [scrollbar-color:var(--color-line-strong)_transparent] [scrollbar-gutter:stable] [scrollbar-width:thin]",
 			templ.KV("invisible", props.DoScrollSidebar),
 		}
 		data-on:scroll__debounce.10ms="

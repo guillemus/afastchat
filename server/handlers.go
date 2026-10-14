@@ -2,12 +2,14 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"afastchat.com/agents"
 	"afastchat.com/db"
@@ -15,6 +17,7 @@ import (
 	"afastchat.com/views/ui"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nats-io/nats.go"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -75,7 +78,7 @@ func (x *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, thread := range streaming {
 		if thread.UserID == user.ID {
-			publishThreadStop(x.bus, thread.ID)
+			x.broker.PublishThreadStop(thread.ID)
 		}
 	}
 
@@ -271,28 +274,6 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (x *Server) persistStreamMessage(
-	ctx context.Context, userID string, messages []db.Message, message db.Message,
-) ([]db.Message, error) {
-	if len(messages) > 0 {
-		last := &messages[len(messages)-1]
-		if message.Type == "assistant_message" || message.Type == "assistant_reasoning" {
-			if last.Type == message.Type {
-				last.Content += message.Content
-				err := x.db.UpdateMessageContent(ctx, last.ID, last.Content)
-				return messages, err
-			}
-		}
-	}
-
-	created, err := x.db.CreateMessageWithMeta(ctx, userID, message)
-	if err != nil {
-		return messages, err
-	}
-
-	return append(messages, created), nil
-}
-
 func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, userMessage string) {
 	ctx := context.Background()
 
@@ -301,23 +282,24 @@ func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, use
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	unsub := subscribeToStops(x.bus, threadID, cancel)
-	defer unsub()
+	if err := x.cancelOnThreadStop(ctx, threadID, cancel); err != nil {
+		logger.Error("subscribe to thread stops", "err", err)
+	}
 
 	if err := x.db.SetThreadStreaming(ctx, userID, threadID, true); err != nil {
 		logger.Error("set streaming state", "err", err)
 		return
 	}
 
-	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+	x.broker.PublishUserThread(userID, threadID)
 	defer func() {
 		ctx := context.Background()
 		if err := x.db.SetThreadStreaming(ctx, userID, threadID, false); err != nil {
 			logger.Error("unset streaming state", "err", err)
 			return
 		}
-		x.publishThreadDidUpdateEventEvent(threadID)
-		x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+		x.broker.PublishThreadUpdated(threadID)
+		x.broker.PublishUserThread(userID, threadID)
 	}()
 
 	_, err := x.db.CreateUserMessage(ctx, userID, threadID, userMessage)
@@ -331,7 +313,7 @@ func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, use
 		return
 	}
 
-	x.publishThreadEvent(threadID, ThreadEvent{UserMessageCreated: true})
+	x.broker.PublishThread(threadID, threadEvent{UserMessageCreated: true})
 
 	messages, err := x.db.GetMessagesByThread(ctx, userID, threadID)
 	if err != nil {
@@ -343,77 +325,51 @@ func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, use
 	x.streamAgentMessages(ctx, apiKey, modelID, userID, threadID, messages, logger)
 }
 
+const streamFlushInterval = 50 * time.Millisecond
+
 func (x *Server) streamAgentMessages(
 	ctx context.Context, apiKey, modelID, userID, threadID string, messages []db.Message, logger *slog.Logger,
 ) {
 	agent := agents.NewAgent(apiKey, modelID)
-	sources := turnSources{}
-
-	for tokenEvt, err := range agent.Stream(ctx, messages) {
-		if err != nil {
-			logger.Error("stream error", "err", err)
-			break
+	w := &streamWriter{
+		x:        x,
+		ctx:      context.WithoutCancel(ctx),
+		logger:   logger,
+		userID:   userID,
+		threadID: threadID,
+		messages: slices.Clone(messages),
+	}
+	defer func() {
+		if err := w.flush(); err != nil {
+			logger.Error("flush stream message", "err", err)
 		}
+	}()
 
-		switch evt := tokenEvt.(type) {
-		case agents.AssistantDelta:
-			messages, err = x.persistStreamMessage(ctx, userID, messages, db.Message{
-				ThreadID: threadID,
-				Type:     "assistant_message",
-				Content:  evt.Delta,
-			})
-		case agents.ReasoningDelta:
-			messages, err = x.persistStreamMessage(ctx, userID, messages, db.Message{
-				ThreadID: threadID,
-				Type:     "assistant_reasoning",
-				Content:  evt.Delta,
-			})
-		case agents.Toolcall:
-			messages, err = x.persistStreamMessage(ctx, userID, messages, db.Message{
-				ThreadID:   threadID,
-				Type:       "assistant_tool_call",
-				Content:    evt.Args,
-				ToolCallID: evt.CallID,
-				ToolName:   evt.Name,
-			})
-		case agents.ToolOutput:
-			messages, err = x.persistStreamMessage(ctx, userID, messages, db.Message{
-				ThreadID:   threadID,
-				Type:       "tool_output",
-				Content:    evt.Output,
-				ToolCallID: evt.CallID,
-				ToolName:   evt.Name,
-			})
-		case agents.Source:
-			messages, err = sources.add(ctx, x.db, userID, threadID, messages, evt)
-		case agents.UsageDelta:
-			logger.Debug("received usage",
-				"provider", evt.Usage.Provider,
-				"model", evt.Usage.Model,
-				"input_tokens", evt.Usage.InputTokens,
-				"cached_input_tokens", evt.Usage.CachedInputTokens,
-				"output_tokens", evt.Usage.OutputTokens,
-				"reasoning_tokens", evt.Usage.ReasoningTokens,
-			)
-			_, err = x.db.CreateUsage(ctx, db.Usage{
-				UserID:            userID,
-				ThreadID:          threadID,
-				MessageID:         lastAssistantMessageID(messages),
-				Provider:          evt.Usage.Provider,
-				Model:             evt.Usage.Model,
-				InputTokens:       evt.Usage.InputTokens,
-				CachedInputTokens: evt.Usage.CachedInputTokens,
-				OutputTokens:      evt.Usage.OutputTokens,
-				ReasoningTokens:   evt.Usage.ReasoningTokens,
-			})
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	events := pullStream(ctx, agent.Stream(ctx, messages))
+
+	ticker := time.NewTicker(streamFlushInterval)
+	defer ticker.Stop()
+
+	for {
+		var err error
+		select {
+		case <-ticker.C:
+			err = w.flush()
+		case item, ok := <-events:
+			if !ok {
+				return
+			}
+			if item.err != nil {
+				logger.Error("stream error", "err", item.err)
+				return
+			}
+			err = w.write(item.evt)
 		}
 		if err != nil {
 			logger.Error("persist stream message", "err", err)
-			break
-		}
-
-		if _, ok := tokenEvt.(agents.UsageDelta); !ok {
-			x.publishThreadDidUpdateEventEvent(threadID)
+			return
 		}
 	}
 }
@@ -436,7 +392,7 @@ func (x *Server) updateThreadTitle(ctx context.Context, apiKey, userID, threadID
 		slog.Error("update thread title", "err", err)
 	}
 
-	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+	x.broker.PublishUserThread(userID, threadID)
 }
 
 func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
@@ -444,21 +400,16 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 	threadID := chi.URLParam(r, "id")
 	ctx := r.Context()
 
-	threadEvtsC := make(chan ThreadEvent, 100)
-	threadEventHandler := func(evt ThreadEvent) {
-		threadEvtsC <- evt
+	threadSubject := ThreadSubject(threadID)
+	userThreadsSubject := UserThreadsSubject(user.ID)
+	messagesC := make(chan *nats.Msg, 64)
+	unsubscribe, err := x.broker.SubscribeSubjects(messagesC, threadSubject, userThreadsSubject)
+	if err != nil {
+		slog.Error("subscribe to thread events", "err", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
-
-	unsub := x.subscribeToThread(threadID, threadEventHandler)
-	defer unsub()
-
-	sidebarEvtsC := make(chan sidebarEvent, 100)
-	sidebarHandler := func(evt sidebarEvent) {
-		sidebarEvtsC <- evt
-	}
-
-	unsub = x.subscribeToSidebar(sidebarHandler)
-	defer unsub()
+	defer unsubscribe()
 
 	sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithBrotli()))
 	{
@@ -479,10 +430,23 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 msgloop:
-	for {
+	for ctx.Err() == nil {
+		var msg *nats.Msg
 		select {
-		case evt := <-threadEvtsC:
+		case msg = <-messagesC:
+		case <-ctx.Done():
+			break msgloop
+		}
+
+		switch msg.Subject {
+		case threadSubject:
 			slog.Debug("received thread event")
+
+			var evt threadEvent
+			if err := json.Unmarshal(msg.Data, &evt); err != nil {
+				slog.Error("decode thread event", "err", err)
+				continue msgloop
+			}
 
 			thread, err := x.db.GetThread(ctx, threadID, user.ID)
 			if err != nil {
@@ -504,10 +468,10 @@ msgloop:
 				views.PatchIsStreaming(sse, thread.IsStreaming)
 			}
 
-		case evt := <-sidebarEvtsC:
+		case userThreadsSubject:
 			slog.Debug("received sidebar thread update")
 
-			thread, err := x.db.GetThread(ctx, evt.threadID, user.ID)
+			thread, err := x.db.GetThread(ctx, string(msg.Data), user.ID)
 			if errors.Is(err, db.ErrNotFound) {
 				continue msgloop
 			}
@@ -520,8 +484,6 @@ msgloop:
 			if thread.ID == threadID {
 				views.PatchThreadHeader(sse, viewThreadFromDbThread(thread))
 			}
-		case <-ctx.Done():
-			break msgloop
 		}
 	}
 }
@@ -543,7 +505,7 @@ func (x *Server) handleStopStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	publishThreadStop(x.bus, sig.ThreadID)
+	x.broker.PublishThreadStop(sig.ThreadID)
 }
 
 func viewerFromUser(user db.User) views.Viewer {
@@ -575,7 +537,7 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.publishSidebarEvent(sidebarEvent{threadID: threadID})
+	x.broker.PublishUserThread(user.ID, threadID)
 
 	sse := datastar.NewSSE(w, r)
 	if err := sse.ExecuteScript(`document.getElementById('rename-thread-dialog')?.close()`); err != nil {
@@ -588,7 +550,7 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
 
-	publishThreadStop(x.bus, threadID)
+	x.broker.PublishThreadStop(threadID)
 	if err := x.db.DeleteThread(ctx, user.ID, threadID); err != nil {
 		slog.Error("delete thread", "err", err)
 		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't delete this chat. Try again."})

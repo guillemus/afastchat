@@ -35,7 +35,7 @@ func mapViewMessages(messages []db.Message, streaming, largeHeight bool) []views
 			startedAt = it.CreatedAt
 			out = append(out, views.UserMessageProps{
 				ID:        it.ID,
-				MdContent: renderMarkdown(it.Content),
+				MdContent: renderMarkdownCached(it.Content),
 				CreatedAt: it.CreatedAt,
 			})
 		case db.AssistantMessage, db.AssistantReasoning, db.AssistantToolCall, db.AssistantSources:
@@ -58,6 +58,11 @@ func mapViewMessages(messages []db.Message, streaming, largeHeight bool) []views
 }
 
 func mapAssistantTurn(turn []db.Message, startedAt time.Time, streaming bool) views.AssistantMessagePartsProps {
+	render := renderMarkdownCached
+	if streaming {
+		render = renderMarkdown
+	}
+
 	var refs []db.SourceRef
 	var sourcesID string
 	var sourcesUpdatedAt time.Time
@@ -103,7 +108,7 @@ func mapAssistantTurn(turn []db.Message, startedAt time.Time, streaming bool) vi
 		StartedAt: startedAt,
 		Working:   streaming && answerText == "",
 		Streaming: streaming,
-		Work:      mapWorkParts(turn[:lastWork+1]),
+		Work:      mapWorkParts(turn[:lastWork+1], render),
 	}
 
 	for _, ref := range refs {
@@ -116,7 +121,7 @@ func mapAssistantTurn(turn []db.Message, startedAt time.Time, streaming bool) vi
 	}
 
 	if answerText != "" {
-		props.AnswerHTML, props.Sources = applyCitations(renderMarkdown(answerText), refs)
+		props.AnswerHTML, props.Sources = applyCitations(render(answerText), refs)
 	}
 
 	switch {
@@ -133,14 +138,14 @@ func mapAssistantTurn(turn []db.Message, startedAt time.Time, streaming bool) vi
 	return props
 }
 
-func mapWorkParts(messages []db.Message) []views.AssistantPart {
+func mapWorkParts(messages []db.Message, render func(string) string) []views.AssistantPart {
 	var parts []views.AssistantPart
 	var narration strings.Builder
 	var narrationID string
 
 	flushNarration := func() {
 		if text := strings.TrimSpace(narration.String()); text != "" {
-			parts = append(parts, views.AssistantTextPartProps{ID: narrationID, MdContent: renderMarkdown(text)})
+			parts = append(parts, views.AssistantTextPartProps{ID: narrationID, MdContent: render(text)})
 		}
 		narration.Reset()
 		narrationID = ""
@@ -160,7 +165,7 @@ func mapWorkParts(messages []db.Message) []views.AssistantPart {
 			}
 			parts = append(parts, views.ReasoningPartProps{
 				ID:        it.ID,
-				MdContent: renderMarkdown(it.Content),
+				MdContent: render(it.Content),
 				Seconds:   elapsedSeconds(it.CreatedAt, it.UpdatedAt),
 			})
 		case db.AssistantToolCall:

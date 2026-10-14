@@ -31,18 +31,19 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	unsub := subscribeToStops(x.bus, thread.ID, cancel)
-	defer unsub()
+	if err := x.cancelOnThreadStop(ctx, thread.ID, cancel); err != nil {
+		logger.Error("subscribe to thread stops", "err", err)
+	}
 
-	x.publishSidebarEvent(sidebarEvent{threadID: thread.ID})
+	x.broker.PublishUserThread(thread.UserID, thread.ID)
 	defer func() {
 		ctx := context.Background()
 		if err := x.db.SetThreadStreaming(ctx, thread.UserID, thread.ID, false); err != nil {
 			logger.Error("unset streaming state", "err", err)
 			return
 		}
-		x.publishThreadDidUpdateEventEvent(thread.ID)
-		x.publishSidebarEvent(sidebarEvent{threadID: thread.ID})
+		x.broker.PublishThreadUpdated(thread.ID)
+		x.broker.PublishUserThread(thread.UserID, thread.ID)
 	}()
 
 	apiKey, found, err := x.openRouterKey(ctx, thread.UserID)
