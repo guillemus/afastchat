@@ -22,6 +22,7 @@ templ Sidebar(props SidebarProps) {
 		id="sidebar"
 		class="min-h-0 overflow-hidden border-r border-line-subtle bg-sidebar"
 		data-signals:thread-id={ fmt.Sprintf("'%s'", props.ActiveThreadID) }
+		data-signals:rename-title__ifmissing="''"
 		if props.ActiveThreadID != "" {
 			data-init={ fmt.Sprintf("@get('/threads/%s/events')", props.ActiveThreadID) }
 		}
@@ -162,6 +163,19 @@ templ ThreadListItem(thread Thread, isActive bool) {
 		}
 		href={ templ.SafeURL("/threads/" + thread.ID) }
 		data-prefetch-moderate
+		data-title={ thread.Title }
+		data-preserve-attr="data-editing"
+		if isActive {
+			aria-current="page"
+			data-on:click="(el.hasAttribute('data-editing') || !(evt.metaKey || evt.ctrlKey || evt.shiftKey)) && evt.preventDefault()"
+			data-on:dblclick="
+				const input = el.querySelector('input');
+				input.value = el.dataset.title;
+				el.setAttribute('data-editing', '');
+				input.focus();
+				input.select();
+			"
+		}
 	>
 		if isActive {
 			<span
@@ -178,7 +192,21 @@ templ ThreadListItem(thread Thread, isActive bool) {
 				</span>
 			}
 		</span>
-		<span class="truncate">{ thread.Title }</span>
+		<span class="grid min-w-0 group-data-pending:opacity-50">
+			<span data-thread-title class="truncate group-data-editing:hidden">{ thread.Title }</span>
+			if isActive {
+				<input
+					type="text"
+					aria-label="Chat name"
+					class="hidden min-w-0 bg-transparent p-0 text-ink outline-none group-data-editing:block"
+					data-on:keydown="
+						if (evt.key === 'Escape') el.closest('a').removeAttribute('data-editing');
+						if (evt.key === 'Enter') el.blur();
+					"
+					data-on:blur={ renameThreadExpr(thread.ID) }
+				/>
+			}
+		</span>
 		<time-ago
 			datetime={ thread.CreatedAt.UTC().Format(time.RFC3339) }
 			class={
@@ -188,4 +216,18 @@ templ ThreadListItem(thread Thread, isActive bool) {
 			}
 		>{ timeAgo(thread.CreatedAt, time.Now()) }</time-ago>
 	</a>
+}
+
+func renameThreadExpr(threadID string) string {
+	return fmt.Sprintf(`
+		const link = el.closest('a');
+		const title = el.value.trim();
+		if (link.hasAttribute('data-editing') && title && title !== link.dataset.title) {
+			link.querySelector('[data-thread-title]').textContent = title;
+			link.setAttribute('data-pending', '');
+			$renameTitle = title;
+			@post('/threads/%s/rename');
+		}
+		link.removeAttribute('data-editing');
+	`, threadID)
 }

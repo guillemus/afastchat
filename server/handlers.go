@@ -520,7 +520,8 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
 	var sig struct {
-		RenameTitle string `json:"renameTitle"`
+		RenameTitle    string `json:"renameTitle"`
+		ActiveThreadID string `json:"threadId"`
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read rename signals", "err", err)
@@ -528,21 +529,30 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sse := datastar.NewSSE(w, r)
+	defer func() {
+		thread, err := x.db.GetThread(ctx, threadID, user.ID)
+		if err != nil {
+			slog.Error("get renamed thread", "err", err)
+			return
+		}
+		views.PatchThreadItem(sse, viewThreadFromDbThread(thread), thread.ID == sig.ActiveThreadID)
+	}()
+
 	title := strings.TrimSpace(sig.RenameTitle)
 	if title == "" {
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastWarning, Message: "Enter a name for this chat."})
+		patchToastOnSSE(sse, ui.Toast{Kind: ui.ToastWarning, Message: "Enter a name for this chat."})
 		return
 	}
 
 	if err := x.db.UpdateThreadTitle(ctx, user.ID, threadID, title); err != nil {
 		slog.Error("rename thread", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't rename this chat. Try again."})
+		patchToastOnSSE(sse, ui.Toast{Kind: ui.ToastError, Message: "We couldn't rename this chat. Try again."})
 		return
 	}
 
 	x.broker.PublishUserThread(user.ID, threadID)
 
-	sse := datastar.NewSSE(w, r)
 	if err := sse.ExecuteScript(`document.getElementById('rename-thread-dialog')?.close()`); err != nil {
 		slog.Error("close rename dialog", "err", err)
 	}
