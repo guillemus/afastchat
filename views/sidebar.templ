@@ -284,7 +284,6 @@ templ ThreadListItem(thread Thread, isActive bool) {
 			templ.KV("text-ink-secondary hover:bg-fill hover:text-ink [--row-bg:var(--color-sidebar-hover)]", !isActive),
 		}
 		href={ templ.SafeURL("/threads/" + thread.ID) }
-		data-prefetch-moderate
 		data-title={ thread.Title }
 		data-preserve-attr="data-editing"
 		if isActive {
