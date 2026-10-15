@@ -8,50 +8,8 @@ import (
 	"time"
 )
 
-type threadGroup struct {
-	Label   string
-	Threads []Thread
-}
-
-func groupThreads(threads []Thread, now time.Time) []threadGroup {
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	bounds := []struct {
-		label string
-		since time.Time
-	}{
-		{"Today", today},
-		{"Yesterday", today.AddDate(0, 0, -1)},
-		{"Previous 7 days", today.AddDate(0, 0, -7)},
-		{"Previous 30 days", today.AddDate(0, 0, -30)},
-		{"Older", time.Time{}},
-	}
-
-	var groups []threadGroup
-	for _, thread := range threads {
-		label := bounds[len(bounds)-1].label
-		for _, bound := range bounds {
-			if !thread.CreatedAt.Before(bound.since) {
-				label = bound.label
-				break
-			}
-		}
-		if len(groups) == 0 || groups[len(groups)-1].Label != label {
-			groups = append(groups, threadGroup{Label: label})
-		}
-		groups[len(groups)-1].Threads = append(groups[len(groups)-1].Threads, thread)
-	}
-	return groups
-}
-
-func splitPinned(threads []Thread) (pinned, unpinned []Thread) {
-	for _, thread := range threads {
-		if thread.IsPinned {
-			pinned = append(pinned, thread)
-		} else {
-			unpinned = append(unpinned, thread)
-		}
-	}
-	return pinned, unpinned
+func remFromPixels(px int) string {
+	return strconv.FormatFloat(float64(px)/16, 'f', -1, 64) + "rem"
 }
 
 func initials(viewer Viewer) string {

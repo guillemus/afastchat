@@ -11,12 +11,8 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func PatchThreads(sse *datastar.ServerSentEventGenerator, threads []Thread, activeThreadID string) {
-	patchTempl(sse, ThreadItems(threads, activeThreadID), datastar.WithModeReplace())
-}
-
-func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread, isActive bool) {
-	patchTempl(sse, ThreadListItem(thread, isActive))
+func PatchSidebar(sse *datastar.ServerSentEventGenerator, list SidebarList) {
+	patchTempl(sse, ThreadItems(list), datastar.WithSelectorID("thread-items"), datastar.WithModeInner())
 }
 
 // PatchThreadPage is sent whenever a thread events stream connects: on page
@@ -24,18 +20,18 @@ func PatchThreadItem(sse *datastar.ServerSentEventGenerator, thread Thread, isAc
 // two change the thread on screen, and only then should the messages scroll
 // to the bottom, the draft be cleared and the input be focused.
 //
-// The first script records whether this is a switch by checking if the
-// thread's sidebar item was already current before the patch. It must run
-// before the patch, because afterwards the item is always current. The URL
-// can't answer it either: on back/forward the browser has already changed it.
+// The first script records whether this is a switch by checking which thread
+// the sidebar was rendered for before the patch. It must run before the patch,
+// because afterwards it is always this thread. The URL can't answer it either:
+// on back/forward the browser has already changed it.
 //
 // The last script pushes the URL only when it differs, so it is a no-op on
 // load, reconnect and back/forward.
 func PatchThreadPage(sse *datastar.ServerSentEventGenerator, data ThreadData) {
 	path := "/threads/" + data.Thread.ID
 	executeScript(sse, fmt.Sprintf(
-		`window.threadSwitched = document.getElementById(%q)?.getAttribute('aria-current') !== 'page'`,
-		"thread-"+data.Thread.ID,
+		`window.threadSwitched = document.getElementById('sidebar')?.dataset.activeThread !== %q`,
+		data.Thread.ID,
 	))
 	patchTempl(sse, ThreadPage(data, false))
 	PatchIsStreaming(sse, data.Streaming)

@@ -256,6 +256,23 @@ body {
     mask-image: linear-gradient(to bottom, transparent 0, black --spacing(11));
 }
 
+.thread-skeleton {
+    padding-inline: --spacing(7.5) --spacing(10);
+    background-image: linear-gradient(
+        to bottom,
+        transparent --spacing(2.75),
+        var(--color-fill) --spacing(2.75) --spacing(4.75),
+        transparent --spacing(4.75)
+    );
+    background-size: 100% --spacing(7.75);
+    background-clip: content-box;
+    animation: var(--animate-pulse);
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+}
+
 details > summary::-webkit-details-marker {
     display: none;
 }

@@ -16,13 +16,13 @@ type Viewer struct {
 }
 
 type IndexData struct {
-	Threads []Thread
+	Sidebar SidebarList
 	Viewer  Viewer
 	Models  ModelPicker
 }
 
 type ThreadData struct {
-	Threads   []Thread
+	Sidebar   *SidebarList
 	Thread    Thread
 	Messages  []MessageGroup
 	Streaming bool
@@ -51,7 +51,7 @@ type ModelPicker struct {
 }
 
 type SettingsData struct {
-	Threads             []Thread
+	Sidebar             SidebarList
 	Viewer              Viewer
 	OpenRouterConnected bool
 	OpenRouterFailed    bool

@@ -51,7 +51,7 @@ templ guestLayout() {
 
 templ IndexPage(data IndexData) {
 	@appLayout() {
-		@Sidebar(SidebarProps{Threads: data.Threads, Viewer: data.Viewer})
+		@Sidebar(SidebarProps{List: &data.Sidebar, Viewer: data.Viewer})
 		@MessageThread(MessageThreadProps{Models: data.Models})
 	}
 }
@@ -59,7 +59,7 @@ templ IndexPage(data IndexData) {
 templ ThreadPage(data ThreadData, doScrollSidebar bool) {
 	@appLayout() {
 		@Sidebar(SidebarProps{
-			Threads:        data.Threads,
+			List:           data.Sidebar,
 			ActiveThreadID: data.Thread.ID,
 			Viewer:         data.Viewer,
 		})
@@ -75,7 +75,7 @@ templ ThreadPage(data ThreadData, doScrollSidebar bool) {
 
 templ SettingsPage(data SettingsData) {
 	@appLayout() {
-		@Sidebar(SidebarProps{Threads: data.Threads, Viewer: data.Viewer})
+		@Sidebar(SidebarProps{List: &data.Sidebar, Viewer: data.Viewer})
 		@settings(data)
 	}
 }

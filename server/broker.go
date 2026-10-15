@@ -64,6 +64,10 @@ func UserThreadsSubject(userID string) string {
 	return fmt.Sprintf("users.%s.threads", userID)
 }
 
+func SidebarSubject(userID, tabID string) string {
+	return fmt.Sprintf("users.%s.sidebar.%s", userID, tabID)
+}
+
 type threadEvent struct {
 	UserMessageCreated bool `json:"user_message_created,omitempty"`
 }
@@ -88,6 +92,16 @@ func (b *Broker) PublishThreadStop(threadID string) {
 
 func (b *Broker) PublishUserThread(userID, threadID string) {
 	b.publish(UserThreadsSubject(userID), []byte(threadID))
+}
+
+func (b *Broker) PublishSidebarView(userID string, view sidebarView) {
+	data, err := json.Marshal(view)
+	if err != nil {
+		slog.Error("encode sidebar view", "user_id", userID, "err", err)
+		return
+	}
+
+	b.publish(SidebarSubject(userID, view.Tab), data)
 }
 
 func (b *Broker) SubscribeThreadStops(

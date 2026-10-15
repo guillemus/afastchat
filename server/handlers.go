@@ -24,9 +24,9 @@ import (
 func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	sidebar, err := x.initialSidebarList(ctx, user.ID, "")
 	if err != nil {
-		handleBadReq(w, "list threads", err)
+		handleBadReq(w, "list sidebar threads", err)
 		return
 	}
 
@@ -37,7 +37,7 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x.render(w, r, views.IndexPage(views.IndexData{
-		Threads: mapViewThreads(threads),
+		Sidebar: sidebar,
 		Viewer:  viewerFromUser(user),
 		Models:  models,
 	}))
@@ -46,9 +46,9 @@ func (x *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
-	threads, err := x.db.ListThreads(ctx, user.ID)
+	sidebar, err := x.initialSidebarList(ctx, user.ID, "")
 	if err != nil {
-		handleBadReq(w, "list threads", err)
+		handleBadReq(w, "list sidebar threads", err)
 		return
 	}
 
@@ -59,7 +59,7 @@ func (x *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x.render(w, r, views.SettingsPage(views.SettingsData{
-		Threads:             mapViewThreads(threads),
+		Sidebar:             sidebar,
 		Viewer:              viewerFromUser(user),
 		OpenRouterConnected: connected,
 		OpenRouterFailed:    r.URL.Query().Get("openrouter_failed") == "1",
@@ -127,18 +127,12 @@ func (x *Server) getThreadPage(
 		return td, err
 	}
 
-	threads, err := x.db.ListThreads(ctx, user.ID)
-	if err != nil {
-		return td, fmt.Errorf("list threads: %w", err)
-	}
-
 	models, err := x.modelPicker(ctx, user)
 	if err != nil {
 		return td, fmt.Errorf("load model picker: %w", err)
 	}
 
 	return views.ThreadData{
-		Threads:   mapViewThreads(threads),
 		Thread:    viewThreadFromDbThread(thread),
 		Messages:  messages,
 		Streaming: thread.IsStreaming,
@@ -156,6 +150,12 @@ func (x *Server) handleThread(w http.ResponseWriter, r *http.Request) {
 		handleBadReq(w, "get thread", err)
 		return
 	}
+	sidebar, err := x.initialSidebarList(ctx, user.ID, threadID)
+	if err != nil {
+		handleBadReq(w, "list sidebar threads", err)
+		return
+	}
+	threadPage.Sidebar = &sidebar
 
 	x.render(w, r, views.ThreadPage(threadPage, true))
 }
@@ -170,9 +170,9 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sse := datastar.NewSSE(w, r)
+	x.broker.PublishUserThread(user.ID, threadID)
 
-	sse.RemoveElementByID(fmt.Sprintf("thread-%s", threadID))
+	sse := datastar.NewSSE(w, r)
 
 	// TODO: we should probably send the threadID from the path, so that we can just
 	// check serverside whether to redirect instead of doing it clientside.
@@ -182,55 +182,8 @@ func (x *Server) handleArchiveThread(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
-func (x *Server) handleSearchThreads(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := mustGetUser(r)
-	var sig threadListSignals
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		slog.Error("read search signals", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to search chats. Refresh the page, then try again."})
-		return
-	}
-	threads, err := x.searchThreads(ctx, user.ID, sig.ThreadSearch)
-	if err != nil {
-		slog.Error("list threads for search", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't search your chats. Try again."})
-		return
-	}
-
-	sse := datastar.NewSSE(w, r)
-	views.PatchThreads(sse, mapViewThreads(threads), sig.ThreadID)
-}
-
-func (x *Server) searchThreads(ctx context.Context, userID, search string) ([]db.Thread, error) {
-	threads, err := x.db.ListThreads(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	query := strings.ToLower(strings.TrimSpace(search))
-	filtered := make([]db.Thread, 0, len(threads))
-	for _, it := range threads {
-		if strings.Contains(strings.ToLower(it.Title), query) {
-			filtered = append(filtered, it)
-		}
-	}
-	return filtered, nil
-}
-
 type threadListSignals struct {
-	ThreadSearch string `json:"threadSearch"`
-	ThreadID     string `json:"threadId"`
-}
-
-func (x *Server) patchThreadList(ctx context.Context, sse *datastar.ServerSentEventGenerator, userID string, sig threadListSignals) {
-	threads, err := x.searchThreads(ctx, userID, sig.ThreadSearch)
-	if err != nil {
-		slog.Error("list threads", "err", err)
-		patchToastOnSSE(sse, ui.Toast{Kind: ui.ToastError, Message: "We couldn't refresh your chats. Refresh the page."})
-		return
-	}
-	views.PatchThreads(sse, mapViewThreads(threads), sig.ThreadID)
+	ThreadID string `json:"threadId"`
 }
 
 func (x *Server) handlePinThread(w http.ResponseWriter, r *http.Request) {
@@ -245,13 +198,6 @@ func (x *Server) setThreadPinned(w http.ResponseWriter, r *http.Request, pinned 
 	ctx := r.Context()
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
-	var sig threadListSignals
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		slog.Error("read pin signals", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to update this chat. Refresh the page, then try again."})
-		return
-	}
-
 	if err := x.db.SetThreadPinned(ctx, user.ID, threadID, pinned); err != nil {
 		slog.Error("set thread pinned", "err", err, "pinned", pinned)
 		message := "We couldn't pin this chat. Try again."
@@ -262,7 +208,7 @@ func (x *Server) setThreadPinned(w http.ResponseWriter, r *http.Request, pinned 
 		return
 	}
 
-	x.patchThreadList(ctx, datastar.NewSSE(w, r), user.ID, sig)
+	x.broker.PublishUserThread(user.ID, threadID)
 }
 
 func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
@@ -428,9 +374,8 @@ func (x *Server) handleThreadEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	threadSubject := ThreadSubject(threadID)
-	userThreadsSubject := UserThreadsSubject(user.ID)
 	messagesC := make(chan *nats.Msg, 64)
-	unsubscribe, err := x.broker.SubscribeSubjects(messagesC, threadSubject, userThreadsSubject)
+	unsubscribe, err := x.broker.SubscribeSubjects(messagesC, threadSubject)
 	if err != nil {
 		slog.Error("subscribe to thread events", "err", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -465,49 +410,32 @@ msgloop:
 			break msgloop
 		}
 
-		switch msg.Subject {
-		case threadSubject:
-			slog.Debug("received thread event")
+		slog.Debug("received thread event")
 
-			var evt threadEvent
-			if err := json.Unmarshal(msg.Data, &evt); err != nil {
-				slog.Error("decode thread event", "err", err)
-				continue msgloop
-			}
+		var evt threadEvent
+		if err := json.Unmarshal(msg.Data, &evt); err != nil {
+			slog.Error("decode thread event", "err", err)
+			continue msgloop
+		}
 
-			thread, err := x.db.GetThread(ctx, threadID, user.ID)
-			if err != nil {
-				slog.Error("error getting thread", "err", err)
-				continue msgloop
-			}
+		thread, err := x.db.GetThread(ctx, threadID, user.ID)
+		if err != nil {
+			slog.Error("error getting thread", "err", err)
+			continue msgloop
+		}
 
-			messages, err := x.getDisplayMessages(ctx, user.ID, threadID, true, thread.IsStreaming)
-			if err != nil {
-				slog.Error("error getting messages", "err", err)
-				continue msgloop
-			}
+		messages, err := x.getDisplayMessages(ctx, user.ID, threadID, true, thread.IsStreaming)
+		if err != nil {
+			slog.Error("error getting messages", "err", err)
+			continue msgloop
+		}
 
-			if evt.UserMessageCreated {
-				views.PatchThreadMessageList(sse, messages, true)
-				views.ClearMessageInput(sse)
-			} else {
-				views.PatchThreadMessageList(sse, messages, false)
-				views.PatchIsStreaming(sse, thread.IsStreaming)
-			}
-
-		case userThreadsSubject:
-			slog.Debug("received sidebar thread update")
-
-			thread, err := x.db.GetThread(ctx, string(msg.Data), user.ID)
-			if errors.Is(err, db.ErrNotFound) {
-				continue msgloop
-			}
-			if err != nil {
-				slog.Error("error getting thread", "err", err)
-				continue msgloop
-			}
-
-			views.PatchThreadItem(sse, viewThreadFromDbThread(thread), thread.ID == threadID)
+		if evt.UserMessageCreated {
+			views.PatchThreadMessageList(sse, messages, true)
+			views.ClearMessageInput(sse)
+		} else {
+			views.PatchThreadMessageList(sse, messages, false)
+			views.PatchIsStreaming(sse, thread.IsStreaming)
 		}
 	}
 }
@@ -542,8 +470,7 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
 	var sig struct {
-		RenameTitle    string `json:"renameTitle"`
-		ActiveThreadID string `json:"threadId"`
+		RenameTitle string `json:"renameTitle"`
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read rename signals", "err", err)
@@ -552,14 +479,7 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse := datastar.NewSSE(w, r)
-	defer func() {
-		thread, err := x.db.GetThread(ctx, threadID, user.ID)
-		if err != nil {
-			slog.Error("get renamed thread", "err", err)
-			return
-		}
-		views.PatchThreadItem(sse, viewThreadFromDbThread(thread), thread.ID == sig.ActiveThreadID)
-	}()
+	defer x.broker.PublishUserThread(user.ID, threadID)
 
 	title := strings.TrimSpace(sig.RenameTitle)
 	if title == "" {
@@ -570,10 +490,7 @@ func (x *Server) handleRenameThread(w http.ResponseWriter, r *http.Request) {
 	if err := x.db.UpdateThreadTitle(ctx, user.ID, threadID, title); err != nil {
 		slog.Error("rename thread", "err", err)
 		patchToastOnSSE(sse, ui.Toast{Kind: ui.ToastError, Message: "We couldn't rename this chat. Try again."})
-		return
 	}
-
-	x.broker.PublishUserThread(user.ID, threadID)
 }
 
 func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
@@ -595,6 +512,7 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	x.deleteAttachmentObjects(objectKeys)
+	x.broker.PublishUserThread(user.ID, threadID)
 
 	sse := datastar.NewSSE(w, r)
 	if threadID == sig.ThreadID {
@@ -604,7 +522,6 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x.patchThreadList(ctx, sse, user.ID, sig)
 	if err := sse.ExecuteScript(`document.getElementById('sidebar-delete-thread-dialog')?.close()`); err != nil {
 		slog.Error("close delete dialog", "err", err)
 	}

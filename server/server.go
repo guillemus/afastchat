@@ -115,7 +115,7 @@ func StartServer(cfg config.Config) {
 		http.Redirect(w, r, "/public/favicon.ico", http.StatusMovedPermanently)
 	})
 
-	s.router.Get("/", s.handleRoot)
+	s.router.With(s.landingForGuests, s.requireAuth, s.requireOpenRouter).Get("/", s.handleIndex)
 	s.router.Get("/login", s.handleLoginPage)
 	s.router.Get("/privacy", func(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, views.PrivacyPage())
@@ -142,7 +142,8 @@ func StartServer(cfg config.Config) {
 		r.Post("/threads/{id}/delete", s.handleDeleteThread)
 		r.Post("/threads/{id}/pin", s.handlePinThread)
 		r.Post("/threads/{id}/unpin", s.handleUnpinThread)
-		r.Get("/threads/search", s.handleSearchThreads)
+		r.Get("/sidebar/events", s.handleSidebarEvents)
+		r.Post("/sidebar/view", s.handleSidebarView)
 		r.Post("/chat/stop", s.handleStopStreaming)
 		r.Post("/user/selected-model", s.handleSelectModel)
 		r.Post("/user/favorite-models", s.handleFavoriteModel)

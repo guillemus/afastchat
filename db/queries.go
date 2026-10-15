@@ -24,7 +24,7 @@ func (x *Pool) ListThreads(ctx context.Context, userID string) ([]Thread, error)
 		SELECT id, user_id, title, archived_at, pinned_at, is_streaming, created_at, updated_at
 		FROM threads
 		WHERE user_id = :user_id AND archived_at IS NULL
-		ORDER BY pinned_at DESC NULLS LAST, created_at DESC
+		ORDER BY pinned_at DESC NULLS LAST, created_at DESC, id DESC
 	`, map[string]any{":user_id": userID}, func(stmt *sqlite.Stmt) (Thread, error) {
 		return scanThread(stmt), nil
 	})

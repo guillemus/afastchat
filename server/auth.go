@@ -89,20 +89,14 @@ func mustGetUser(r *http.Request) db.User {
 	return user
 }
 
-func (x *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
-	user, found, err := x.currentUser(r)
-	if err != nil {
-		slog.Error("root: current user", "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if !found {
-		x.render(w, r, views.LandingPage())
-		return
-	}
-
-	ctx := context.WithValue(r.Context(), userContextKey{}, user)
-	x.requireOpenRouter(http.HandlerFunc(x.handleIndex)).ServeHTTP(w, r.WithContext(ctx))
+func (x *Server) landingForGuests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if x.sessions.GetString(r.Context(), "user_id") == "" {
+			x.render(w, r, views.LandingPage())
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (x *Server) handleLoginPage(w http.ResponseWriter, r *http.Request) {

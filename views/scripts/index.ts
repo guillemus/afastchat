@@ -1,5 +1,6 @@
 import '/public/datastar-rocket-v1.0.4.js'
 import './web_components'
+import './sidebar'
 
 declare global {
     interface Window {
