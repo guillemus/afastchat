@@ -2,6 +2,8 @@ package ui
 
 import "afastchat.com/config"
 
+const siteDescription = "A very fast AI chat built for the web. Streams in real time, searches the live web, and runs on your OpenRouter account."
+
 templ Document(title string) {
 	<!DOCTYPE html>
 	<html lang="en" class="bg-canvas text-ink scheme-dark">
@@ -9,6 +11,20 @@ templ Document(title string) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title }</title>
+			<meta name="description" content={ siteDescription }/>
+			<meta property="og:type" content="website"/>
+			<meta property="og:site_name" content="afastchat"/>
+			<meta property="og:title" content={ title }/>
+			<meta property="og:description" content={ siteDescription }/>
+			<meta property="og:url" content={ config.AppURL() }/>
+			<meta property="og:image" content={ config.AppURL() + "/public/og.png" }/>
+			<meta property="og:image:width" content="1200"/>
+			<meta property="og:image:height" content="630"/>
+			<meta property="og:image:alt" content="afastchat — A very fast AI chat. Built for the web."/>
+			<meta name="twitter:card" content="summary_large_image"/>
+			<meta name="twitter:title" content={ title }/>
+			<meta name="twitter:description" content={ siteDescription }/>
+			<meta name="twitter:image" content={ config.AppURL() + "/public/og.png" }/>
 			<link rel="icon" href="/public/favicon.ico" sizes="32x32"/>
 			<link rel="icon" href="/public/favicon.svg" type="image/svg+xml"/>
 			<link rel="apple-touch-icon" href="/public/apple-touch-icon.png"/>
@@ -89,6 +105,7 @@ templ Document(title string) {
 			"
 		>
 			@ToastView()
+			@ImageModal()
 			{ children... }
 			if config.Dev {
 				@DebugSignals()

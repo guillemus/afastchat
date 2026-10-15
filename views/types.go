@@ -65,7 +65,13 @@ type MessageGroup interface {
 type UserMessageProps struct {
 	ID        string
 	MdContent string
+	Images    []ImageAttachment
 	CreatedAt time.Time
+}
+
+type ImageAttachment struct {
+	URL      string
+	Filename string
 }
 
 type AssistantMessagePartsProps struct {

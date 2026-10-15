@@ -6,6 +6,10 @@ _.file = {
 OPENROUTER_TOKEN_KEY = { required = true }
 GOOGLE_CLIENT_ID = { required = true }
 GOOGLE_CLIENT_SECRET = { required = true }
+R2_ENDPOINT = { required = true }
+R2_ACCESS_KEY_ID = { required = true }
+R2_SECRET_ACCESS_KEY = { required = true }
+R2_BUCKET = { required = true }
 
 [tools]
 go = "1.27.1"

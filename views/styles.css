@@ -209,8 +209,16 @@ body {
     height: 100%;
 }
 
+html:has(.app-shell) {
+    overscroll-behavior: none;
+}
+
+body:has(.app-shell) {
+    overflow: hidden;
+}
+
 body {
-    @apply overflow-hidden bg-canvas font-sans text-compact tracking-normal text-ink-body antialiased;
+    @apply bg-canvas font-sans text-compact tracking-normal text-ink-body antialiased;
 }
 
 @utility bg-raised-button {

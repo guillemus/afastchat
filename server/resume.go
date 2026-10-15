@@ -62,7 +62,7 @@ func (x *Server) resumeStreamingThread(thread db.Thread) {
 		return
 	}
 
-	messages, err := x.db.GetMessagesByThread(ctx, thread.UserID, thread.ID)
+	messages, err := x.getThreadMessages(ctx, thread.UserID, thread.ID)
 	if err != nil {
 		logger.Error("get messages", "err", err)
 		return

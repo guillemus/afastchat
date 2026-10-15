@@ -82,11 +82,13 @@ func (x *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := x.db.DeleteUser(ctx, user.ID); err != nil {
+	objectKeys, err := x.db.DeleteUser(ctx, user.ID)
+	if err != nil {
 		slog.Error("delete account", "user_id", user.ID, "err", err)
 		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Your account could not be deleted. Try again."})
 		return
 	}
+	x.deleteAttachmentObjects(objectKeys)
 
 	if err := x.sessions.Destroy(ctx); err != nil {
 		slog.Error("delete account: destroy session", "err", err)
@@ -102,7 +104,7 @@ func (x *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 func (x *Server) getDisplayMessages(
 	ctx context.Context, userID, threadID string, largeHeight, streaming bool,
 ) ([]views.MessageGroup, error) {
-	messages, err := x.db.GetMessagesByThread(ctx, userID, threadID)
+	messages, err := x.getThreadMessages(ctx, userID, threadID)
 	if err != nil {
 		return nil, fmt.Errorf("get messages: %w", err)
 	}
@@ -266,17 +268,35 @@ func (x *Server) setThreadPinned(w http.ResponseWriter, r *http.Request, pinned 
 func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
+	r.Body = http.MaxBytesReader(w, r.Body, maxSendBodyBytes)
 	var sig struct {
-		Message  string `json:"message"`
-		ThreadID string `json:"threadId"`
-		Model    string `json:"model"`
+		Message  string        `json:"message"`
+		ThreadID string        `json:"threadId"`
+		Model    string        `json:"model"`
+		Images   []imageSignal `json:"images"`
 	}
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read send message signals", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Refresh the page, then try again."})
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Remove large images or refresh the page, then try again."})
 		return
 	}
 	userMessage := sig.Message
+
+	uploads, err := uploadedImagesFromSignals(sig.Images)
+	if err != nil {
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastWarning, Message: err.Error()})
+		return
+	}
+	if strings.TrimSpace(userMessage) == "" && len(uploads) == 0 {
+		return
+	}
+
+	attachments, err := x.storeAttachments(ctx, user.ID, uploads)
+	if err != nil {
+		slog.Error("store attachments before send", "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "The images could not be uploaded. Remove them or try again."})
+		return
+	}
 	apiKey := mustGetOpenRouterKey(r)
 	modelID := agents.ResolveModel(sig.Model).ID
 	if modelID != user.SelectedModel {
@@ -322,11 +342,17 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	GoRecover(func() {
-		x.writeAgentStreamToThread(apiKey, modelID, user.ID, threadID, userMessage)
+		x.writeAgentStreamToThread(apiKey, modelID, user.ID, threadID, userMessage, attachments)
 	})
+
+	if !isNewThread {
+		views.ClearMessageInput(datastar.NewSSE(w, r))
+	}
 }
 
-func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, userMessage string) {
+func (x *Server) writeAgentStreamToThread(
+	apiKey, modelID, userID, threadID, userMessage string, attachments []db.AttachmentInput,
+) {
 	ctx := context.Background()
 
 	logger := slog.With("threadId", threadID, "userId", userID)
@@ -354,9 +380,13 @@ func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, use
 		x.broker.PublishUserThread(userID, threadID)
 	}()
 
-	_, err := x.db.CreateUserMessage(ctx, userID, threadID, userMessage)
+	message, err := x.db.CreateUserMessage(ctx, userID, threadID, userMessage)
 	if err != nil {
 		logger.Error("create user message", "err", err)
+		return
+	}
+	if err := x.db.CreateMessageAttachments(ctx, userID, message.ID, attachments); err != nil {
+		logger.Error("create message attachments", "err", err)
 		return
 	}
 	_, err = x.db.CreateAssistantMessage(ctx, userID, threadID, "")
@@ -367,7 +397,7 @@ func (x *Server) writeAgentStreamToThread(apiKey, modelID, userID, threadID, use
 
 	x.broker.PublishThread(threadID, threadEvent{UserMessageCreated: true})
 
-	messages, err := x.db.GetMessagesByThread(ctx, userID, threadID)
+	messages, err := x.getThreadMessages(ctx, userID, threadID)
 	if err != nil {
 		logger.Error("get messages", "err", err)
 		return
@@ -612,11 +642,13 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x.broker.PublishThreadStop(threadID)
-	if err := x.db.DeleteThread(ctx, user.ID, threadID); err != nil {
+	objectKeys, err := x.db.DeleteThread(ctx, user.ID, threadID)
+	if err != nil {
 		slog.Error("delete thread", "err", err)
 		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't delete this chat. Try again."})
 		return
 	}
+	x.deleteAttachmentObjects(objectKeys)
 
 	sse := datastar.NewSSE(w, r)
 	if threadID == sig.ThreadID {

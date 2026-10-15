@@ -106,15 +106,24 @@ templ messageGroup(group MessageGroup) {
 
 templ userMessage(props UserMessageProps) {
 	<div id={ "msg-" + props.ID } class="user-message mt-16 flex scroll-mt-14 flex-col items-end first:mt-8">
-		<div
-			class="
-				w-fit max-w-bubble min-w-0 rounded-dock border border-line bg-surface-raised px-3.5
-				py-2 text-body break-words text-ink
-				[&_.markdown-content_p]:m-0 [&_.markdown-content_p+p]:mt-2
-			"
-		>
-			@markdownContent(props.MdContent)
-		</div>
+		if len(props.Images) > 0 {
+			<div class="mb-2 flex max-w-bubble flex-wrap justify-end gap-2">
+				for _, image := range props.Images {
+					@ui.ImageThumbnail(image.URL, image.Filename)
+				}
+			</div>
+		}
+		if props.MdContent != "" {
+			<div
+				class="
+					w-fit max-w-bubble min-w-0 rounded-dock border border-line bg-surface-raised px-3.5
+					py-2 text-body break-words text-ink
+					[&_.markdown-content_p]:m-0 [&_.markdown-content_p+p]:mt-2
+				"
+			>
+				@markdownContent(props.MdContent)
+			</div>
+		}
 		<div class="mt-1.5 flex items-center gap-1.5 text-label text-muted [&_svg]:size-3.25">
 			@ui.ClockIcon()
 			<local-time datetime={ props.CreatedAt.UTC().Format(time.RFC3339) }>{ clockTime(ctx, props.CreatedAt) }</local-time>
@@ -314,17 +323,24 @@ templ workStatus(status Status) {
 templ chatInput(threadID string, isStreaming bool, models ModelPicker) {
 	<div
 		class="
-			bg-dock flex flex-col gap-1 rounded-dock border border-line p-2 shadow-dock transition-colors
-			aria-busy:border-accent-line
+			bg-dock relative flex flex-col gap-1 rounded-dock border border-line p-2 shadow-dock transition-colors
+			aria-busy:border-accent-line data-dragging:border-accent data-dragging:ring-4 data-dragging:ring-accent-soft
 		"
+		{ ui.ImageDropAttrs()... }
 		if threadID != "" {
 			data-signals:thread-id={ fmt.Sprintf("'%s'", threadID) }
 		}
 		data-signals:_is-streaming={ strconv.FormatBool(isStreaming) }
 		data-signals:message="''"
-		data-computed:_can-submit="$message.trim() !== '' && !$_isStreaming"
+		data-signals:images="[]"
+		data-signals:_images-status="''"
+		data-computed:_can-submit="($message.trim() !== '' || $images.length > 0) && !$_isStreaming && !$_sendingMessage"
 		data-attr:aria-busy="$_sendingMessage && 'true'"
+		data-on:paste={ ui.ImageAttachmentPaste }
 	>
+		@ui.ImageAttachmentInput()
+		@ui.ImageDropOverlay()
+		@ui.ImageAttachmentPreviews()
 		<textarea
 			class="
 				field-sizing-content block max-h-45 min-h-8 w-full resize-none border-0 bg-transparent px-2.5
@@ -346,6 +362,7 @@ templ chatInput(threadID string, isStreaming bool, models ModelPicker) {
 			"
 		></textarea>
 		<div class="flex items-center gap-2">
+			@ui.AttachImageButton()
 			@modelPicker(models)
 			<button
 				type="button"
@@ -357,8 +374,9 @@ templ chatInput(threadID string, isStreaming bool, models ModelPicker) {
 				style={ hiddenStyle(isStreaming) }
 				disabled
 				data-show="!$_isStreaming"
+				data-indicator:_sending-message
 				data-attr:disabled="!$_canSubmit"
-				data-on:click="@post('/chat/send')"
+				data-on:click="if ($_canSubmit) @post('/chat/send')"
 			>
 				@ui.ArrowUpSmallIcon()
 			</button>

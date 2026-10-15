@@ -1,0 +1,248 @@
+package ui
+
+import "fmt"
+
+const maxImageAttachments = 4
+
+var imageAttachmentsScript = templ.NewOnceHandle()
+
+templ imageAttachmentsScriptTag() {
+	<script>
+		function attachImageFiles(files) {
+			const input = document.getElementById('image-attachment-input')
+			const transfer = new DataTransfer()
+			for (const file of files) {
+				transfer.items.add(file)
+			}
+			input.files = transfer.files
+			input.dispatchEvent(new Event('change', { bubbles: true }))
+		}
+
+		async function readImageAttachments(files, existing) {
+			try {
+				const images = [...existing]
+				let message = ''
+				for (const file of files) {
+					if (
+						!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type)
+					) {
+						message = 'Only PNG, JPEG, GIF, and WebP images can be attached.'
+						continue
+					}
+					if (file.size > 5 * 1024 * 1024) {
+						message = 'Each image must be 5 MB or smaller.'
+						continue
+					}
+					const contents = await new Promise((resolve, reject) => {
+						const reader = new FileReader()
+						reader.onload = () => resolve(reader.result.split(',')[1])
+						reader.onerror = () => reject(reader.error)
+						reader.onabort = () => reject(new Error('Image read aborted'))
+						reader.readAsDataURL(file)
+					})
+					if (
+						images.some(
+							(image) => image.name === file.name && image.contents === contents,
+						)
+					) {
+						continue
+					}
+					if (images.length >= 4) {
+						message = 'Attach at most 4 images.'
+						break
+					}
+					images.push({ name: file.name, contents, mime: file.type })
+				}
+				return { images, message }
+			} catch {
+				return { images: existing, message: 'Could not read the selected images.' }
+			}
+		}
+	</script>
+}
+
+templ ImageAttachmentInput() {
+	@imageAttachmentsScript.Once() {
+		@imageAttachmentsScriptTag()
+	}
+	<input
+		id="image-attachment-input"
+		type="file"
+		accept="image/png,image/jpeg,image/gif,image/webp"
+		multiple
+		aria-label="Attach images"
+		data-on:change="
+			const files = [...el.files];
+			el.value = '';
+			const previous = $images;
+			window.readImageAttachments(files, previous).then(result => {
+				if ($images !== previous) {
+					return;
+				}
+				$images = result.images;
+				$_imagesStatus = result.message;
+			});
+		"
+		class="sr-only"
+	/>
+}
+
+const ImageAttachmentPaste = `
+	const files = [...(evt.clipboardData?.files ?? [])];
+	if (files.length === 0) {
+		return;
+	}
+	evt.preventDefault();
+	window.attachImageFiles(files);
+`
+
+func ImageDropAttrs() templ.Attributes {
+	return templ.Attributes{
+		"data-signals:_image-dragging": "false",
+		"data-attr:data-dragging":      "$_imageDragging",
+		"data-on:dragover__window": `
+			if (!evt.dataTransfer?.types.includes('Files')) {
+				return;
+			}
+			evt.preventDefault();
+			evt.dataTransfer.dropEffect = 'copy';
+			$_imageDragging = true;
+		`,
+		"data-on:dragleave__window": `
+			if (evt.relatedTarget === null) {
+				$_imageDragging = false;
+			}
+		`,
+		"data-on:drop__window": `
+			if (!evt.dataTransfer?.types.includes('Files')) {
+				return;
+			}
+			evt.preventDefault();
+			$_imageDragging = false;
+			window.attachImageFiles([...evt.dataTransfer.files]);
+		`,
+	}
+}
+
+templ ImageDropOverlay() {
+	<div
+		data-show="$_imageDragging"
+		style="display: none"
+		class="
+			pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-dock border-2 border-dashed
+			border-accent bg-canvas/85 text-ui font-medium text-accent
+		"
+	>
+		<span class="flex items-center gap-2">
+			@ImageSmallIcon()
+			Drop images to attach
+		</span>
+	</div>
+}
+
+templ ImageAttachmentPreviews() {
+	<div
+		data-show="$images.length > 0 || $_imagesStatus !== ''"
+		style="display: none"
+		class="flex flex-wrap items-center gap-2 px-1.5 pt-1.5 pb-1"
+	>
+		for index := range maxImageAttachments {
+			@imageAttachmentSlot(index)
+		}
+		<span data-text="$_imagesStatus" role="status" class="text-label text-ink-secondary"></span>
+	</div>
+}
+
+templ imageAttachmentSlot(index int) {
+	{{ image := fmt.Sprintf("($images.length > %d ? $images[%d] : null)", index, index) }}
+	<div data-show={ image + " !== null" } style="display: none" class="relative size-13">
+		<button
+			type="button"
+			data-attr:aria-label={ "'Expand ' + (" + image + "?.name ?? '')" }
+			data-on:click={ fmt.Sprintf(`
+				const image = $images[%d];
+				$_imageModal = { src: 'data:' + image.mime + ';base64,' + image.contents, alt: image.name };
+			`, index) }
+			class="block size-full cursor-zoom-in overflow-hidden rounded-md border border-line bg-canvas"
+		>
+			<img
+				data-attr:src={ image + " ? 'data:' + " + image + ".mime + ';base64,' + " + image + ".contents : null" }
+				data-attr:alt={ image + "?.name ?? ''" }
+				class="size-full object-cover"
+			/>
+		</button>
+		@Button(ButtonProps{
+			Variant: Secondary,
+			Size:    Icon,
+			Label:   "Remove attachment",
+			Class:   "absolute -top-2 -right-2 size-5! rounded-full [&_svg]:size-3!",
+			Attrs: templ.Attributes{
+				"data-attr:aria-label": fmt.Sprintf("'Remove ' + (%s?.name ?? '')", image),
+				"data-on:click": fmt.Sprintf(`
+					$images = $images.filter((_, index) => index !== %d);
+					$_imagesStatus = '';
+				`, index),
+			},
+		}) {
+			@XIcon()
+		}
+	</div>
+}
+
+templ AttachImageButton() {
+	@Button(ButtonProps{
+		Variant: Ghost,
+		Size:    Icon,
+		Label:   "Attach image",
+		Class:   "rounded-full",
+		Attrs: templ.Attributes{
+			"data-on:click": "document.getElementById('image-attachment-input').click()",
+		},
+	}) {
+		@ImageSmallIcon()
+	}
+}
+
+templ ImageModal() {
+	<dialog
+		data-signals:_image-modal="{ src: '', alt: '' }"
+		data-effect="
+			if ($_imageModal.src && !el.open) {
+				el.showModal();
+			} else if (!$_imageModal.src && el.open) {
+				el.close();
+			}
+		"
+		data-on:click="
+			if (evt.target === el) {
+				$_imageModal = { src: '', alt: '' };
+			}
+		"
+		data-on:close="$_imageModal = { src: '', alt: '' }"
+		class="
+			m-auto h-[min(--spacing(190),100vh-(--spacing(8)))] w-[min(--spacing(240),100vw-(--spacing(8)))]
+			rounded-lg border border-line bg-backdrop p-0 backdrop:bg-backdrop/70
+		"
+	>
+		<img
+			data-attr:src="$_imageModal.src || null"
+			data-attr:alt="$_imageModal.alt"
+			class="block size-full object-contain"
+			alt=""
+		/>
+	</dialog>
+}
+
+templ ImageThumbnail(url, filename string) {
+	<button
+		type="button"
+		aria-label={ "Expand " + filename }
+		data-on:click={ fmt.Sprintf("$_imageModal = { src: %q, alt: %q }", url, filename) }
+		class="
+			block size-30 flex-none cursor-zoom-in overflow-hidden rounded-dock border border-line bg-surface
+			focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+		"
+	>
+		<img src={ url } alt={ filename } width="120" height="120" class="size-full object-cover"/>
+	</button>
+}

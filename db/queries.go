@@ -79,13 +79,25 @@ func (x *Pool) SetThreadPinned(ctx context.Context, userID, id string, pinned bo
 	`, map[string]any{":pinned": pinned, ":id": id, ":user_id": userID})
 }
 
-func (x *Pool) DeleteThread(ctx context.Context, userID, id string) error {
-	return x.WithConn(ctx, func(conn *sqlite.Conn) (err error) {
+func (x *Pool) DeleteThread(ctx context.Context, userID, id string) ([]string, error) {
+	var objectKeys []string
+	err := x.WithConn(ctx, func(conn *sqlite.Conn) (err error) {
 		defer sqlitex.Save(conn)(&err)
 
 		named := map[string]any{":id": id, ":user_id": userID}
+		objectKeys, err = selectAttachmentKeys(conn, `
+			SELECT message_attachments.object_key
+			FROM message_attachments
+			JOIN messages ON messages.id = message_attachments.message_id
+			WHERE messages.thread_id = :id AND message_attachments.user_id = :user_id
+		`, named)
+		if err != nil {
+			return err
+		}
+
 		for _, query := range []string{
 			`DELETE FROM usage WHERE thread_id = :id AND user_id = :user_id`,
+			`DELETE FROM message_attachments WHERE user_id = :user_id AND message_id IN (SELECT id FROM messages WHERE thread_id = :id)`,
 			`DELETE FROM messages WHERE thread_id = (SELECT id FROM threads WHERE id = :id AND user_id = :user_id)`,
 			`DELETE FROM threads WHERE id = :id AND user_id = :user_id`,
 		} {
@@ -95,6 +107,7 @@ func (x *Pool) DeleteThread(ctx context.Context, userID, id string) error {
 		}
 		return nil
 	})
+	return objectKeys, err
 }
 
 func (x *Pool) SetThreadStreaming(ctx context.Context, userID, id string, isStreaming bool) error {

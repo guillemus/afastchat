@@ -16,6 +16,7 @@
 !/public/apple-touch-icon.png
 !/public/icon-*.png
 !/public/site.webmanifest
+!/public/og.png
 .DS_Store
 coverage.out
 *.test

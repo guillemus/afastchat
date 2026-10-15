@@ -29,6 +29,7 @@ type Server struct {
 	googleOAuth           oauth2.Config
 	googleVerifier        *oidc.IDTokenVerifier
 	openRouterKeys        *openrouter.KeyCipher
+	r2Store               *R2Store
 	port                  string
 }
 
@@ -85,7 +86,8 @@ func StartServer(cfg config.Config) {
 			oidc.NewRemoteKeySet(context.Background(), "https://www.googleapis.com/oauth2/v3/certs"),
 			&oidc.Config{ClientID: cfg.GoogleClientID},
 		),
-		port: cfg.Port,
+		r2Store: NewR2Store(cfg.R2Endpoint, cfg.R2AccessKeyID, cfg.R2SecretAccessKey, cfg.R2Bucket),
+		port:    cfg.Port,
 	}
 
 	s.router.Use(newSecureMiddleware(config.Dev).Handler)

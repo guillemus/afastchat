@@ -85,8 +85,10 @@ func PatchIsStreaming(sse *datastar.ServerSentEventGenerator, isStreaming bool) 
 
 func ClearMessageInput(sse *datastar.ServerSentEventGenerator) {
 	PatchSignals(sse, map[string]any{
-		"message":      "",
-		"_isStreaming": true,
+		"message":       "",
+		"images":        []any{},
+		"_imagesStatus": "",
+		"_isStreaming":  true,
 	})
 }
 

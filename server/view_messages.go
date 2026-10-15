@@ -33,9 +33,14 @@ func mapViewMessages(messages []db.Message, streaming, largeHeight bool) []views
 		case db.UserMessage:
 			flush(false)
 			startedAt = it.CreatedAt
+			images := make([]views.ImageAttachment, 0, len(it.Attachments))
+			for _, attachment := range it.Attachments {
+				images = append(images, views.ImageAttachment{URL: attachment.URL, Filename: attachment.Filename})
+			}
 			out = append(out, views.UserMessageProps{
 				ID:        it.ID,
 				MdContent: renderMarkdownCached(it.Content),
+				Images:    images,
 				CreatedAt: it.CreatedAt,
 			})
 		case db.AssistantMessage, db.AssistantReasoning, db.AssistantToolCall, db.AssistantSources:

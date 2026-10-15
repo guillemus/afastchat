@@ -20,6 +20,10 @@ type Config struct {
 	OpenRouterTokenKey string
 	GoogleClientID     string
 	GoogleClientSecret string
+	R2Endpoint         string
+	R2AccessKeyID      string
+	R2SecretAccessKey  string
+	R2Bucket           string
 }
 
 func ParseConfig() Config {
@@ -34,6 +38,10 @@ func ParseConfig() Config {
 		OpenRouterTokenKey: os.Getenv("OPENROUTER_TOKEN_KEY"),
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		R2Endpoint:         os.Getenv("R2_ENDPOINT"),
+		R2AccessKeyID:      os.Getenv("R2_ACCESS_KEY_ID"),
+		R2SecretAccessKey:  os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2Bucket:           os.Getenv("R2_BUCKET"),
 	}
 }
 

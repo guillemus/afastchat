@@ -89,6 +89,22 @@ CREATE INDEX idx_messages_created_at ON messages(thread_id, created_at, seq);
 CREATE INDEX idx_messages_provider_response_id ON messages(provider_response_id);
 CREATE INDEX idx_messages_tool_call_id ON messages(tool_call_id);
 
+CREATE TABLE message_attachments (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL REFERENCES messages(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    -- R2 object key in the private attachments bucket.
+    object_key TEXT NOT NULL UNIQUE,
+    mime_type TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    -- Order of the attachment within its message.
+    position INTEGER NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_message_attachments_message_id ON message_attachments(message_id, position);
+CREATE INDEX idx_message_attachments_user_id ON message_attachments(user_id);
+
 CREATE TABLE usage (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),

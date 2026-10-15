@@ -41,6 +41,7 @@ type Message struct {
 	ToolCallID         string
 	ToolName           string
 	ProviderResponseID string
+	Attachments        []Attachment
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

@@ -32,13 +32,17 @@ func NewAgent(apiKey, modelID string) *Agent {
 func MapDBMessages(dbMessages []db.Message) []provider.Message {
 	messages := make([]provider.Message, 0, len(dbMessages))
 	for _, it := range dbMessages {
-		if it.Content == "" {
+		if it.Content == "" && len(it.Attachments) == 0 {
 			continue
 		}
 
 		switch it.Type {
 		case db.UserMessage:
-			messages = append(messages, goai.UserMessage(it.Content))
+			message := goai.UserMessage(it.Content)
+			for _, attachment := range it.Attachments {
+				message.Content = append(message.Content, provider.Part{Type: provider.PartImage, URL: attachment.URL})
+			}
+			messages = append(messages, message)
 		case db.AssistantMessage:
 			messages = append(messages, goai.AssistantMessage(it.Content))
 		case db.SystemMessage:
