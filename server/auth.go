@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"afastchat.com/agents"
 	"afastchat.com/config"
 	"afastchat.com/db"
 	"afastchat.com/views"
@@ -92,7 +93,8 @@ func mustGetUser(r *http.Request) db.User {
 func (x *Server) landingForGuests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if x.sessions.GetString(r.Context(), "user_id") == "" {
-			x.render(w, r, views.LandingPage())
+			model := agents.ResolveModel("")
+			x.render(w, r, views.LandingPage(views.ModelOption{Name: model.Name, CostTier: model.CostTier}))
 			return
 		}
 		next.ServeHTTP(w, r)

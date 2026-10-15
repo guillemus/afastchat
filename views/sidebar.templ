@@ -25,6 +25,32 @@ const sidebarIconButtonClass = `
 	hover:bg-fill-strong hover:text-ink
 `
 
+const sidebarNewChatClass = `
+	bg-raised-button mt-3 flex h-8 items-center gap-2 rounded-lg border border-line pr-1.5 pl-2.25
+	font-medium text-ink no-underline shadow-button transition-colors hover:border-line-strong
+`
+
+const sidebarSearchClass = `
+	mt-2 flex h-7.5 items-center gap-2 rounded-lg border border-line-subtle pr-1.5 pl-2.25 text-muted
+	transition-colors
+`
+
+templ sidebarBrand() {
+	<div class="flex h-7.5 items-center justify-center">
+		<a href="/" class="text-subheading font-semibold tracking-tighter text-ink no-underline">afastchat</a>
+	</div>
+	<a
+		href="https://designobo.com/s/5e2b5700d57265d3cdd625bb9e29541e6eec67a7f7725d9d0092709b76e3baf1"
+		target="_blank"
+		rel="noopener"
+		class="flex items-center gap-1 self-center text-meta text-muted no-underline transition-colors hover:text-ink"
+	>
+		made with
+		@ui.DesignoboMark()
+		designobo
+	</a>
+}
+
 templ Sidebar(props SidebarProps) {
 	<aside
 		id="sidebar"
@@ -75,38 +101,14 @@ templ Sidebar(props SidebarProps) {
 			data-signals:_pinned-collapsed="localStorage.getItem('pinned_collapsed') === 'true'"
 			data-effect="localStorage.setItem('pinned_collapsed', $_pinnedCollapsed)"
 		>
-			<div class="flex h-7.5 items-center justify-center">
-				<a href="/" class="text-subheading font-semibold tracking-tighter text-ink no-underline">afastchat</a>
-			</div>
-			<a
-				href="https://designobo.com/s/5e2b5700d57265d3cdd625bb9e29541e6eec67a7f7725d9d0092709b76e3baf1"
-				target="_blank"
-				rel="noopener"
-				class="flex items-center gap-1 self-center text-meta text-muted no-underline transition-colors hover:text-ink"
-			>
-				made with
-				@ui.DesignoboMark()
-				designobo
-			</a>
-			<a
-				href="/"
-				data-prefetch-immediate
-				class="
-				bg-raised-button mt-3 flex h-8 items-center gap-2 rounded-lg border border-line pr-1.5 pl-2.25
-				font-medium text-ink no-underline shadow-button transition-colors hover:border-line-strong
-			"
-			>
+			@sidebarBrand()
+			<a href="/" data-prefetch-immediate class={ sidebarNewChatClass }>
 				<span class="text-ink-secondary">
 					@ui.PlusSmallIcon()
 				</span>
 				New chat
 			</a>
-			<label
-				class="
-				mt-2 flex h-7.5 cursor-text items-center gap-2 rounded-lg border border-line-subtle pr-1.5
-				pl-2.25 text-muted transition-colors focus-within:border-line
-			"
-			>
+			<label class={ sidebarSearchClass, "cursor-text focus-within:border-line" }>
 				@ui.SearchSmallIcon()
 				<input
 					id="thread-search"

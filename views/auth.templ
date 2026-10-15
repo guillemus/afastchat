@@ -4,47 +4,55 @@ import "afastchat.com/views/ui"
 
 templ login(failed bool) {
 	<div class="flex min-h-dvh flex-col bg-canvas">
-		<header class="flex h-15 flex-none items-center px-7">
-			@ui.HomeLink()
-		</header>
-		<main class="grid flex-1 place-items-center p-4 pb-19">
-			<div class="w-full max-w-auth">
-				<div class="flex flex-col gap-4 rounded-xl border border-line bg-sidebar p-7 shadow-popover">
-					<p class="text-label leading-none font-semibold tracking-caps text-muted uppercase">
-						Welcome
+		<main class="flex flex-1 flex-col items-center justify-center px-4 pt-12 pb-16">
+			<a href="/" aria-label="afastchat home">
+				<img
+					src="/public/favicon.svg"
+					width="56"
+					height="56"
+					alt=""
+					class="size-14 rounded-xl shadow-popover ring-1 ring-line-strong"
+				/>
+			</a>
+			<h1 class="mt-5 text-center text-headline font-medium text-ink">Log in to afastchat</h1>
+			<div
+				class="
+					mt-7 flex w-full max-w-auth flex-col gap-5 rounded-dock border border-line bg-sidebar p-8
+					shadow-popover
+				"
+			>
+				if failed {
+					<p
+						role="alert"
+						class="rounded-lg border border-danger-line bg-danger-surface px-3 py-2 text-danger"
+					>
+						Login could not be completed. Please try again.
 					</p>
-					<h1 class="text-display font-bold text-ink">
-						Log in
-					</h1>
-					<p class="max-w-84 text-ui-emphasis leading-7 text-ink-secondary">
-						Use your Google account to open afastchat.
-					</p>
-					if failed {
-						<p
-							role="alert"
-							class="rounded-lg border border-danger-line bg-danger-surface px-3 py-2 text-danger"
-						>
-							Login could not be completed. Please try again.
-						</p>
-					}
-					@ui.Button(ui.ButtonProps{
-						Class: "w-full",
-						Attrs: templ.Attributes{
-							"data-indicator:_login_pending": true,
-							"data-attr:disabled":            "$_login_pending",
-							"data-attr:aria-busy":           "$_login_pending",
-							"data-on:click": `
+				}
+				@ui.Button(ui.ButtonProps{
+					Variant: ui.Secondary,
+					Class:   "w-full rounded-lg",
+					Attrs: templ.Attributes{
+						"data-indicator:_login_pending": true,
+						"data-attr:disabled":            "$_login_pending",
+						"data-attr:aria-busy":           "$_login_pending",
+						"data-on:click": `
 							if (!$_login_pending) {
 								@post('/auth/google');
 							}
 						`,
-						},
-					}) {
-						@ui.GoogleIcon()
-						Continue with Google
-					}
-				</div>
+					},
+				}) {
+					@ui.GoogleIcon()
+					Continue with Google
+				}
+				<p class="text-center text-muted">New here? Continuing creates your account.</p>
 			</div>
 		</main>
+		<footer class="px-4 pb-7 text-center text-muted">
+			<a href="/terms" class="text-ink-secondary no-underline transition-colors hover:text-ink">Terms of Service</a>
+			and
+			<a href="/privacy" class="text-ink-secondary no-underline transition-colors hover:text-ink">Privacy Policy</a>
+		</footer>
 	</div>
 }

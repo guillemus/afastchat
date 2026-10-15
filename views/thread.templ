@@ -316,12 +316,18 @@ templ workStatus(status Status) {
 	</div>
 }
 
+const chatDockClass = `
+	bg-dock relative flex flex-col gap-1 rounded-dock border border-line p-2 shadow-dock transition-colors
+`
+
+const chatSendClass = "ml-auto grid size-8 flex-none place-items-center rounded-full transition-colors"
+
 templ chatInput(threadID string, isStreaming bool, models ModelPicker) {
 	<div
-		class="
-			bg-dock relative flex flex-col gap-1 rounded-dock border border-line p-2 shadow-dock transition-colors
-			aria-busy:border-accent-line data-dragging:border-accent data-dragging:ring-4 data-dragging:ring-accent-soft
-		"
+		class={
+			chatDockClass,
+			"aria-busy:border-accent-line data-dragging:border-accent data-dragging:ring-4 data-dragging:ring-accent-soft",
+		}
 		{ ui.ImageDropAttrs()... }
 		if threadID != "" {
 			data-signals:thread-id={ fmt.Sprintf("'%s'", threadID) }
@@ -363,10 +369,10 @@ templ chatInput(threadID string, isStreaming bool, models ModelPicker) {
 			<button
 				type="button"
 				aria-label="Send message"
-				class="
-					ml-auto grid size-8 flex-none cursor-pointer place-items-center rounded-full bg-ink text-canvas
-					transition-colors disabled:cursor-default disabled:bg-surface-strong disabled:text-muted
-				"
+				class={
+					chatSendClass,
+					"cursor-pointer bg-ink text-canvas disabled:cursor-default disabled:bg-surface-strong disabled:text-muted",
+				}
 				style={ hiddenStyle(isStreaming) }
 				disabled
 				data-show="!$_isStreaming"

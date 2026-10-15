@@ -80,9 +80,9 @@ templ SettingsPage(data SettingsData) {
 	}
 }
 
-templ LandingPage() {
-	@guestLayout() {
-		@landing()
+templ LandingPage(model ModelOption) {
+	@appLayout() {
+		@landing(model)
 	}
 }
 
