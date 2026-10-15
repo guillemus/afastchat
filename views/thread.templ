@@ -22,9 +22,7 @@ templ MessageThread(props MessageThreadProps) {
 				data-signals:_show-jump-to-bottom="false"
 				data-on:resize__window__debounce.50ms="
 					if (!$_messages) return;
-					const overflow = $_messages.scrollHeight - $_messages.clientHeight;
-					const distanceFromBottom = overflow - $_messages.scrollTop;
-					$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+					$_showJumpToBottom = window.hiddenMessagesBelow($_messages) > 48;
 				"
 			>
 				@MessageList(props)
@@ -39,7 +37,7 @@ templ MessageThread(props MessageThreadProps) {
 					"
 					data-show="$_showJumpToBottom"
 					data-on:click="
-						$_messages.scrollTo({ top: $_messages.scrollHeight, behavior: 'smooth' });
+						$_messages.scrollBy({ top: window.hiddenMessagesBelow($_messages) + 64, behavior: 'smooth' });
 						$_showJumpToBottom = false;
 					"
 				>
@@ -82,9 +80,7 @@ templ MessageList(props MessageThreadProps) {
 			templ.KV("invisible", props.DoScrollSidebar),
 		}
 		data-on:scroll__debounce.10ms="
-			const overflow = el.scrollHeight - el.clientHeight;
-			const distanceFromBottom = overflow - el.scrollTop;
-			$_showJumpToBottom = overflow > 200 && distanceFromBottom > 48;
+			$_showJumpToBottom = window.hiddenMessagesBelow(el) > 48;
 		"
 	>
 		<div class="mx-auto w-full max-w-thread px-6 pb-16">

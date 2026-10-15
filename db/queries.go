@@ -339,3 +339,28 @@ func (x *Pool) ListUsageByThread(ctx context.Context, userID, threadID string) (
 		return scanUsage(stmt), nil
 	})
 }
+
+func (x *Pool) DeleteMessagesAfter(ctx context.Context, userID, threadID string, seq int) error {
+	return x.WithConn(ctx, func(conn *sqlite.Conn) (err error) {
+		defer sqlitex.Save(conn)(&err)
+
+		named := map[string]any{":thread_id": threadID, ":user_id": userID, ":seq": seq}
+		for _, query := range []string{
+			`UPDATE usage SET message_id = NULL
+			 WHERE message_id IN (
+				SELECT messages.id FROM messages
+				JOIN threads ON threads.id = messages.thread_id
+				WHERE messages.thread_id = :thread_id AND threads.user_id = :user_id AND messages.seq > :seq
+			 )`,
+			`DELETE FROM messages
+			 WHERE thread_id = (SELECT id FROM threads WHERE id = :thread_id AND user_id = :user_id)
+			   AND seq > :seq
+			   AND id NOT IN (SELECT message_id FROM message_attachments)`,
+		} {
+			if err := sqlitex.Execute(conn, query, &sqlitex.ExecOptions{Named: named}); err != nil {
+				return fmt.Errorf("delete messages after: %w", err)
+			}
+		}
+		return nil
+	})
+}

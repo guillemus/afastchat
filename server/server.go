@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"afastchat.com"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/dbos-inc/dbos-transact-golang/dbos"
+	_ "github.com/dbos-inc/dbos-transact-golang/dbos/driver/sqlite"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 )
@@ -29,6 +32,7 @@ type Server struct {
 	googleOAuth           oauth2.Config
 	googleVerifier        *oidc.IDTokenVerifier
 	openRouterKeys        *openrouter.KeyCipher
+	workflows             dbos.Context
 	r2Store               *R2Store
 	port                  string
 }
@@ -46,6 +50,16 @@ func StartServer(cfg config.Config) {
 	openRouterKeys, err := openrouter.NewKeyCipher(cfg.OpenRouterTokenKey)
 	if err != nil {
 		log.Fatalf("openrouter: %v", err)
+	}
+
+	workflows, err := dbos.NewContext(context.Background(), dbos.Config{
+		AppName:            "afastchat",
+		ApplicationVersion: "1",
+		DatabaseURL:        "sqlite:" + filepath.Join(filepath.Dir(cfg.DBPath), "dbos.db"),
+		Logger:             slog.Default(),
+	})
+	if err != nil {
+		log.Fatalf("dbos: %v", err)
 	}
 
 	broker, err := NewBroker()
@@ -81,6 +95,7 @@ func StartServer(cfg config.Config) {
 			Scopes:      []string{oidc.ScopeOpenID, "email", "profile"},
 		},
 		openRouterKeys: openRouterKeys,
+		workflows:      workflows,
 		googleVerifier: oidc.NewVerifier(
 			"https://accounts.google.com",
 			oidc.NewRemoteKeySet(context.Background(), "https://www.googleapis.com/oauth2/v3/certs"),
@@ -140,7 +155,11 @@ func StartServer(cfg config.Config) {
 		})
 	})
 
-	go s.resumeStreamingThreads()
+	dbos.RegisterWorkflow(workflows, s.runChatTurn)
+	if err := dbos.Launch(workflows); err != nil {
+		log.Fatalf("dbos: %v", err)
+	}
+	s.releaseOrphanedStreams()
 
 	addr := ":" + s.port
 	slog.Info("server starting", "addr", addr)

@@ -322,11 +322,6 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		GoRecover(func() {
 			x.updateThreadTitle(context.Background(), apiKey, user.ID, threadID, userMessage)
 		})
-
-		sse := datastar.NewSSE(w, r)
-
-		slog.Info("redirecting")
-		sse.Redirectf("/threads/%s", threadID)
 	} else {
 		_, err := x.db.GetThread(ctx, sig.ThreadID, user.ID)
 		if errors.Is(err, db.ErrNotFound) {
@@ -341,70 +336,20 @@ func (x *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		threadID = sig.ThreadID
 	}
 
-	GoRecover(func() {
-		x.writeAgentStreamToThread(apiKey, modelID, user.ID, threadID, userMessage, attachments)
-	})
-
-	if !isNewThread {
-		views.ClearMessageInput(datastar.NewSSE(w, r))
-	}
-}
-
-func (x *Server) writeAgentStreamToThread(
-	apiKey, modelID, userID, threadID, userMessage string, attachments []db.AttachmentInput,
-) {
-	ctx := context.Background()
-
-	logger := slog.With("threadId", threadID, "userId", userID)
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	if err := x.cancelOnThreadStop(ctx, threadID, cancel); err != nil {
-		logger.Error("subscribe to thread stops", "err", err)
-	}
-
-	if err := x.db.SetThreadStreaming(ctx, userID, threadID, true); err != nil {
-		logger.Error("set streaming state", "err", err)
+	if err := x.startChatTurn(ctx, user.ID, threadID, modelID, userMessage, attachments); err != nil {
+		slog.Error("start chat turn", "threadId", threadID, "err", err)
+		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to send message. Try again."})
 		return
 	}
 
-	x.broker.PublishUserThread(userID, threadID)
-	defer func() {
-		ctx := context.Background()
-		if err := x.db.SetThreadStreaming(ctx, userID, threadID, false); err != nil {
-			logger.Error("unset streaming state", "err", err)
-			return
+	sse := datastar.NewSSE(w, r)
+	if isNewThread {
+		if err := sse.Redirectf("/threads/%s", threadID); err != nil {
+			slog.Error("redirect to new thread", "err", err)
 		}
-		x.broker.PublishThreadUpdated(threadID)
-		x.broker.PublishUserThread(userID, threadID)
-	}()
-
-	message, err := x.db.CreateUserMessage(ctx, userID, threadID, userMessage)
-	if err != nil {
-		logger.Error("create user message", "err", err)
 		return
 	}
-	if err := x.db.CreateMessageAttachments(ctx, userID, message.ID, attachments); err != nil {
-		logger.Error("create message attachments", "err", err)
-		return
-	}
-	_, err = x.db.CreateAssistantMessage(ctx, userID, threadID, "")
-	if err != nil {
-		logger.Error("create assistant message", "err", err)
-		return
-	}
-
-	x.broker.PublishThread(threadID, threadEvent{UserMessageCreated: true})
-
-	messages, err := x.getThreadMessages(ctx, userID, threadID)
-	if err != nil {
-		logger.Error("get messages", "err", err)
-		return
-	}
-
-	logger.Info("starting agent stream")
-	x.streamAgentMessages(ctx, apiKey, modelID, userID, threadID, messages, logger)
+	views.ClearMessageInput(sse)
 }
 
 const streamFlushInterval = 50 * time.Millisecond
@@ -584,6 +529,7 @@ func (x *Server) handleStopStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	x.cancelChatTurns(sig.ThreadID)
 	x.broker.PublishThreadStop(sig.ThreadID)
 }
 

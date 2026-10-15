@@ -14,13 +14,14 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath -ldflags='-s -w' -o "$binary" ./cmd/server
 
 # Keep the uploaded binary between deploys so rsync can transfer only changes.
-rsync --checksum --compress --progress "$binary" "$host:afastchat.com.upload"
+rsync --checksum --compress --progress "$binary" "$host:apps/afastchat/afastchat.upload"
 
 ssh "$host" '
     set -eu
 
-    install -m 0755 ~/afastchat.com.upload ~/afastchat.com.new
-    mv -f ~/afastchat.com.new ~/afastchat.com
+    cd ~/apps/afastchat
+    install -m 0755 afastchat.upload afastchat.new
+    mv -f afastchat.new afastchat
 
     sudo systemctl restart afastchat
     systemctl is-active afastchat
