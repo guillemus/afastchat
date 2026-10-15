@@ -185,20 +185,70 @@
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
 
-.app-shell[data-collapsed] {
-    --sidebar-width: 0px;
+.sidebar-backdrop {
+    display: none;
 }
 
-.app-shell[data-animating] {
-    transition: --sidebar-width 200ms cubic-bezier(0.2, 0, 0, 1);
+@media (width >= 48rem) {
+    .app-shell[data-collapsed] {
+        --sidebar-width: 0px;
+    }
+
+    .app-shell[data-animating] {
+        transition: --sidebar-width 200ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .app-shell[data-collapsed]:not([data-animating]) > aside {
+        visibility: hidden;
+    }
 }
 
-.app-shell[data-collapsed]:not([data-animating]) > aside {
-    visibility: hidden;
+@media (width < 48rem) {
+    .app-shell {
+        grid-template-columns: minmax(0, 1fr);
+        padding-top: 3rem;
+        background: var(--color-canvas);
+    }
+
+    .app-shell > aside {
+        position: fixed;
+        inset-block: 0;
+        left: 0;
+        z-index: 30;
+        max-width: 85vw;
+        visibility: hidden;
+        transform: translateX(-100%);
+        transition:
+            transform 200ms cubic-bezier(0.2, 0, 0, 1),
+            visibility 200ms;
+    }
+
+    .app-shell[data-sidebar-open] > aside {
+        visibility: visible;
+        transform: none;
+    }
+
+    .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 25;
+        background: rgb(from var(--color-backdrop) r g b / 70%);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 200ms;
+    }
+
+    .app-shell[data-sidebar-open] > .sidebar-backdrop {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .app-shell[data-animating] {
+    .app-shell[data-animating],
+    .app-shell > aside,
+    .sidebar-backdrop {
         transition: none;
     }
 }

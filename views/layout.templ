@@ -9,6 +9,10 @@ templ appLayout() {
 			data-signals:_sidebar-collapsed="localStorage.getItem('sidebar_collapsed') === 'true'"
 			data-effect="localStorage.setItem('sidebar_collapsed', $_sidebarCollapsed)"
 			data-attr:data-collapsed="$_sidebarCollapsed"
+			data-signals:_sidebar-open="false"
+			data-attr:data-sidebar-open="$_sidebarOpen"
+			data-on:click="evt.target.closest('#sidebar a:not([target])') && ($_sidebarOpen = false)"
+			data-on:keydown__window="evt.key === 'Escape' && ($_sidebarOpen = false)"
 		>
 			<script>
 				document.currentScript.parentElement.toggleAttribute(
@@ -17,17 +21,25 @@ templ appLayout() {
 				)
 			</script>
 			{ children... }
+			<div class="sidebar-backdrop" aria-hidden="true" data-on:click="$_sidebarOpen = false"></div>
 			<button
 				type="button"
 				aria-controls="sidebar"
 				class="
-					fixed top-2.75 left-4 z-20 grid size-6.5 cursor-pointer place-items-center rounded-md
+					fixed top-2.75 left-4 z-40 grid size-6.5 cursor-pointer place-items-center rounded-md
 					text-muted transition-colors hover:bg-fill-strong hover:text-ink
 				"
-				data-attr:aria-expanded="String(!$_sidebarCollapsed)"
-				data-attr:aria-label="$_sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
-				data-attr:title="$_sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'"
+				data-signals:_sidebar-mobile="matchMedia('(width < 48rem)').matches"
+				data-on:resize__window__throttle.100ms="$_sidebarMobile = matchMedia('(width < 48rem)').matches"
+				data-computed:_sidebar-shown="$_sidebarMobile ? $_sidebarOpen : !$_sidebarCollapsed"
+				data-attr:aria-expanded="String($_sidebarShown)"
+				data-attr:aria-label="$_sidebarShown ? 'Hide sidebar' : 'Show sidebar'"
+				data-attr:title="$_sidebarShown ? 'Hide sidebar' : 'Show sidebar'"
 				data-on:click="
+					if ($_sidebarMobile) {
+						$_sidebarOpen = !$_sidebarOpen;
+						return;
+					}
 					const shell = el.closest('.app-shell');
 					shell.setAttribute('data-animating', '');
 					clearTimeout(shell.sidebarAnimation);

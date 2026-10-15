@@ -134,7 +134,7 @@ templ modelPicker(models ModelPicker) {
 			class="
 				fixed inset-auto m-0 my-2 flex h-model-picker max-h-[calc(100%-(--spacing(4)))] w-full max-w-[min(var(--container-model-picker),calc(100vw-(--spacing(8))))]
 				flex-col overflow-hidden rounded-card border border-line bg-surface text-ink shadow-popover not-open:hidden
-				[position-anchor:--model-picker] [position-area:top_span-right]
+				[position-anchor:--model-picker] [position-area:top_span-right] max-md:[position-area:top_span-all] max-md:justify-self-center
 				[position-try-fallbacks:flip-block,flip-inline]
 			"
 		>

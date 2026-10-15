@@ -5,7 +5,7 @@ import "afastchat.com/views/ui"
 const deleteAccountDialogID = "delete-account-dialog"
 
 templ settings(data SettingsData) {
-	<main class="flex-1 overflow-y-auto bg-canvas p-8">
+	<main class="flex-1 overflow-y-auto bg-canvas px-4 pt-4 pb-8 md:p-8">
 		<div class="mx-auto max-w-settings">
 			<h1 class="text-heading font-medium">Settings</h1>
 			@settingsAccount(data)
@@ -29,7 +29,7 @@ templ settingsCard(border string) {
 }
 
 templ settingsRow() {
-	<div class="flex items-center gap-3.5 px-5 py-4">
+	<div class="flex flex-wrap items-center gap-3.5 px-4 py-4 md:px-5">
 		{ children... }
 	</div>
 }
@@ -57,7 +57,7 @@ templ settingsAccount(data SettingsData) {
 				</span>
 			}
 			@settingsRow() {
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-1 basis-40">
 					<p class="font-medium">Log out</p>
 					<p class="text-compact text-muted">Log out of afastchat on this device.</p>
 				</div>
@@ -85,7 +85,7 @@ templ settingsOpenRouter(data SettingsData) {
 				>
 					@ui.KeyIcon()
 				</span>
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-1 basis-40">
 					<p class="font-medium">OpenRouter</p>
 					if data.OpenRouterConnected {
 						<p class="flex items-center gap-1.5 text-compact text-ink-secondary">
@@ -97,20 +97,22 @@ templ settingsOpenRouter(data SettingsData) {
 					}
 				</div>
 				if data.OpenRouterConnected {
-					@ui.Button(ui.ButtonProps{
-						Variant: ui.Ghost,
-						Size:    ui.Small,
-						Attrs:   templ.Attributes{"data-on:click": "@post('/settings/openrouter/disconnect')"},
-					}) {
-						Disconnect
-					}
-					@ui.Button(ui.ButtonProps{
-						Variant: ui.Secondary,
-						Size:    ui.Small,
-						Attrs:   openRouterConnectAttrs("/auth/openrouter?from=settings"),
-					}) {
-						Reconnect
-					}
+					<div class="ml-auto flex gap-2">
+						@ui.Button(ui.ButtonProps{
+							Variant: ui.Ghost,
+							Size:    ui.Small,
+							Attrs:   templ.Attributes{"data-on:click": "@post('/settings/openrouter/disconnect')"},
+						}) {
+							Disconnect
+						}
+						@ui.Button(ui.ButtonProps{
+							Variant: ui.Secondary,
+							Size:    ui.Small,
+							Attrs:   openRouterConnectAttrs("/auth/openrouter?from=settings"),
+						}) {
+							Reconnect
+						}
+					</div>
 				} else {
 					@ui.Button(ui.ButtonProps{
 						Size:  ui.Small,
@@ -142,7 +144,7 @@ templ settingsDanger() {
 	@settingsSection("Danger zone") {
 		@settingsCard("border-danger-line") {
 			@settingsRow() {
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-1 basis-40">
 					<p class="font-medium">Delete account</p>
 					<p class="text-compact text-muted">Permanently delete your account and all your chats.</p>
 				</div>

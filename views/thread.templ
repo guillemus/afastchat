@@ -44,7 +44,7 @@ templ MessageThread(props MessageThreadProps) {
 					@ui.ArrowDownIcon()
 				</button>
 			</div>
-			<div class="flex-none px-6 pb-5">
+			<div class="flex-none px-3 pb-3 md:px-6 md:pb-5">
 				<div class="mx-auto max-w-thread">
 					@chatInput(props.Thread.ID, props.IsStreaming, props.Models)
 				</div>
@@ -83,7 +83,7 @@ templ MessageList(props MessageThreadProps) {
 			$_showJumpToBottom = window.hiddenMessagesBelow(el) > 48;
 		"
 	>
-		<div class="mx-auto w-full max-w-thread px-6 pb-16">
+		<div class="mx-auto w-full max-w-thread px-4 pb-16 md:px-6">
 			for _, message := range props.Messages {
 				@messageGroup(message)
 			}
