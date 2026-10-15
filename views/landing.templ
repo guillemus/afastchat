@@ -12,10 +12,7 @@ var landingPrompts = []string{
 templ landing() {
 	<div class="relative flex min-h-dvh flex-col bg-canvas">
 		<header class="flex h-15 flex-none items-center px-7">
-			<a href="/" class="flex h-7.5 items-center gap-2 no-underline">
-				@ui.LogoMark()
-				<b class="text-ui font-semibold tracking-tighter text-ink">afastchat</b>
-			</a>
+			@ui.HomeLink()
 			<a
 				href="/login"
 				class="

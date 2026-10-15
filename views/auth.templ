@@ -3,43 +3,48 @@ package views
 import "afastchat.com/views/ui"
 
 templ login(failed bool) {
-	<main class="grid min-h-dvh place-items-center p-4">
-		<div class="w-full max-w-auth">
-			<div class="flex flex-col gap-4 rounded-xl border border-line bg-sidebar p-7 shadow-popover">
-				<p class="text-label leading-none font-semibold tracking-caps text-muted uppercase">
-					Welcome
-				</p>
-				<h1 class="text-display font-bold text-ink">
-					Log in
-				</h1>
-				<p class="max-w-84 text-ui-emphasis leading-7 text-ink-secondary">
-					Use your Google account to open afastchat.
-				</p>
-				if failed {
-					<p
-						role="alert"
-						class="rounded-lg border border-danger-line bg-danger-surface px-3 py-2 text-danger"
-					>
-						Login could not be completed. Please try again.
+	<div class="flex min-h-dvh flex-col bg-canvas">
+		<header class="flex h-15 flex-none items-center px-7">
+			@ui.HomeLink()
+		</header>
+		<main class="grid flex-1 place-items-center p-4 pb-19">
+			<div class="w-full max-w-auth">
+				<div class="flex flex-col gap-4 rounded-xl border border-line bg-sidebar p-7 shadow-popover">
+					<p class="text-label leading-none font-semibold tracking-caps text-muted uppercase">
+						Welcome
 					</p>
-				}
-				@ui.Button(ui.ButtonProps{
-					Class: "w-full",
-					Attrs: templ.Attributes{
-						"data-indicator:_login_pending": true,
-						"data-attr:disabled":            "$_login_pending",
-						"data-attr:aria-busy":           "$_login_pending",
-						"data-on:click": `
+					<h1 class="text-display font-bold text-ink">
+						Log in
+					</h1>
+					<p class="max-w-84 text-ui-emphasis leading-7 text-ink-secondary">
+						Use your Google account to open afastchat.
+					</p>
+					if failed {
+						<p
+							role="alert"
+							class="rounded-lg border border-danger-line bg-danger-surface px-3 py-2 text-danger"
+						>
+							Login could not be completed. Please try again.
+						</p>
+					}
+					@ui.Button(ui.ButtonProps{
+						Class: "w-full",
+						Attrs: templ.Attributes{
+							"data-indicator:_login_pending": true,
+							"data-attr:disabled":            "$_login_pending",
+							"data-attr:aria-busy":           "$_login_pending",
+							"data-on:click": `
 							if (!$_login_pending) {
 								@post('/auth/google');
 							}
 						`,
-					},
-				}) {
-					@ui.GoogleIcon()
-					Continue with Google
-				}
+						},
+					}) {
+						@ui.GoogleIcon()
+						Continue with Google
+					}
+				</div>
 			</div>
-		</div>
-	</main>
+		</main>
+	</div>
 }

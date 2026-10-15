@@ -6,10 +6,7 @@ templ legalPage(title, updatedDate, updatedLabel string) {
 	@ui.Document(title + " - afastchat") {
 		<div class="flex h-dvh flex-col overflow-y-auto bg-canvas">
 			<header class="flex h-15 flex-none items-center px-7">
-				<a href="/" class="flex h-7.5 items-center gap-2 no-underline">
-					@ui.LogoMark()
-					<b class="text-ui font-semibold tracking-tighter text-ink">afastchat</b>
-				</a>
+				@ui.HomeLink()
 			</header>
 			<main class="mx-auto w-full max-w-thread flex-1 px-6 py-12">
 				<h1 class="text-display font-medium text-ink">{ title }</h1>
