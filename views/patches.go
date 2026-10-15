@@ -15,6 +15,18 @@ func PatchSidebar(sse *datastar.ServerSentEventGenerator, list SidebarList) {
 	patchTempl(sse, ThreadItems(list), datastar.WithSelectorID("thread-items"), datastar.WithModeInner())
 }
 
+func CloseDeleteThreadDialog(sse *datastar.ServerSentEventGenerator, deletedThreadIDs []string) {
+	ids, err := json.Marshal(deletedThreadIDs)
+	if err != nil {
+		slog.Error("encode deleted thread ids", "err", err)
+		return
+	}
+	executeScript(sse, fmt.Sprintf(`
+		const dialog = document.getElementById(%q);
+		if (dialog?.open && %s.includes(dialog.dataset.threadId)) dialog.close();
+	`, sidebarDeleteThreadDialogID, ids))
+}
+
 // PatchThreadPage is sent whenever a thread events stream connects: on page
 // load, on reconnect, on a sidebar switch and on back/forward. Only the last
 // two change the thread on screen, and only then should the messages scroll

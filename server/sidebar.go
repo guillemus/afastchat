@@ -65,9 +65,14 @@ func (x *Server) sidebarList(
 	if err != nil {
 		return views.SidebarList{}, fmt.Errorf("list threads: %w", err)
 	}
+	return buildSidebarList(ctx, mapViewThreads(threads), view, activeThreadID), nil
+}
 
+func buildSidebarList(
+	ctx context.Context, threads []views.Thread, view sidebarView, activeThreadID string,
+) views.SidebarList {
 	list := views.BuildSidebarList(
-		mapViewThreads(threads),
+		threads,
 		sidebarSearchQuery(view.Search),
 		views.ThreadGroupBounds(ctx),
 		sidebarPixels(view.Y),
@@ -76,8 +81,18 @@ func (x *Server) sidebarList(
 	list.Search = view.Search
 	list.SearchRev = view.SearchRev
 	list.ActiveThreadID = activeThreadID
+	return list
+}
 
-	return list, nil
+func deletedThreadIDs(changed map[string]bool, threads []views.Thread) []string {
+	for _, thread := range threads {
+		delete(changed, thread.ID)
+	}
+	deleted := make([]string, 0, len(changed))
+	for id := range changed {
+		deleted = append(deleted, id)
+	}
+	return deleted
 }
 
 func (x *Server) initialSidebarList(ctx context.Context, userID, activeThreadID string) (views.SidebarList, error) {
@@ -103,8 +118,10 @@ func (x *Server) handleSidebarEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	defer unsubscribe()
 
+	changed := map[string]bool{}
 	apply := func(msg *nats.Msg) {
 		if msg.Subject != viewSubject {
+			changed[string(msg.Data)] = true
 			return
 		}
 		var next sidebarView
@@ -122,7 +139,7 @@ func (x *Server) handleSidebarEvents(w http.ResponseWriter, r *http.Request) {
 	)))
 	failed := false
 	for {
-		list, err := x.sidebarList(ctx, user.ID, view, "")
+		threads, err := x.db.ListThreads(ctx, user.ID)
 		switch {
 		case ctx.Err() != nil:
 			return
@@ -134,7 +151,12 @@ func (x *Server) handleSidebarEvents(w http.ResponseWriter, r *http.Request) {
 			failed = true
 		default:
 			failed = false
-			views.PatchSidebar(sse, list)
+			viewThreads := mapViewThreads(threads)
+			views.PatchSidebar(sse, buildSidebarList(ctx, viewThreads, view, ""))
+			if deleted := deletedThreadIDs(changed, viewThreads); len(deleted) > 0 {
+				views.CloseDeleteThreadDialog(sse, deleted)
+			}
+			clear(changed)
 		}
 
 		select {

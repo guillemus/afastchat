@@ -9,42 +9,69 @@ rocket('sensitive-text', {
 
 document.cookie = `tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}; path=/; max-age=31536000; samesite=lax; secure`
 
-const tick =
-    (every: number) =>
-    ({ render, cleanup }: { render: (ctx: object) => void; cleanup: (fn: () => void) => void }) => {
-        const timer = window.setInterval(() => render({}), every)
-        cleanup(() => window.clearInterval(timer))
+type ClockContext = {
+    host: HTMLElement
+    cleanup: (fn: () => void) => void
+    observeProps: (fn: () => void) => () => void
+}
+
+const syncText = (
+    { host, cleanup, observeProps }: ClockContext,
+    format: () => string,
+    every?: number,
+) => {
+    const update = () => {
+        const text = format()
+        if (host.textContent !== text) host.textContent = text
     }
+    update()
+    cleanup(observeProps(update))
+    if (every === undefined) return
+    const timer = window.setInterval(update, every)
+    cleanup(() => window.clearInterval(timer))
+}
 
 rocket('local-time', {
+    mode: 'light',
     props: ({ date }) => ({ datetime: date }),
-    render: ({ props }) => {
-        const pad = (n: number) => String(n).padStart(2, '0')
-        return `${pad(props.datetime.getHours())}:${pad(props.datetime.getMinutes())}`
-    },
+    setup: (ctx) =>
+        syncText(ctx, () => {
+            const pad = (n: number) => String(n).padStart(2, '0')
+            return `${pad(ctx.props.datetime.getHours())}:${pad(ctx.props.datetime.getMinutes())}`
+        }),
 })
 
 rocket('elapsed-time', {
+    mode: 'light',
     props: ({ number }) => ({ since: number }),
-    setup: tick(250),
-    render: ({ props }) => `${Math.max(1, Math.round((Date.now() - props.since) / 1000))}s`,
+    setup: (ctx) =>
+        syncText(
+            ctx,
+            () => `${Math.max(1, Math.round((Date.now() - ctx.props.since) / 1000))}s`,
+            250,
+        ),
 })
 
 rocket('time-ago', {
+    mode: 'light',
     props: ({ date }) => ({ datetime: date }),
-    setup: tick(30_000),
-    render: ({ props }) => {
-        const minutes = Math.floor((Date.now() - props.datetime.getTime()) / 60_000)
-        if (minutes < 1) return 'now'
-        if (minutes < 60) return `${minutes}m`
-        const hours = Math.floor(minutes / 60)
-        if (hours < 24) return `${hours}h`
-        const days = Math.floor(hours / 24)
-        if (days < 7) return `${days}d`
-        const weeks = Math.floor(days / 7)
-        if (weeks < 52) return `${weeks}w`
-        return `${Math.floor(days / 365)}y`
-    },
+    setup: (ctx) =>
+        syncText(
+            ctx,
+            () => {
+                const minutes = Math.floor((Date.now() - ctx.props.datetime.getTime()) / 60_000)
+                if (minutes < 1) return 'now'
+                if (minutes < 60) return `${minutes}m`
+                const hours = Math.floor(minutes / 60)
+                if (hours < 24) return `${hours}h`
+                const days = Math.floor(hours / 24)
+                if (days < 7) return `${days}d`
+                const weeks = Math.floor(days / 7)
+                if (weeks < 52) return `${weeks}w`
+                return `${Math.floor(days / 365)}y`
+            },
+            30_000,
+        ),
 })
 
 rocket('flip-list', {

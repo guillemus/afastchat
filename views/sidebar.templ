@@ -162,7 +162,11 @@ templ Sidebar(props SidebarProps) {
 }
 
 templ sidebarDeleteThreadDialog() {
-	@ui.Dialog(sidebarDeleteThreadDialogID, templ.Attributes{"data-signals:_delete-thread-id": "''"}) {
+	@ui.Dialog(sidebarDeleteThreadDialogID, templ.Attributes{
+		"data-signals":             "{_deleteThreadId: '', _deletingThread: false}",
+		"data-attr:data-thread-id": "$_deleteThreadId",
+		"data-on:close":            "$_deletingThread = false",
+	}) {
 		<h2 class="text-ui-emphasis font-semibold">Delete this chat?</h2>
 		<p class="mt-2 leading-6 text-muted">
 			This action will permanently delete this chat.
@@ -177,9 +181,8 @@ templ sidebarDeleteThreadDialog() {
 			@ui.Button(ui.ButtonProps{
 				Variant: ui.Danger,
 				Attrs: templ.Attributes{
-					"data-indicator:_sidebar_delete_pending": true,
-					"data-attr:disabled":                     "$_sidebar_delete_pending",
-					"data-on:click":                          "@post('/threads/' + $_deleteThreadId + '/delete')",
+					"data-attr:disabled": "$_deletingThread",
+					"data-on:click":      "$_deletingThread = true; @post('/threads/' + $_deleteThreadId + '/delete')",
 				},
 			}) {
 				Delete

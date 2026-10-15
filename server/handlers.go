@@ -497,10 +497,15 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := mustGetUser(r)
 	threadID := chi.URLParam(r, "id")
+	fail := func(message string) {
+		sse := datastar.NewSSE(w, r)
+		views.PatchSignals(sse, map[string]any{"_deletingThread": false})
+		patchToastOnSSE(sse, ui.Toast{Kind: ui.ToastError, Message: message})
+	}
 	var sig threadListSignals
 	if err := datastar.ReadSignals(r, &sig); err != nil {
 		slog.Error("read delete signals", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "Unable to delete this chat. Refresh the page, then try again."})
+		fail("Unable to delete this chat. Refresh the page, then try again.")
 		return
 	}
 
@@ -508,7 +513,7 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 	objectKeys, err := x.db.DeleteThread(ctx, user.ID, threadID)
 	if err != nil {
 		slog.Error("delete thread", "err", err)
-		x.patchToast(w, r, ui.Toast{Kind: ui.ToastError, Message: "We couldn't delete this chat. Try again."})
+		fail("We couldn't delete this chat. Try again.")
 		return
 	}
 	x.deleteAttachmentObjects(objectKeys)
@@ -519,10 +524,5 @@ func (x *Server) handleDeleteThread(w http.ResponseWriter, r *http.Request) {
 		if err := sse.Redirect("/"); err != nil {
 			slog.Error("redirect after thread deletion", "err", err)
 		}
-		return
-	}
-
-	if err := sse.ExecuteScript(`document.getElementById('sidebar-delete-thread-dialog')?.close()`); err != nil {
-		slog.Error("close delete dialog", "err", err)
 	}
 }
