@@ -206,7 +206,8 @@
 @media (width < 48rem) {
     .app-shell {
         grid-template-columns: minmax(0, 1fr);
-        padding-top: 3rem;
+        padding-top: calc(3rem + env(safe-area-inset-top));
+        padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
         background: var(--color-canvas);
     }
 
@@ -216,6 +217,9 @@
         left: 0;
         z-index: 30;
         max-width: 85vw;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
         visibility: hidden;
         transform: translateX(-100%);
         transition:

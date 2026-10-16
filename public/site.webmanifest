@@ -1,11 +1,14 @@
 {
+  "id": "/",
   "name": "afastchat",
   "short_name": "afastchat",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     { "src": "/public/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/public/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ],
-  "theme_color": "#000000",
-  "background_color": "#000000",
+  "theme_color": "#0b0b0d",
+  "background_color": "#0b0b0d",
   "display": "standalone"
 }

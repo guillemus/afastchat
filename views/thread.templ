@@ -44,7 +44,7 @@ templ MessageThread(props MessageThreadProps) {
 					@ui.ArrowDownIcon()
 				</button>
 			</div>
-			<div class="flex-none px-3 pb-3 md:px-6 md:pb-5">
+			<div class="flex-none px-3 pb-[max(--spacing(3),env(safe-area-inset-bottom))] md:px-6 md:pb-5">
 				<div class="mx-auto max-w-thread">
 					@chatInput(props.Thread.ID, props.IsStreaming, props.Models)
 				</div>

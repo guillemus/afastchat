@@ -26,7 +26,7 @@ templ appLayout() {
 				type="button"
 				aria-controls="sidebar"
 				class="
-					fixed top-2.75 left-4 z-40 grid size-6.5 cursor-pointer place-items-center rounded-md
+					fixed top-[calc(--spacing(2.75)+env(safe-area-inset-top))] left-[calc(--spacing(4)+env(safe-area-inset-left))] z-40 grid size-6.5 cursor-pointer place-items-center rounded-md
 					text-muted transition-colors hover:bg-fill-strong hover:text-ink
 				"
 				data-signals:_sidebar-mobile="matchMedia('(width < 48rem)').matches"
@@ -55,7 +55,7 @@ templ appLayout() {
 
 templ guestLayout() {
 	@ui.Document("afastchat") {
-		<div class="min-h-dvh">
+		<div class="min-h-dvh pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
 			{ children... }
 		</div>
 	}

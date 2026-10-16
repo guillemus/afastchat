@@ -4,12 +4,16 @@ import "afastchat.com/config"
 
 const siteDescription = "A very fast AI chat built for the web. Streams in real time, searches the live web, and runs on your OpenRouter account."
 
+const themeColor = "#0b0b0d"
+
 templ Document(title string) {
 	<!DOCTYPE html>
 	<html lang="en" class="bg-canvas text-ink scheme-dark">
 		<head>
 			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+			<meta name="theme-color" content={ themeColor }/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 			<title>{ title }</title>
 			<meta name="description" content={ siteDescription }/>
 			<meta property="og:type" content="website"/>
