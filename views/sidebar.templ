@@ -146,9 +146,6 @@ templ Sidebar(props SidebarProps) {
 				</a>
 				<div class="min-w-0 leading-tight">
 					<p class="truncate font-medium text-ink">{ props.Viewer.Name }</p>
-					<div class="text-meta text-muted">
-						@ui.Sensitive(props.Viewer.Email)
-					</div>
 				</div>
 				<form method="post" action="/logout" class="ml-auto">
 					<button type="submit" aria-label="Log out" title="Log out" class={ sidebarIconButtonClass }>
